@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kujolang.ai/schemas/tribunal-event-1.0.0.json",
+  "title": "TribunalEvent",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "runId",
+    "stageId",
+    "eventType",
+    "summary",
+    "metadata"
+  ],
+  "properties": {
+    "timestamp": { "type": "string", "format": "date-time" },
+    "runId": { "type": "string" },
+    "stageId": {
+      "enum": [
+        "open-docket",
+        "validate-scope",
+        "build-context-pack",
+        "blind-first-pass",
+        "cross-examination",
+        "executioner-kill-pass",
+        "judge-ruling",
+        "decision-packet",
+        "persist-record"
+      ]
+    },
+    "seatId": { "type": "string" },
+    "eventType": { "type": "string" },
+    "summary": { "type": "string" },
+    "metadata": { "type": "object" }
+  },
+  "additionalProperties": false
+}

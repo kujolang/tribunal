@@ -1,0 +1,55 @@
+from src.providers import openai_provider, openrouter_provider, deepseek_provider
+from src.ai_sdk import create_client, create_message, chat_completion, provider_metadata
+
+func dict_get_or(obj, key, fallback) {
+	if type(obj) != "dict" {
+		return fallback
+	}
+	if has_key(obj, key) {
+		return obj[key]
+	}
+	return fallback
+}
+
+payload_text := trim(to_string(env("KUJO_TRIBUNAL_PAYLOAD")))
+if payload_text == "" {
+	print(to_json({"ok": false, "error": {"code": "invalid_request", "message": "Missing KUJO_TRIBUNAL_PAYLOAD", "retryable": false}}))
+	exit(1)
+}
+
+payload := parse_json(payload_text)
+provider_id := dict_get_or(payload, "provider", "openai")
+provider := openai_provider()
+if provider_id == "openrouter" {
+	provider = openrouter_provider()
+}
+if provider_id == "deepseek" {
+	provider = deepseek_provider()
+}
+
+model := dict_get_or(payload, "model", provider["default_model"])
+provider["default_model"] = model
+messages := [
+	create_message("system", dict_get_or(payload, "systemPrompt", "")),
+	create_message("user", dict_get_or(payload, "input", ""))
+]
+options := {
+	"model": model,
+	"temperature": 0.2,
+	"max_tokens": 1600,
+	"max_retries": 2,
+	"overall_timeout_ms": dict_get_or(payload, "timeoutMs", 45000),
+	"max_prompt_characters": 50000,
+	"endpoint_allowlist_enabled": true,
+	"endpoint_allowlist_hosts": [provider_metadata(provider)["host"]]
+}
+output_schema := dict_get_or(payload, "outputSchema", null)
+if type(output_schema) == "dict" {
+	options["structured_output_schema"] = output_schema
+}
+if dict_get_or(payload, "offlineFixture", false) {
+	options["offline_fixture"] = true
+}
+client := create_client(provider, null)
+result := chat_completion(client, messages, options)
+print(to_json(result))

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kujolang.ai/schemas/tribunal-record-1.0.0.json",
+  "title": "TribunalRecord",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "runId",
+    "status",
+    "startedAt",
+    "completedAt",
+    "panel",
+    "seats",
+    "stagesCompleted",
+    "testimonies",
+    "crossExaminations",
+    "artifactPaths"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "runId": { "type": "string" },
+    "status": { "enum": ["completed", "stopped"] },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "completedAt": { "type": "string", "format": "date-time" },
+    "docket": { "type": "object" },
+    "panel": { "type": "object" },
+    "seats": { "type": "array", "items": { "type": "object" } },
+    "stagesCompleted": { "type": "array", "items": { "type": "string" } },
+    "testimonies": { "type": "array", "items": { "type": "object" } },
+    "crossExaminations": { "type": "array", "items": { "type": "object" } },
+    "killPass": { "type": "object" },
+    "ruling": { "type": "object" },
+    "decisionPacket": { "type": "object" },
+    "stopReason": { "type": "string" },
+    "artifactPaths": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

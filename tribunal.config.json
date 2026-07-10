@@ -1,0 +1,17 @@
+{
+  "tribunal": {
+    "storageDir": "./tribunal-runs",
+    "defaultPanel": "fast-two-model",
+    "requireBlindFirstPass": true,
+    "requireDecisionPacket": true,
+    "stopTheLineEnabled": true
+  },
+  "kujoAi": {
+    "defaultRuntime": "kujo-ai-sdk",
+    "allowDirectProviderFallback": false,
+    "mockMode": true,
+    "sdkPath": "../ai-sdk",
+    "kujoBin": "../kujo/target/debug/kujo",
+    "provider": "openai"
+  }
+}

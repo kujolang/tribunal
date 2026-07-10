@@ -1,0 +1,165 @@
+import type { Panel, Seat } from "./types.js";
+
+const commonSchema = {
+  type: "object" as const,
+  required: ["position", "arguments", "risks", "recommendation"],
+  properties: {
+    position: { type: "string" },
+    arguments: { type: "array", items: { type: "string" } },
+    risks: { type: "array", items: { type: "string" } },
+    recommendation: { type: "string" },
+  },
+};
+
+export const SEATS: Record<string, Seat> = {
+  judge: {
+    id: "judge",
+    name: "Judge",
+    authority: "Issue the final ruling after weighing the complete record.",
+    nonGoals: [
+      "Advocating for a preferred provider",
+      "Hiding unresolved dissent",
+    ],
+    stageResponsibilities: [
+      "blind-first-pass",
+      "cross-examination",
+      "judge-ruling",
+      "decision-packet",
+    ],
+    requiredOutputSchema: commonSchema,
+    defaultModelPreference: {
+      class: "frontier_reasoning",
+      preferred: ["gpt-5.5", "claude-opus"],
+      fallback: "local-reasoning",
+    },
+    escalationTriggers: [
+      "Irreconcilable evidence",
+      "Safety-critical ambiguity",
+      "Confidence below 6",
+    ],
+  },
+  executioner: {
+    id: "executioner",
+    name: "Executioner",
+    authority: "Reject weak assumptions and kill unsafe or unjustified plans.",
+    nonGoals: ["Rewriting the proposal", "Optimizing for consensus"],
+    stageResponsibilities: [
+      "blind-first-pass",
+      "cross-examination",
+      "executioner-kill-pass",
+    ],
+    requiredOutputSchema: commonSchema,
+    defaultModelPreference: {
+      class: "adversarial_reasoning",
+      preferred: ["claude-opus", "gpt-5.5", "deepseek-pro"],
+      fallback: "local-reasoning",
+    },
+    escalationTriggers: [
+      "Unbounded blast radius",
+      "Missing rollback",
+      "Secret exposure",
+      "Unverifiable premise",
+    ],
+  },
+  builder: {
+    id: "builder",
+    name: "Builder",
+    authority:
+      "Assess technical feasibility and the smallest credible implementation path.",
+    nonGoals: ["Ignoring operational cost", "Expanding the requested scope"],
+    stageResponsibilities: ["blind-first-pass", "cross-examination"],
+    requiredOutputSchema: commonSchema,
+    defaultModelPreference: {
+      class: "implementation_reasoning",
+      preferred: ["gpt-5.5", "claude-sonnet"],
+      fallback: "local-coder",
+    },
+    escalationTriggers: [
+      "Missing interface contract",
+      "Unproven dependency",
+      "No test strategy",
+    ],
+  },
+  operator: {
+    id: "operator",
+    name: "Operator",
+    authority:
+      "Assess reliability, rollout, observability, recovery, and ownership.",
+    nonGoals: [
+      "Choosing product strategy",
+      "Accepting manual heroics as operations",
+    ],
+    stageResponsibilities: ["blind-first-pass", "cross-examination"],
+    requiredOutputSchema: commonSchema,
+    defaultModelPreference: {
+      class: "systems_reasoning",
+      preferred: ["claude-opus", "gpt-5.5"],
+      fallback: "local-reasoning",
+    },
+    escalationTriggers: [
+      "No rollback",
+      "No owner",
+      "Unbounded cost",
+      "Missing recovery evidence",
+    ],
+  },
+  "market-lens": {
+    id: "market-lens",
+    name: "Market Lens",
+    authority:
+      "Test whether the decision creates valuable differentiation for a real user.",
+    nonGoals: ["Overriding safety constraints", "Treating popularity as proof"],
+    stageResponsibilities: ["blind-first-pass", "cross-examination"],
+    requiredOutputSchema: commonSchema,
+    defaultModelPreference: {
+      class: "strategic_reasoning",
+      preferred: ["gpt-5.5", "claude-opus"],
+      fallback: "local-reasoning",
+    },
+    escalationTriggers: [
+      "No identified user",
+      "Unmeasurable outcome",
+      "Commodity positioning",
+    ],
+  },
+};
+
+export const PANELS: Record<string, Panel> = {
+  "executioner-only": {
+    id: "executioner-only",
+    name: "Executioner Only",
+    description: "A focused fatal-flaw and kill review.",
+    seatIds: ["executioner"],
+  },
+  "fast-two-model": {
+    id: "fast-two-model",
+    name: "Fast Two Model",
+    description: "A compact adversarial review with an Executioner and Judge.",
+    seatIds: ["executioner", "judge"],
+  },
+  "strategic-five": {
+    id: "strategic-five",
+    name: "Strategic Five",
+    description:
+      "Full technical, operational, market, adversarial, and judicial review.",
+    seatIds: ["executioner", "builder", "operator", "market-lens", "judge"],
+  },
+};
+
+export function getPanel(id: string): Panel {
+  const panel = PANELS[id];
+  if (!panel) throw new Error(`Invalid panel config: unknown panel '${id}'.`);
+  if (
+    panel.seatIds.length === 0 ||
+    panel.seatIds.some((seatId) => !SEATS[seatId])
+  ) {
+    throw new Error(
+      `Invalid panel config: panel '${id}' contains no usable seats.`,
+    );
+  }
+  return structuredClone(panel);
+}
+
+export function getSeats(panel: Panel): Seat[] {
+  return panel.seatIds.map((seatId) => structuredClone(SEATS[seatId]!));
+}

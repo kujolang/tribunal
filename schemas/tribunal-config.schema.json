@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kujolang.ai/schemas/tribunal-config-1.0.0.json",
+  "title": "TribunalConfig",
+  "type": "object",
+  "required": ["tribunal", "kujoAi"],
+  "properties": {
+    "tribunal": {
+      "type": "object",
+      "required": [
+        "storageDir",
+        "defaultPanel",
+        "requireBlindFirstPass",
+        "requireDecisionPacket",
+        "stopTheLineEnabled"
+      ],
+      "properties": {
+        "storageDir": { "type": "string" },
+        "defaultPanel": { "type": "string" },
+        "requireBlindFirstPass": { "const": true },
+        "requireDecisionPacket": { "const": true },
+        "stopTheLineEnabled": { "const": true }
+      },
+      "additionalProperties": false
+    },
+    "kujoAi": {
+      "type": "object",
+      "required": [
+        "defaultRuntime",
+        "allowDirectProviderFallback",
+        "mockMode",
+        "sdkPath",
+        "kujoBin",
+        "provider"
+      ],
+      "properties": {
+        "defaultRuntime": { "const": "kujo-ai-sdk" },
+        "allowDirectProviderFallback": { "const": false },
+        "mockMode": { "type": "boolean" },
+        "sdkPath": { "type": "string" },
+        "kujoBin": { "type": "string" },
+        "provider": { "enum": ["openai", "openrouter", "deepseek"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

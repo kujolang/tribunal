@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+tribunal-runs/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
