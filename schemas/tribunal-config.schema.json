@@ -3,53 +3,54 @@
   "$id": "https://kujolang.ai/schemas/tribunal-config-1.0.0.json",
   "title": "TribunalConfig",
   "type": "object",
-  "required": ["tribunal", "kujoAi", "context"],
+  "required": ["tribunal", "kujo_ai", "context"],
   "properties": {
     "tribunal": {
       "type": "object",
       "required": [
-        "storageDir",
-        "defaultPanel",
-        "requireBlindFirstPass",
-        "requireDecisionPacket",
-        "stopTheLineEnabled"
+        "storage_dir",
+        "default_panel",
+        "require_blind_first_pass",
+        "require_decision_packet",
+        "stop_the_line_enabled"
       ],
       "properties": {
-        "storageDir": { "type": "string" },
-        "defaultPanel": { "type": "string" },
-        "requireBlindFirstPass": { "const": true },
-        "requireDecisionPacket": { "const": true },
-        "stopTheLineEnabled": { "const": true }
+        "storage_dir": { "type": "string" },
+        "default_panel": { "type": "string" },
+        "require_blind_first_pass": { "const": true },
+        "require_decision_packet": { "const": true },
+        "stop_the_line_enabled": { "const": true }
       },
       "additionalProperties": false
     },
-    "kujoAi": {
+    "kujo_ai": {
       "type": "object",
       "required": [
-        "defaultRuntime",
-        "allowDirectProviderFallback",
-        "mockMode",
-        "sdkPath",
-        "kujoBin",
+        "default_runtime",
+        "allow_direct_provider_fallback",
+        "mock_mode",
+        "sdk_path",
+        "kujo_bin",
         "provider"
       ],
       "properties": {
-        "defaultRuntime": { "const": "kujo-ai-sdk" },
-        "allowDirectProviderFallback": { "const": false },
-        "mockMode": { "type": "boolean" },
-        "sdkPath": { "type": "string" },
-        "kujoBin": { "type": "string" },
-        "provider": { "enum": ["openai", "openrouter", "deepseek"] }
+        "default_runtime": { "const": "kujo-ai-sdk" },
+        "allow_direct_provider_fallback": { "const": false },
+        "mock_mode": { "type": "boolean" },
+        "sdk_path": { "type": "string" },
+        "kujo_bin": { "type": "string" },
+        "provider": { "enum": ["openai", "openrouter", "deepseek"] },
+        "offline_fixture": { "type": "boolean" }
       },
       "additionalProperties": false
     },
     "context": {
       "type": "object",
-      "required": ["provider", "packwritePath", "kujoBin"],
+      "required": ["provider", "packwrite_path", "kujo_bin"],
       "properties": {
         "provider": { "enum": ["local", "packwrite"] },
-        "packwritePath": { "type": "string", "minLength": 1 },
-        "kujoBin": { "type": "string", "minLength": 1 }
+        "packwrite_path": { "type": "string", "minLength": 1 },
+        "kujo_bin": { "type": "string", "minLength": 1 }
       },
       "additionalProperties": false
     }

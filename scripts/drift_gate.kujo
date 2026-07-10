@@ -1,0 +1,39 @@
+# Tribunal :: Kujo-native Concord drift gate
+
+from src.common import ensure_dir, remove_tree, dict_get
+
+home := path_absolute(env_or("TRIBUNAL_HOME", "."))
+concord_root := path_absolute(env_or("CONCORD_REPO", join_path(home, "../concord")))
+kujo_bin := env_or("KUJO_BIN", join_path(home, "../kujo/target/release/kujo"))
+temp := join_path(env_or("TMPDIR", "/tmp"), "tribunal-concord-gate-" + to_string(current_timestamp()))
+ensure_dir(temp)
+report_path := join_path(temp, "concord.json")
+previous := os_getcwd()
+os_chdir(concord_root)
+proc := spawn_process([kujo_bin, "run", "concord.kujo", "scan", "--dir", home, "--format", "json", "--output", report_path], {"inherit_env": true, "timeout_ms": 120000, "max_output_bytes": 1024 * 1024 * 8})
+os_chdir(previous)
+if proc.exitcode != 0 && proc.exitcode != 1 {
+    print("Concord failed operationally: " + proc.stderr + proc.stdout)
+    remove_tree(temp)
+    exit(1)
+}
+if file_exists(report_path) == false {
+    print("Concord did not produce a report.")
+    remove_tree(temp)
+    exit(1)
+}
+report := parse_json(read_file(report_path))
+mut blocking := []
+for finding in dict_get(report, "findings", []) {
+    severity := dict_get(finding, "severity", "none")
+    if severity == "critical" || severity == "high" { blocking = push(blocking, finding) }
+}
+if len(blocking) > 0 {
+    print("Concord blocking drift: " + to_json(blocking))
+    remove_tree(temp)
+    exit(1)
+}
+summary := dict_get(report, "summary", {})
+print("Concord gate passed: " + to_string(dict_get(summary, "total_findings", 0)) + " advisory findings; highest severity " + dict_get(summary, "highest_severity", "none") + ".")
+remove_tree(temp)
+exit(0)

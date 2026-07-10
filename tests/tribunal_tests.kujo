@@ -1,0 +1,185 @@
+# Tribunal Kujo-native offline and real-local-integration test suite.
+
+from src.common import remove_tree, ensure_dir, dict_get
+from src.config import default_config, validate_config
+from src.catalog import STAGES, PANELS, SEATS
+from src.tribunal import review
+from src.storage import load_record, load_events, artifact_path
+from src.integrity import generate_keys, verify
+from src.integrations import ingest_runledger, ingest_casefile
+from src.model import invoke
+
+mut passed := 0
+mut failed := 0
+
+func check(condition, name) {
+    if condition == true {
+        passed = passed + 1
+    } else {
+        failed = failed + 1
+        print("  FAIL: " + name)
+    }
+}
+
+func contains_text(path, text) {
+    if file_exists(path) == false { return false }
+    return contains(read_file(path), text) == 1
+}
+
+ROOT := join_path(env_or("TMPDIR", "/tmp"), "tribunal-kujo-tests-" + to_string(current_timestamp()))
+DOCKET := join_path(ROOT, "docket.md")
+KUJO_BIN := env_or("KUJO_BIN", join_path(env_or("TRIBUNAL_HOME", "."), "../kujo/target/release/kujo"))
+HOME := path_absolute(env_or("TRIBUNAL_HOME", "."))
+
+func base_config(storage) {
+    config := default_config()
+    tribunal := config["tribunal"]
+    tribunal["storage_dir"] := storage
+    config["tribunal"] := tribunal
+    ai := config["kujo_ai"]
+    ai["kujo_bin"] := KUJO_BIN
+    config["kujo_ai"] := ai
+    context := config["context"]
+    context["kujo_bin"] := KUJO_BIN
+    config["context"] := context
+    return config
+}
+
+func setup() {
+    ensure_dir(ROOT)
+    write_file(DOCKET, "# Kujo Tribunal test\n\n## Scope\n\nProve the complete Kujo-native decision workflow.\n\n## Non-goals\n\n- Network access\n- Provider credentials\n")
+}
+
+func test_catalog_and_config() {
+    check(len(STAGES) == 9, "nine explicit Tribunal stages")
+    check(has_key(PANELS, "executioner-only") == 1, "executioner-only panel exists")
+    check(has_key(PANELS, "fast-two-model") == 1, "fast-two-model panel exists")
+    check(has_key(PANELS, "strategic-five") == 1, "strategic-five panel exists")
+    for id in ["judge", "executioner", "builder", "operator", "market-lens"] {
+        check(has_key(SEATS, id) == 1, "seat exists: " + id)
+        check(type(SEATS[id]["defaultModelPreference"]) == "dict", "provider-neutral preference: " + id)
+    }
+    check(validate_config(default_config()) == "", "default config is valid")
+}
+
+func test_full_mock_review() {
+    storage := join_path(ROOT, "mock-runs")
+    result := review(base_config(storage), DOCKET, "strategic-five", "", "")
+    check(result["ok"] == true, "strategic-five mock review succeeds")
+    if result["ok"] != true { return }
+    run_id := result["runId"]
+    record := load_record(storage, run_id)
+    check(record["status"] == "completed", "record is completed")
+    check(len(record["stagesCompleted"]) == 9, "all stages completed")
+    check(len(record["testimonies"]) == 5, "all five blind testimonies captured")
+    for testimony in record["testimonies"] { check(testimony["blind"] == true, "testimony remains explicitly blind") }
+    check(len(record["crossExaminations"]) == 5, "all five cross-examinations captured")
+    for name in ["docket.md", "manifest.json", "context.md", "cross-examination.md", "kill-pass.md", "ruling.md", "decision-packet.md", "record.json", "events.jsonl", "receipt.json", "artifact-manifest.json"] {
+        check(file_exists(artifact_path(storage, run_id, name)), "artifact exists: " + name)
+    }
+    for testimony in record["testimonies"] {
+        prompt := artifact_path(storage, run_id, "prompts/blind-first-pass-" + testimony["seatId"] + ".md")
+        check(contains_text(prompt, "No other seat testimony is available"), "blind prompt excludes peers: " + testimony["seatId"])
+        check(contains_text(prompt, "Complete blind testimony record") == false, "blind prompt has no peer transcript: " + testimony["seatId"])
+    }
+    check(contains_text(artifact_path(storage, run_id, "ruling.md"), "## Final verdict"), "ruling contract is human-readable")
+    check(contains_text(artifact_path(storage, run_id, "decision-packet.md"), "## Evidence required before marking complete"), "decision packet is agent-readable")
+    events := load_events(storage, run_id)
+    check(len(events) > 20, "event stream captures stage and model evidence")
+    checked := verify(storage, run_id, "")
+    check(checked["ok"] == true && checked["artifactsChecked"] > 20, "artifact manifest covers complete run")
+}
+
+func test_signing_and_tamper() {
+    storage := join_path(ROOT, "signed-runs")
+    private_key := join_path(ROOT, "private.pem")
+    public_key := join_path(ROOT, "public.pem")
+    keys := generate_keys(private_key, public_key)
+    check(keys["ok"] == true, "Kujo RSA keys generated")
+    check(generate_keys(private_key, public_key)["ok"] == false, "key generation refuses overwrite")
+    result := review(base_config(storage), DOCKET, "executioner-only", private_key, public_key)
+    check(result["ok"] == true, "signed executioner review succeeds")
+    if result["ok"] != true { return }
+    run_id := result["runId"]
+    checked := verify(storage, run_id, public_key)
+    check(checked["ok"] == true && checked["signature"] == "verified", "trusted signature verifies")
+    wrong_pair := generate_keys(join_path(ROOT, "wrong-private.pem"), join_path(ROOT, "wrong-public.pem"))
+    check(wrong_pair["ok"] == true, "wrong test key generated")
+    wrong := verify(storage, run_id, join_path(ROOT, "wrong-public.pem"))
+    check(wrong["ok"] == false && wrong["signature"] == "invalid", "wrong trusted key is rejected")
+    ruling_path := artifact_path(storage, run_id, "ruling.md")
+    original := read_file(ruling_path)
+    write_file(ruling_path, "tampered\n", true)
+    tampered := verify(storage, run_id, public_key)
+    check(tampered["ok"] == false && len(tampered["mismatched"]) == 1, "artifact tampering is detected")
+    write_file(ruling_path, original, true)
+
+    ledger := join_path(ROOT, "ledger")
+    runledger := ingest_runledger(storage, run_id, {"public_key": public_key, "kujo_bin": KUJO_BIN, "runledger_path": join_path(HOME, "../runledger/runledger.kujo"), "ledger": ledger})
+    check(runledger["ok"] == true, "signed run ingests through real RunLedger Kujo CLI")
+    if runledger["ok"] == true { check(file_exists(runledger["receipt"]["targetPath"]), "RunLedger record exists") }
+    case_root := join_path(ROOT, "casefiles")
+    casefile := ingest_casefile(storage, run_id, {"public_key": public_key, "kujo_bin": KUJO_BIN, "casefile_path": join_path(HOME, "../casefile/casefile.kujo"), "output_dir": case_root})
+    if casefile["ok"] != true { print("  CaseFile detail: " + dict_get(casefile, "error", "unknown")) }
+    check(casefile["ok"] == true, "signed run ingests through real CaseFile Kujo CLI")
+    if casefile["ok"] == true {
+        check(file_exists(join_path(casefile["receipt"]["targetPath"], "tribunal-ingestion.json")), "CaseFile ingestion receipt exists")
+        check(file_exists(join_path(join_path(casefile["receipt"]["targetPath"], "tribunal-evidence"), "signature.json")), "CaseFile preserves signed evidence")
+    }
+}
+
+func test_stop_the_line() {
+    storage := join_path(ROOT, "stopped-runs")
+    result := review(base_config(storage), join_path(ROOT, "missing.md"), "fast-two-model", "", "")
+    check(result["ok"] == false && has_key(result, "runId") == 1, "missing docket stops with a durable run")
+    if has_key(result, "runId") == 1 {
+        record := load_record(storage, result["runId"])
+        check(record["status"] == "stopped", "missing docket writes stopped record")
+        check(file_exists(artifact_path(storage, result["runId"], "receipt.json")), "stopped run writes receipt")
+        check(verify(storage, result["runId"], "")["ok"] == true, "stopped run is integrity-verifiable")
+    }
+    secret_docket := join_path(ROOT, "secret.md")
+    write_file(secret_docket, "# Unsafe\n\n## Scope\n\napi_key=super-secret-value\n")
+    secret := review(base_config(storage), secret_docket, "executioner-only", "", "")
+    check(secret["ok"] == false, "secret exposure stops the line")
+    if has_key(secret, "runId") == 1 {
+        record := load_record(storage, secret["runId"])
+        check(contains(dict_get(record, "stopReason", ""), "secret exposure") == 1, "secret stop reason is recorded without secret value")
+    }
+}
+
+func test_packwrite_and_sdk_bridge() {
+    storage := join_path(ROOT, "packwrite-runs")
+    config := base_config(storage)
+    context := config["context"]
+    context["provider"] := "packwrite"
+    context["packwrite_path"] := join_path(HOME, "../packwrite")
+    config["context"] := context
+    result := review(config, DOCKET, "executioner-only", "", "")
+    check(result["ok"] == true, "real PackWrite Kujo context bridge succeeds")
+    if result["ok"] == true { check(contains_text(artifact_path(storage, result["runId"], "context.md"), "Repository context"), "PackWrite repository context is appended") }
+
+    sdk_config := base_config(join_path(ROOT, "sdk-runs"))
+    ai := sdk_config["kujo_ai"]
+    ai["mock_mode"] := false
+    ai["offline_fixture"] := true
+    ai["sdk_path"] := join_path(HOME, "../ai-sdk")
+    sdk_config["kujo_ai"] := ai
+    response := invoke(sdk_config, {"runId": "sdk-contract", "stageId": "blind-first-pass", "seatId": "executioner", "modelPreference": SEATS["executioner"]["defaultModelPreference"], "systemPrompt": "Return structured output.", "input": "SDK bridge contract", "outputSchema": {"type": "object"}, "timeoutMs": 60000})
+    check(response["ok"] == true, "real Kujo AI SDK offline fixture succeeds")
+    check(response["metadata"]["provider"] == "openai", "SDK provider metadata is preserved")
+    check(response["metadata"]["resolutionSource"] == "provider_class", "SDK-owned model resolution provenance is preserved")
+}
+
+setup()
+test_catalog_and_config()
+test_full_mock_review()
+test_signing_and_tamper()
+test_stop_the_line()
+test_packwrite_and_sdk_bridge()
+remove_tree(ROOT)
+
+print("")
+print("Tribunal Kujo tests: " + to_string(passed) + " passed, " + to_string(failed) + " failed")
+if failed > 0 { exit(1) }
+exit(0)

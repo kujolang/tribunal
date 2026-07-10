@@ -1,37 +1,51 @@
 {
-  "name": "tribunal-post-mvp-gate",
-  "description": "Deterministic checks for Tribunal's completed README Next work.",
-  "version": "1.0.0",
+  "name": "tribunal-kujo-native-gate",
+  "description": "Deterministic Kujo-only checks for Tribunal's native implementation.",
+  "version": "2.0.0",
   "output_dir": "./eval_results/tribunal",
   "snapshot_dir": "./tests/snapshots",
   "stop_on_failure": true,
   "tests": [
     {
-      "name": "Tribunal typecheck passes",
+      "name": "Tribunal Kujo check passes",
       "check": "command_succeeds",
-      "params": { "command": "npm run typecheck" }
-    },
-    {
-      "name": "Tribunal test suite passes",
-      "check": "command_succeeds",
-      "params": { "command": "npm test" }
-    },
-    {
-      "name": "Artifact manifest schema exists",
-      "check": "file_exists",
-      "params": { "path": "schemas/artifact-manifest.schema.json" }
-    },
-    {
-      "name": "Signature schema exists",
-      "check": "file_exists",
-      "params": { "path": "schemas/signature.schema.json" }
-    },
-    {
-      "name": "README documents trusted signed ingestion",
-      "check": "file_contains",
       "params": {
-        "path": "README.md",
-        "expected": "Signed ingestion"
+        "command": "cd ../tribunal && ../kujo/target/release/kujo check tribunal.kujo"
+      }
+    },
+    {
+      "name": "Tribunal Kujo test suite passes",
+      "check": "command_succeeds",
+      "params": {
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run tests/tribunal_tests.kujo"
+      }
+    },
+    {
+      "name": "Tribunal Kujo CLI integration passes",
+      "check": "command_succeeds",
+      "params": {
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run tests/cli_integration.kujo"
+      }
+    },
+    {
+      "name": "Kujo-native schema gate passes",
+      "check": "command_succeeds",
+      "params": {
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/schema_gate.kujo"
+      }
+    },
+    {
+      "name": "Kujo-native Concord gate passes",
+      "check": "command_succeeds",
+      "params": {
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/drift_gate.kujo"
+      }
+    },
+    {
+      "name": "Kujo-native Spec gate passes",
+      "check": "command_succeeds",
+      "params": {
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/spec_gate.kujo"
       }
     }
   ]

@@ -1,22 +1,23 @@
 {
   "tribunal": {
-    "storageDir": "./tribunal-runs",
-    "defaultPanel": "fast-two-model",
-    "requireBlindFirstPass": true,
-    "requireDecisionPacket": true,
-    "stopTheLineEnabled": true
+    "storage_dir": "./tribunal-runs",
+    "default_panel": "fast-two-model",
+    "require_blind_first_pass": true,
+    "require_decision_packet": true,
+    "stop_the_line_enabled": true
   },
-  "kujoAi": {
-    "defaultRuntime": "kujo-ai-sdk",
-    "allowDirectProviderFallback": false,
-    "mockMode": true,
-    "sdkPath": "../ai-sdk",
-    "kujoBin": "../kujo/target/debug/kujo",
-    "provider": "openai"
+  "kujo_ai": {
+    "default_runtime": "kujo-ai-sdk",
+    "allow_direct_provider_fallback": false,
+    "mock_mode": true,
+    "sdk_path": "../ai-sdk",
+    "kujo_bin": "../kujo/target/release/kujo",
+    "provider": "openai",
+    "offline_fixture": false
   },
   "context": {
     "provider": "local",
-    "packwritePath": "../packwrite",
-    "kujoBin": "../kujo/target/debug/kujo"
+    "packwrite_path": "../packwrite",
+    "kujo_bin": "../kujo/target/release/kujo"
   }
 }

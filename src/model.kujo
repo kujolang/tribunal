@@ -1,0 +1,146 @@
+# Tribunal :: Kujo model boundary
+# Tribunal owns orchestration. Kujo AI SDK owns provider/model resolution and calls.
+
+from src.common import dict_get, last_json_line, redact
+
+func mock_structured(stage, seat_id) {
+    if stage == "executioner-kill-pass" {
+        return {
+            "fatalFlaws": [],
+            "survivableRisks": ["Evidence should be validated before irreversible execution."],
+            "requiredChanges": ["Define measurable acceptance criteria and rollback evidence."],
+            "recommendation": "survive"
+        }
+    }
+    if stage == "judge-ruling" {
+        return {
+            "finalVerdict": "Proceed conditionally after the required evidence is produced.",
+            "bestArgumentFor": "The proposal has a coherent, testable path to value.",
+            "bestArgumentAgainst": "Its highest-risk assumptions are not yet evidenced.",
+            "panelAgreement": ["Use bounded scope", "Require verification before completion"],
+            "unresolved": ["Real-world outcome evidence remains outstanding"],
+            "requiredChanges": ["Add a rollback plan", "Capture acceptance evidence"],
+            "confidence": 7,
+            "disposition": "proceed"
+        }
+    }
+    if stage == "decision-packet" {
+        return {
+            "decision": "Proceed conditionally with bounded implementation and explicit evidence gates.",
+            "scope": "Only the proposal described in the docket.",
+            "nonGoals": ["Unrelated platform expansion"],
+            "requiredNextActions": ["Implement the smallest testable slice", "Capture verification evidence"],
+            "suggestedOwnerRole": "technical owner",
+            "suggestedModelLevel": "frontier reasoning for review; local capable model for routine execution",
+            "acceptanceCriteria": ["All scoped checks pass", "Rollback path is demonstrated"],
+            "escalationTriggers": ["Scope growth", "Failed safety check", "Missing owner"],
+            "evidenceRequired": ["Test output", "Change summary", "Rollback evidence"],
+            "stopTheLineConditions": ["Secret exposure", "Unbounded destructive action", "Corrupted evidence"]
+        }
+    }
+    positions := {
+        "judge": "The proposal is viable only if its evidence gates remain explicit.",
+        "executioner": "No fatal flaw is proven, but unsupported assumptions must be bounded.",
+        "builder": "A narrow implementation slice is technically feasible.",
+        "operator": "Operational ownership and rollback must be defined before rollout.",
+        "market-lens": "The proposal needs a measurable user outcome to justify investment."
+    }
+    position := "Further evidence is required."
+    if has_key(positions, seat_id) == 1 { position = positions[seat_id] }
+    recommendation := "continue-review"
+    if stage == "cross-examination" { recommendation = "proceed-with-conditions" }
+    return {
+        "position": position,
+        "arguments": [seat_id + " applied its defined authority to the docket."],
+        "risks": ["Insufficient evidence may produce false confidence."],
+        "recommendation": recommendation
+    }
+}
+
+func mock_invoke(request) {
+    structured := mock_structured(request["stageId"], request["seatId"])
+    input_tokens := to_int(len(request["input"]) / 4) + 1
+    return {
+        "ok": true,
+        "content": to_json(structured),
+        "structured": structured,
+        "metadata": {
+            "provider": "kujo-fixture",
+            "model": "mock-" + request["seatId"],
+            "requestId": request["runId"] + "-" + request["stageId"] + "-" + request["seatId"],
+            "contractVersion": "1.0.0",
+            "latencyMs": 0,
+            "inputTokens": input_tokens,
+            "outputTokens": 48,
+            "totalTokens": input_tokens + 48,
+            "preferenceClass": request["modelPreference"]["class"],
+            "resolutionSource": "mock"
+        }
+    }
+}
+
+func live_invoke(config, request) {
+    ai := config["kujo_ai"]
+    home := path_absolute(env_or("TRIBUNAL_HOME", "."))
+    bridge := join_path(home, "integrations/kujo-ai-sdk-bridge.kujo")
+    payload := {
+        "provider": ai["provider"],
+        "modelPreference": request["modelPreference"],
+        "systemPrompt": request["systemPrompt"],
+        "input": request["input"],
+        "outputSchema": dict_get(request, "outputSchema", null),
+        "timeoutMs": dict_get(request, "timeoutMs", 45000),
+        "offlineFixture": dict_get(ai, "offline_fixture", false)
+    }
+    started := current_timestamp()
+    proc := null
+    previous_cwd := os_getcwd()
+    try {
+        os_chdir(ai["sdk_path"])
+        proc = spawn_process([ai["kujo_bin"], "run", bridge, "--interpreter"], {
+            "inherit_env": true,
+            "env": {"KUJO_TRIBUNAL_PAYLOAD": to_json(payload)},
+            "timeout_ms": dict_get(request, "timeoutMs", 60000),
+            "max_output_bytes": 1024 * 1024 * 8
+        })
+    } except err {
+        os_chdir(previous_cwd)
+        return {"ok": false, "content": "", "metadata": {"latencyMs": current_timestamp() - started}, "error": {"code": "kujo_ai_sdk_bridge_error", "message": redact(err), "retryable": false}}
+    }
+    os_chdir(previous_cwd)
+    json_line := last_json_line(proc.stdout)
+    if json_line == "" {
+        return {"ok": false, "content": "", "metadata": {"latencyMs": current_timestamp() - started}, "error": {"code": "kujo_ai_sdk_bridge_error", "message": redact(proc.stderr), "retryable": false}}
+    }
+    sdk := null
+    try { sdk = parse_json(json_line) } except err {
+        return {"ok": false, "content": "", "metadata": {"latencyMs": current_timestamp() - started}, "error": {"code": "kujo_ai_sdk_parse_error", "message": "Kujo AI SDK returned invalid JSON.", "retryable": false}}
+    }
+    content := dict_get(sdk, "output_text", "")
+    structured := null
+    try { structured = parse_json(content) } except err { structured = null }
+    usage := dict_get(sdk, "usage", {})
+    resolution := dict_get(sdk, "model_resolution", {})
+    metadata := {
+        "provider": dict_get(sdk, "provider", ""),
+        "model": dict_get(sdk, "model", ""),
+        "requestId": dict_get(sdk, "request_id", ""),
+        "contractVersion": dict_get(sdk, "contract_version", ""),
+        "latencyMs": current_timestamp() - started,
+        "inputTokens": dict_get(usage, "input_tokens", 0),
+        "outputTokens": dict_get(usage, "output_tokens", 0),
+        "totalTokens": dict_get(usage, "total_tokens", 0),
+        "preferenceClass": dict_get(resolution, "preference_class", ""),
+        "resolutionSource": dict_get(resolution, "source", "")
+    }
+    if dict_get(sdk, "ok", false) != true {
+        sdk_error := dict_get(sdk, "error", {})
+        return {"ok": false, "content": content, "structured": structured, "metadata": metadata, "error": {"code": dict_get(sdk_error, "code", "kujo_ai_sdk_error"), "message": redact(dict_get(sdk_error, "message", "Kujo AI SDK invocation failed.")), "retryable": dict_get(sdk_error, "retryable", false)}}
+    }
+    return {"ok": true, "content": content, "structured": structured, "metadata": metadata}
+}
+
+export func invoke(config, request) {
+    if config["kujo_ai"]["mock_mode"] == true { return mock_invoke(request) }
+    return live_invoke(config, request)
+}

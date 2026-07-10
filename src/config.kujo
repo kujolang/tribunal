@@ -1,0 +1,99 @@
+# Tribunal :: JSON configuration with Kujo-first invariants
+
+from src.common import dict_get, truthy, array_includes
+from src.catalog import panel
+
+export func default_config() {
+    home := path_absolute(env_or("TRIBUNAL_HOME", "."))
+    return {
+        "tribunal": {
+            "storage_dir": "./tribunal-runs",
+            "default_panel": "fast-two-model",
+            "require_blind_first_pass": true,
+            "require_decision_packet": true,
+            "stop_the_line_enabled": true
+        },
+        "kujo_ai": {
+            "default_runtime": "kujo-ai-sdk",
+            "allow_direct_provider_fallback": false,
+            "mock_mode": true,
+            "sdk_path": join_path(home, "../ai-sdk"),
+            "kujo_bin": join_path(home, "../kujo/target/release/kujo"),
+            "provider": "openai",
+            "offline_fixture": false
+        },
+        "context": {
+            "provider": "local",
+            "packwrite_path": join_path(home, "../packwrite"),
+            "kujo_bin": join_path(home, "../kujo/target/release/kujo")
+        }
+    }
+}
+
+func merge_section(base, incoming, name) {
+    source := dict_get(incoming, name, {})
+    if type(source) != "dict" { return base[name] }
+    mut merged := base[name]
+    for key in keys(source) { merged[key] := source[key] }
+    return merged
+}
+
+export func load_config(path) {
+    mut config := default_config()
+    if path != "" {
+        if file_exists(path) == false {
+            return {"ok": false, "error": "Config file does not exist: " + path}
+        }
+        parsed := null
+        try { parsed = parse_json(read_file(path)) } except err {
+            return {"ok": false, "error": "Config is not valid JSON: " + to_string(err)}
+        }
+        if type(parsed) != "dict" { return {"ok": false, "error": "Config root must be an object."} }
+        config["tribunal"] := merge_section(config, parsed, "tribunal")
+        config["kujo_ai"] := merge_section(config, parsed, "kujo_ai")
+        config["context"] := merge_section(config, parsed, "context")
+    }
+    validation := validate_config(config)
+    if validation != "" { return {"ok": false, "error": validation} }
+    return {"ok": true, "config": config}
+}
+
+export func validate_config(config) {
+    tribunal := dict_get(config, "tribunal", {})
+    ai := dict_get(config, "kujo_ai", {})
+    context := dict_get(config, "context", {})
+    if trim(to_string(dict_get(tribunal, "storage_dir", ""))) == "" { return "tribunal.storage_dir is required." }
+    if panel(dict_get(tribunal, "default_panel", "")) == null { return "tribunal.default_panel is invalid." }
+    if dict_get(tribunal, "require_blind_first_pass", false) != true { return "Blind first pass is a mandatory Tribunal invariant." }
+    if dict_get(tribunal, "require_decision_packet", false) != true { return "Decision packets are mandatory." }
+    if dict_get(ai, "default_runtime", "") != "kujo-ai-sdk" { return "kujo_ai.default_runtime must be kujo-ai-sdk." }
+    if dict_get(ai, "allow_direct_provider_fallback", true) != false { return "Direct provider fallback is forbidden." }
+    provider := dict_get(ai, "provider", "")
+    if array_includes(["openai", "openrouter", "deepseek"], provider) == false { return "kujo_ai.provider is invalid." }
+    context_provider := dict_get(context, "provider", "")
+    if array_includes(["local", "packwrite"], context_provider) == false { return "context.provider must be local or packwrite." }
+    return ""
+}
+
+export func apply_overrides(config, parsed) {
+    flags := parsed["flags"]
+    tribunal := config["tribunal"]
+    ai := config["kujo_ai"]
+    context := config["context"]
+    if has_key(flags, "storage-dir") == 1 && flags["storage-dir"] != "" { tribunal["storage_dir"] := flags["storage-dir"] }
+    if has_key(flags, "mock") == 1 { ai["mock_mode"] := true }
+    if has_key(flags, "live") == 1 { ai["mock_mode"] := false }
+    if has_key(flags, "ai-sdk-path") == 1 && flags["ai-sdk-path"] != "" { ai["sdk_path"] := flags["ai-sdk-path"] }
+    if has_key(flags, "kujo-bin") == 1 && flags["kujo-bin"] != "" {
+        ai["kujo_bin"] := flags["kujo-bin"]
+        context["kujo_bin"] := flags["kujo-bin"]
+    }
+    if has_key(flags, "provider") == 1 && flags["provider"] != "" { ai["provider"] := flags["provider"] }
+    if has_key(flags, "offline-fixture") == 1 { ai["offline_fixture"] := true }
+    if has_key(flags, "context-provider") == 1 && flags["context-provider"] != "" { context["provider"] := flags["context-provider"] }
+    if has_key(flags, "packwrite-path") == 1 && flags["packwrite-path"] != "" { context["packwrite_path"] := flags["packwrite-path"] }
+    config["tribunal"] := tribunal
+    config["kujo_ai"] := ai
+    config["context"] := context
+    return config
+}

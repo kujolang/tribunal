@@ -1,0 +1,84 @@
+# Tribunal :: human- and agent-readable Markdown rendering
+
+from src.common import dict_get
+
+func bullets(values) {
+    if type(values) != "array" || len(values) == 0 { return "- None\n" }
+    mut out := ""
+    for value in values { out = out + "- " + to_string(value) + "\n" }
+    return out
+}
+
+export func testimony_markdown(seat, testimony) {
+    structured := testimony["structured"]
+    return "# " + seat["name"] + " — Blind Testimony\n\n" +
+        "## Position\n\n" + dict_get(structured, "position", testimony["content"]) + "\n\n" +
+        "## Arguments\n\n" + bullets(dict_get(structured, "arguments", [])) + "\n" +
+        "## Risks\n\n" + bullets(dict_get(structured, "risks", [])) + "\n" +
+        "## Recommendation\n\n" + dict_get(structured, "recommendation", "continue-review") + "\n"
+}
+
+export func cross_markdown(crosses, seats_by_id) {
+    mut out := "# Cross-Examination\n\n"
+    for cross in crosses {
+        seat_id := cross["seatId"]
+        name := seat_id
+        if has_key(seats_by_id, seat_id) == 1 { name = seats_by_id[seat_id]["name"] }
+        structured := cross["structured"]
+        out = out + "## " + name + "\n\n" + dict_get(structured, "position", cross["content"]) + "\n\n"
+        out = out + "### Risks\n\n" + bullets(dict_get(structured, "risks", [])) + "\n"
+    }
+    return out
+}
+
+export func kill_markdown(kill_pass) {
+    return "# Executioner Kill Pass\n\n" +
+        "## Recommendation\n\n" + kill_pass["recommendation"] + "\n\n" +
+        "## Fatal flaws\n\n" + bullets(kill_pass["fatalFlaws"]) + "\n" +
+        "## Survivable risks\n\n" + bullets(kill_pass["survivableRisks"]) + "\n" +
+        "## Required changes\n\n" + bullets(kill_pass["requiredChanges"])
+}
+
+export func ruling_markdown(ruling) {
+    return "# Tribunal Ruling\n\n" +
+        "## Final verdict\n\n" + ruling["finalVerdict"] + "\n\n" +
+        "## Best argument for the proposal\n\n" + ruling["bestArgumentFor"] + "\n\n" +
+        "## Best argument against the proposal\n\n" + ruling["bestArgumentAgainst"] + "\n\n" +
+        "## What the panel agrees on\n\n" + bullets(ruling["panelAgreement"]) + "\n" +
+        "## What remains unresolved\n\n" + bullets(ruling["unresolved"]) + "\n" +
+        "## Required changes before execution\n\n" + bullets(ruling["requiredChanges"]) + "\n" +
+        "## Decision confidence\n\n" + to_string(ruling["confidence"]) + "/10\n\n" +
+        "## Disposition\n\n" + ruling["disposition"] + "\n"
+}
+
+export func packet_markdown(packet) {
+    return "# Tribunal Decision Packet\n\n" +
+        "## Decision\n\n" + packet["decision"] + "\n\n" +
+        "## Scope\n\n" + packet["scope"] + "\n\n" +
+        "## Non-goals\n\n" + bullets(packet["nonGoals"]) + "\n" +
+        "## Required next actions\n\n" + bullets(packet["requiredNextActions"]) + "\n" +
+        "## Suggested owner role\n\n" + packet["suggestedOwnerRole"] + "\n\n" +
+        "## Suggested model level\n\n" + packet["suggestedModelLevel"] + "\n\n" +
+        "## Acceptance criteria\n\n" + bullets(packet["acceptanceCriteria"]) + "\n" +
+        "## Escalation triggers\n\n" + bullets(packet["escalationTriggers"]) + "\n" +
+        "## Evidence required before marking complete\n\n" + bullets(packet["evidenceRequired"]) + "\n" +
+        "## Stop-the-line conditions\n\n" + bullets(packet["stopTheLineConditions"])
+}
+
+export func summary(record) {
+    docket := dict_get(record, "docket", {})
+    ruling := dict_get(record, "ruling", {})
+    return "Run: " + record["runId"] + "\n" +
+        "Status: " + record["status"] + "\n" +
+        "Panel: " + record["panel"]["id"] + "\n" +
+        "Docket: " + dict_get(docket, "title", "unavailable") + "\n" +
+        "Disposition: " + dict_get(ruling, "disposition", "unavailable") + "\n" +
+        "Verdict: " + dict_get(ruling, "finalVerdict", dict_get(record, "stopReason", "unavailable")) + "\n" +
+        "Stages: " + join(record["stagesCompleted"], " -> ") + "\n" +
+        "Decision packet: " + if_text(has_key(record, "decisionPacket") == 1, "available", "unavailable") + "\n"
+}
+
+func if_text(condition, yes, no) {
+    if condition { return yes }
+    return no
+}

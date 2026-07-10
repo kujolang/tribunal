@@ -1,0 +1,32 @@
+# Tribunal :: Kujo-orchestrated strict Spec validation
+
+home := path_absolute(env_or("TRIBUNAL_HOME", "."))
+spec_root := path_absolute(env_or("SPEC_REPO", join_path(home, "../spec")))
+kujo_bin := path_absolute(env_or("KUJO_BIN", join_path(home, "../kujo/target/release/kujo")))
+source := join_path(home, "tribunal.spec.yml")
+name := ".tribunal-spec-gate-" + to_string(current_timestamp()) + ".spec.yml"
+target := join_path(spec_root, name)
+copy_file(source, target)
+previous := os_getcwd()
+os_chdir(spec_root)
+proc := spawn_process([join_path(spec_root, "scripts/spec"), "validate", name, "--strict", "--json"], {"inherit_env": true, "env": {"KUJO_BIN": kujo_bin}, "timeout_ms": 120000, "max_output_bytes": 1024 * 1024 * 4})
+os_chdir(previous)
+delete_file(target)
+success := false
+stdout := ""
+stderr := ""
+if type(proc) == "dict" {
+    success = has_key(proc, "success") == 1 && proc["success"] == true
+    if has_key(proc, "stdout") == 1 { stdout = to_string(proc["stdout"]) }
+    if has_key(proc, "stderr") == 1 { stderr = to_string(proc["stderr"]) }
+} else {
+    try { success = proc.success == true } except err { success = false }
+    try { stdout = to_string(proc.stdout) } except err { stdout = "" }
+    try { stderr = to_string(proc.stderr) } except err { stderr = "" }
+}
+if success == false {
+    print("Spec gate failed: " + stderr + stdout)
+    exit(1)
+}
+print("Spec gate passed: " + trim(stdout))
+exit(0)

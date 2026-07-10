@@ -1,0 +1,5 @@
+# Tribunal entrypoint. All application logic lives in Kujo modules under src/.
+
+from src.cli import main
+
+exit(main(args()))

@@ -1,0 +1,70 @@
+# Tribunal real Kujo CLI integration suite.
+
+from src.common import ensure_dir, remove_tree
+
+mut passed := 0
+mut failed := 0
+
+func check(condition, name) {
+    if condition == true { passed = passed + 1 } else { failed = failed + 1; print("  FAIL: " + name) }
+}
+
+func proc_success(proc) {
+    if type(proc) == "dict" { return has_key(proc, "success") == 1 && proc["success"] == true }
+    try { return proc.success == true } except err { return false }
+}
+
+func proc_stdout(proc) {
+    if type(proc) == "dict" { if has_key(proc, "stdout") == 1 { return to_string(proc["stdout"]) }; return "" }
+    try { return to_string(proc.stdout) } except err { return "" }
+}
+
+HOME := path_absolute(env_or("TRIBUNAL_HOME", "."))
+KUJO_BIN := path_absolute(env_or("KUJO_BIN", join_path(HOME, "../kujo/target/release/kujo")))
+ROOT := join_path(env_or("TMPDIR", "/tmp"), "tribunal-cli-tests-" + to_string(current_timestamp()))
+STORAGE := join_path(ROOT, "runs")
+DOCKET := join_path(ROOT, "docket.md")
+
+func cli(arguments) {
+    mut argv := [KUJO_BIN, "run", join_path(HOME, "tribunal.kujo")]
+    for value in arguments { argv = push(argv, value) }
+    return spawn_process(argv, {"inherit_env": true, "env": {"TRIBUNAL_HOME": HOME, "KUJO_BIN": KUJO_BIN}, "timeout_ms": 120000, "max_output_bytes": 1024 * 1024 * 8})
+}
+
+ensure_dir(ROOT)
+write_file(DOCKET, "# CLI integration\n\n## Scope\n\nProve every user-facing Kujo command.\n")
+
+help := cli(["help"])
+check(proc_success(help) && contains(proc_stdout(help), "tribunal review") == 1, "help exposes command contract")
+check(proc_success(cli(["panels"])), "panels command succeeds")
+check(proc_success(cli(["seats"])), "seats command succeeds")
+
+review := cli(["review", DOCKET, "--panel", "fast-two-model", "--storage-dir", STORAGE])
+check(proc_success(review), "review command succeeds")
+run_id := ""
+if proc_success(review) { run_id = split(trim(proc_stdout(review)), "\n")[0] }
+check(run_id != "", "review returns a run ID")
+check(proc_success(cli(["list", "--storage-dir", STORAGE])), "list command succeeds")
+check(proc_success(cli(["show", run_id, "--storage-dir", STORAGE])), "show command succeeds")
+check(proc_success(cli(["replay", run_id, "--storage-dir", STORAGE])), "replay command verifies and succeeds")
+check(proc_success(cli(["export", run_id, "--format", "json", "--storage-dir", STORAGE])), "JSON export succeeds")
+check(proc_success(cli(["export", run_id, "--format", "jsonl", "--storage-dir", STORAGE])), "JSONL export succeeds")
+
+private_key := join_path(ROOT, "private.pem")
+public_key := join_path(ROOT, "public.pem")
+check(proc_success(cli(["keys", "--private-key", private_key, "--public-key", public_key])), "keys command succeeds")
+signed := cli(["review", DOCKET, "--panel", "executioner-only", "--storage-dir", STORAGE, "--private-key", private_key, "--public-key", public_key])
+check(proc_success(signed), "signed review command succeeds")
+signed_id := ""
+if proc_success(signed) { signed_id = split(trim(proc_stdout(signed)), "\n")[0] }
+verified := cli(["verify", signed_id, "--storage-dir", STORAGE, "--public-key", public_key])
+check(proc_success(verified) && contains(proc_stdout(verified), "\"signature\": \"verified\"") == 1, "verify command trusts the generated public key")
+
+write_file(join_path(join_path(STORAGE, run_id), "ruling.md"), "tampered\n", true)
+check(proc_success(cli(["replay", run_id, "--storage-dir", STORAGE])) == false, "replay rejects tampering")
+
+remove_tree(ROOT)
+print("")
+print("Tribunal CLI integration: " + to_string(passed) + " passed, " + to_string(failed) + " failed")
+if failed > 0 { exit(1) }
+exit(0)

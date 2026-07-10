@@ -1,0 +1,62 @@
+# Tribunal :: local and optional PackWrite context construction
+
+from src.common import dict_get, last_json_line, parent_dir, redact
+
+func repository_root(start) {
+    mut current := path_absolute(start)
+    mut turns := 0
+    while turns < 64 {
+        if path_is_dir(join_path(current, ".git")) || file_exists(join_path(current, "kujo.toml")) || file_exists(join_path(current, "package.json")) {
+            return current
+        }
+        parent := parent_dir(current)
+        if parent == current { return path_absolute(start) }
+        current = parent
+        turns = turns + 1
+    }
+    return path_absolute(start)
+}
+
+func local_context(docket) {
+    return "# Tribunal Context Pack\n\n" +
+        "## Docket\n\n" + docket["title"] + "\n\n" +
+        "## Scope\n\n" + docket["scope"] + "\n\n" +
+        "## Immutable source\n\n" + docket["content"] + "\n"
+}
+
+export func build_context(config, docket) {
+    base := local_context(docket)
+    context_config := config["context"]
+    if context_config["provider"] != "packwrite" {
+        return {"ok": true, "content": base, "provider": "local", "warnings": []}
+    }
+    home := path_absolute(env_or("TRIBUNAL_HOME", "."))
+    bridge := join_path(home, "integrations/packwrite-context-bridge.kujo")
+    root := repository_root(parent_dir(docket["sourcePath"]))
+    proc := null
+    previous_cwd := os_getcwd()
+    try {
+        os_chdir(context_config["packwrite_path"])
+        proc = spawn_process([context_config["kujo_bin"], "run", bridge, "--interpreter"], {
+            "inherit_env": true,
+            "env": {"TRIBUNAL_CONTEXT_ROOT": root},
+            "timeout_ms": 60000,
+            "max_output_bytes": 1024 * 1024 * 8
+        })
+    } except err {
+        os_chdir(previous_cwd)
+        return {"ok": false, "error": "PackWrite bridge failed: " + redact(err)}
+    }
+    os_chdir(previous_cwd)
+    line := last_json_line(proc.stdout)
+    if line == "" { return {"ok": false, "error": "PackWrite bridge returned no JSON: " + redact(proc.stderr)} }
+    parsed := null
+    try { parsed = parse_json(line) } except err { return {"ok": false, "error": "PackWrite bridge returned invalid JSON."} }
+    if dict_get(parsed, "ok", false) != true { return {"ok": false, "error": dict_get(parsed, "error", "PackWrite context failed.")} }
+    return {
+        "ok": true,
+        "content": base + "\n\n" + dict_get(parsed, "markdown", ""),
+        "provider": "packwrite",
+        "warnings": dict_get(parsed, "warnings", [])
+    }
+}

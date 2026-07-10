@@ -15,7 +15,7 @@
   "properties": {
     "schemaVersion": { "const": "1.0.0" },
     "runId": { "type": "string", "minLength": 1 },
-    "algorithm": { "const": "Ed25519" },
+    "algorithm": { "const": "RSA-PKCS1v15-SHA256" },
     "manifestSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "keyId": { "type": "string", "pattern": "^[a-f0-9]{32}$" },
     "signedAt": { "type": "string", "format": "date-time" },

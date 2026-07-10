@@ -1,0 +1,242 @@
+# Tribunal :: common Kujo-native helpers
+
+export func truthy(value) {
+    return value == true || value == 1
+}
+
+export func dict_get(value, key, fallback) {
+    if type(value) == "dict" && truthy(has_key(value, key)) {
+        return value[key]
+    }
+    return fallback
+}
+
+export func iso_now() {
+    return format_date(now(), "YYYY-MM-DDTHH:mm:ssZ")
+}
+
+export func today_utc() {
+    return format_date(now(), "YYYY-MM-DD")
+}
+
+export func slug(text) {
+    lowered := to_lower(to_string(text))
+    allowed := "abcdefghijklmnopqrstuvwxyz0123456789"
+    mut out := ""
+    mut dashed := true
+    mut i := 0
+    while i < len(lowered) {
+        ch := substring(lowered, i, i + 1)
+        if truthy(contains(allowed, ch)) {
+            out = out + ch
+            dashed = false
+        } else if dashed == false {
+            out = out + "-"
+            dashed = true
+        }
+        i = i + 1
+    }
+    while len(out) > 0 && substring(out, len(out) - 1, len(out)) == "-" {
+        out = substring(out, 0, len(out) - 1)
+    }
+    if out == "" { return "tribunal" }
+    return out
+}
+
+export func parent_dir(path) {
+    mut i := len(path) - 1
+    while i >= 0 {
+        if substring(path, i, i + 1) == "/" {
+            if i == 0 { return "/" }
+            return substring(path, 0, i)
+        }
+        i = i - 1
+    }
+    return "."
+}
+
+export func ensure_dir(path) {
+    if path == "" || path == "." { return path }
+    parts := split(path, "/")
+    mut current := ""
+    if starts_with(path, "/") { current = "/" }
+    mut i := 0
+    while i < len(parts) {
+        part := parts[i]
+        if part != "" && part != "." {
+            if current == "/" {
+                current = "/" + part
+            } else if current == "" {
+                current = part
+            } else {
+                current = current + "/" + part
+            }
+            if path_is_dir(current) == false { create_dir(current) }
+        }
+        i = i + 1
+    }
+    return path
+}
+
+export func write_text(path, content) {
+    ensure_dir(parent_dir(path))
+    tmp := path + ".tmp-" + to_string(current_timestamp()) + "-" + to_string(random_int(1000, 9999))
+    if file_exists(tmp) { delete_file(tmp) }
+    write_file(tmp, content)
+    rename_file(tmp, path)
+    return path
+}
+
+export func write_json(path, value) {
+    return write_text(path, to_json_pretty(value) + "\n")
+}
+
+export func read_json(path) {
+    return parse_json(read_file(path))
+}
+
+export func safe_run_id(id) {
+    if type(id) != "string" || id == "" || id == "." || id == ".." { return false }
+    return truthy(contains(id, "/")) == false && truthy(contains(id, "\\")) == false
+}
+
+export func parse_args(tokens, bool_flags) {
+    mut positionals := []
+    mut flags := {}
+    mut i := 0
+    while i < len(tokens) {
+        token := tokens[i]
+        if starts_with(token, "--") {
+            key := substring(token, 2, len(token))
+            if array_includes(bool_flags, key) {
+                flags[key] := true
+            } else if i + 1 < len(tokens) && starts_with(tokens[i + 1], "--") == false {
+                flags[key] := tokens[i + 1]
+                i = i + 1
+            } else {
+                flags[key] := ""
+            }
+        } else {
+            positionals = push(positionals, token)
+        }
+        i = i + 1
+    }
+    return {"positionals": positionals, "flags": flags}
+}
+
+export func flag(parsed, name, fallback) {
+    flags := dict_get(parsed, "flags", {})
+    if truthy(has_key(flags, name)) { return flags[name] }
+    return fallback
+}
+
+export func has_flag(parsed, name) {
+    return truthy(has_key(dict_get(parsed, "flags", {}), name))
+}
+
+export func positional(parsed, index, fallback) {
+    values := dict_get(parsed, "positionals", [])
+    if index >= 0 && index < len(values) { return values[index] }
+    return fallback
+}
+
+export func slice_from(values, start) {
+    mut out := []
+    mut i := start
+    while i < len(values) {
+        out = push(out, values[i])
+        i = i + 1
+    }
+    return out
+}
+
+export func append_all(target, values) {
+    mut out := target
+    for value in values { out = push(out, value) }
+    return out
+}
+
+export func array_includes(values, candidate) {
+    for value in values {
+        if value == candidate { return true }
+    }
+    return false
+}
+
+export func index_by_id(values) {
+    mut out := {}
+    for value in values { out[value["id"]] := value }
+    return out
+}
+
+export func redact(text) {
+    value := to_string(text)
+    value = regex_replace(value, "(?i)(api[_-]?key|authorization|token|password)([\\s:=\\\"']+)[^\\s,}\\\"']+", "$1$2[REDACTED]")
+    value = regex_replace(value, "sk-[A-Za-z0-9_-]{8}[A-Za-z0-9_-]+", "sk-[REDACTED]")
+    value = regex_replace(value, "-----BEGIN [A-Z ]*PRIVATE KEY-----", "[REDACTED PRIVATE KEY]")
+    return value
+}
+
+export func contains_secret(text) {
+    lowered := to_lower(to_string(text))
+    checks := ["api_key=", "api-key=", "authorization: bearer", "token=", "password=", "begin private key", "begin rsa private key"]
+    for check in checks {
+        if truthy(contains(lowered, check)) { return true }
+    }
+    return false
+}
+
+export func relative_files(root, relative) {
+    base := root
+    if relative != "" { base = join_path(root, relative) }
+    if path_is_dir(base) == false { return [] }
+    names := sort(list_dir(base))
+    mut out := []
+    for name in names {
+        child_relative := name
+        if relative != "" { child_relative = relative + "/" + name }
+        child := join_path(root, child_relative)
+        if path_is_dir(child) {
+            out = append_all(out, relative_files(root, child_relative))
+        } else {
+            out = push(out, child_relative)
+        }
+    }
+    return out
+}
+
+export func remove_tree(path) {
+    if path_is_dir(path) == false { return }
+    for name in list_dir(path) {
+        child := join_path(path, name)
+        if path_is_dir(child) {
+            remove_tree(child)
+        } else if file_exists(child) {
+            delete_file(child)
+        }
+    }
+    os_rmdir(path)
+}
+
+export func last_json_line(output) {
+    lines := split(trim(to_string(output)), "\n")
+    mut i := len(lines) - 1
+    while i >= 0 {
+        candidate := lines[i]
+        if starts_with(candidate, "{") {
+            mut json_lines := []
+            mut j := i
+            while j < len(lines) {
+                json_lines = push(json_lines, lines[j])
+                j = j + 1
+            }
+            return join(json_lines, "\n")
+        }
+        i = i - 1
+    }
+    return ""
+}
+
+export func result(ok, data, error) {
+    return {"ok": ok, "data": data, "error": error}
+}

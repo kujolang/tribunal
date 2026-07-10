@@ -1,0 +1,99 @@
+# Tribunal :: durable local run storage
+
+from src.common import ensure_dir, safe_run_id, slug, today_utc, write_json, write_text, read_json, relative_files, truthy
+
+export func run_dir(storage_dir, run_id) {
+    if safe_run_id(run_id) == false { return "" }
+    return join_path(storage_dir, run_id)
+}
+
+export func generate_run_id(storage_dir, title) {
+    ensure_dir(storage_dir)
+    prefix := today_utc() + "-" + slug(title)
+    mut i := 0
+    while i < 10000 {
+        candidate := prefix + "-" + to_string(random_int(1000, 9999))
+        if path_is_dir(join_path(storage_dir, candidate)) == false { return candidate }
+        i = i + 1
+    }
+    return prefix + "-" + to_string(current_timestamp())
+}
+
+export func create_run(storage_dir, run_id) {
+    root := run_dir(storage_dir, run_id)
+    if root == "" { return "" }
+    ensure_dir(root)
+    ensure_dir(join_path(root, "prompts"))
+    ensure_dir(join_path(root, "testimony"))
+    return root
+}
+
+export func artifact_path(storage_dir, run_id, name) {
+    root := run_dir(storage_dir, run_id)
+    if root == "" || starts_with(name, "/") || truthy(contains(name, "..")) { return "" }
+    return join_path(root, name)
+}
+
+export func save_json(storage_dir, run_id, name, value) {
+    path := artifact_path(storage_dir, run_id, name)
+    if path == "" { return false }
+    write_json(path, value)
+    return true
+}
+
+export func save_text(storage_dir, run_id, name, content) {
+    path := artifact_path(storage_dir, run_id, name)
+    if path == "" { return false }
+    write_text(path, content)
+    return true
+}
+
+export func append_event(storage_dir, run_id, event) {
+    path := artifact_path(storage_dir, run_id, "events.jsonl")
+    if path == "" { return false }
+    append_file(path, to_json(event) + "\n")
+    return true
+}
+
+export func load_record(storage_dir, run_id) {
+    path := artifact_path(storage_dir, run_id, "record.json")
+    if path == "" || file_exists(path) == false { return null }
+    try { return read_json(path) } except err { return null }
+}
+
+export func load_manifest(storage_dir, run_id) {
+    path := artifact_path(storage_dir, run_id, "manifest.json")
+    if path == "" || file_exists(path) == false { return null }
+    try { return read_json(path) } except err { return null }
+}
+
+export func load_events(storage_dir, run_id) {
+    path := artifact_path(storage_dir, run_id, "events.jsonl")
+    if path == "" || file_exists(path) == false { return [] }
+    mut events := []
+    for line in split(read_file(path), "\n") {
+        if trim(line) != "" {
+            try { events = push(events, parse_json(line)) } except err { return [] }
+        }
+    }
+    return events
+}
+
+export func list_runs(storage_dir) {
+    if path_is_dir(storage_dir) == false { return [] }
+    names := sort(list_dir(storage_dir))
+    mut runs := []
+    for name in names {
+        if safe_run_id(name) {
+            manifest := load_manifest(storage_dir, name)
+            if type(manifest) == "dict" { runs = push(runs, manifest) }
+        }
+    }
+    return runs
+}
+
+export func artifacts(storage_dir, run_id) {
+    root := run_dir(storage_dir, run_id)
+    if root == "" { return [] }
+    return relative_files(root, "")
+}

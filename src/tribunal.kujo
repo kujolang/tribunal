@@ -1,0 +1,350 @@
+# Tribunal :: Kujo-native staged adversarial decision engine
+
+from src.common import dict_get, iso_now, contains_secret, index_by_id
+from src.catalog import panel, seats_for, seat
+from src.storage import generate_run_id, create_run, save_json, save_text, append_event, artifact_path
+from src.model import invoke
+from src.context import build_context
+from src.render import testimony_markdown, cross_markdown, kill_markdown, ruling_markdown, packet_markdown
+from src.integrity import seal
+
+func emit(storage_dir, run_id, stage, event_type, summary, seat_id, metadata) {
+    event := {
+        "timestamp": iso_now(),
+        "runId": run_id,
+        "stageId": stage,
+        "eventType": event_type,
+        "summary": summary,
+        "metadata": metadata
+    }
+    if seat_id != "" { event["seatId"] := seat_id }
+    return append_event(storage_dir, run_id, event)
+}
+
+func completed(state, stage) {
+    state["stagesCompleted"] := push(state["stagesCompleted"], stage)
+    return state
+}
+
+func section(content, heading) {
+    lines := split(content, "\n")
+    mut active := false
+    mut values := []
+    for line in lines {
+        trimmed := trim(line)
+        if starts_with(trimmed, "## ") {
+            if active { break }
+            active = to_lower(trim(substring(trimmed, 3, len(trimmed)))) == to_lower(heading)
+        } else if active && trimmed != "" {
+            values = push(values, trimmed)
+        }
+    }
+    return join(values, "\n")
+}
+
+func list_section(content, heading) {
+    raw := section(content, heading)
+    mut out := []
+    for line in split(raw, "\n") {
+        value := trim(line)
+        if starts_with(value, "- ") { value = trim(substring(value, 2, len(value))) }
+        if value != "" { out = push(out, value) }
+    }
+    return out
+}
+
+func docket_title(content, source) {
+    for line in split(content, "\n") {
+        trimmed := trim(line)
+        if starts_with(trimmed, "# ") { return trim(substring(trimmed, 2, len(trimmed))) }
+    }
+    return basename(source)
+}
+
+func open_docket(path) {
+    if path == "" || file_exists(path) == false { return {"ok": false, "error": "Missing or unreadable docket file: " + path} }
+    content := ""
+    try { content = read_file(path) } except err { return {"ok": false, "error": "Missing or unreadable docket file: " + path} }
+    if trim(content) == "" { return {"ok": false, "error": "Docket is empty."} }
+    if contains_secret(content) { return {"ok": false, "error": "Unsafe secret exposure detected in docket."} }
+    title := docket_title(content, path)
+    scope := section(content, "Scope")
+    if scope == "" { scope = "Review the submitted docket without expanding its stated proposal." }
+    opened := iso_now()
+    hash := sha256(content)
+    return {"ok": true, "docket": {"id": substring(hash, 0, 16), "title": title, "sourcePath": path_absolute(path), "content": content, "scope": scope, "nonGoals": list_section(content, "Non-goals"), "openedAt": opened, "contentSha256": hash}}
+}
+
+func system_prompt(seat_value, stage) {
+    return "You are the " + seat_value["name"] + " seat in Tribunal. Authority: " + seat_value["authority"] + " Stay within the explicit " + stage + " contract. Return only valid JSON matching the requested schema."
+}
+
+func call_model(config, storage_dir, state, stage, seat_value, input, output_schema) {
+    run_id := state["runId"]
+    system := system_prompt(seat_value, stage)
+    save_text(storage_dir, run_id, "prompts/" + stage + "-" + seat_value["id"] + ".md", "# System\n\n" + system + "\n\n# Input\n\n" + input + "\n")
+    request := {"runId": run_id, "stageId": stage, "seatId": seat_value["id"], "modelPreference": seat_value["defaultModelPreference"], "systemPrompt": system, "input": input, "outputSchema": output_schema, "timeoutMs": 60000}
+    emit(storage_dir, run_id, stage, "model_invocation_requested", "Model invocation requested through Kujo AI SDK boundary.", seat_value["id"], {"preference": seat_value["defaultModelPreference"]})
+    response := invoke(config, request)
+    if dict_get(response, "ok", false) != true {
+        error := dict_get(response, "error", {"code": "model_error", "message": "Model invocation failed."})
+        emit(storage_dir, run_id, stage, "model_invocation_failed", dict_get(error, "message", "Model invocation failed."), seat_value["id"], {"code": dict_get(error, "code", "model_error")})
+        return {"ok": false, "error": dict_get(error, "message", "Model invocation failed."), "response": response}
+    }
+    structured := dict_get(response, "structured", null)
+    if type(structured) != "dict" {
+        try { structured = parse_json(response["content"]) } except err { structured = null }
+    }
+    if type(structured) != "dict" {
+        emit(storage_dir, run_id, stage, "model_invocation_failed", "Model returned no structured object.", seat_value["id"], {})
+        return {"ok": false, "error": "Model returned no structured object.", "response": response}
+    }
+    metadata := dict_get(response, "metadata", {})
+    emit(storage_dir, run_id, stage, "model_invocation_completed", "Model invocation completed.", seat_value["id"], metadata)
+    return {"ok": true, "content": response["content"], "structured": structured, "metadata": metadata}
+}
+
+func add_usage(state, call) {
+    state["invocations"] := state["invocations"] + 1
+    if call["ok"] != true { state["failures"] := state["failures"] + 1 }
+    metadata := dict_get(call, "metadata", dict_get(dict_get(call, "response", {}), "metadata", {}))
+    state["totalTokens"] := state["totalTokens"] + dict_get(metadata, "totalTokens", 0)
+    return state
+}
+
+func procedural_ruling(kill_pass) {
+    disposition := "proceed"
+    verdict := "The proposal survives the focused Executioner review with required conditions."
+    if kill_pass["recommendation"] == "kill" || len(kill_pass["fatalFlaws"]) > 0 {
+        disposition = "reject"
+        verdict = "The proposal is rejected by the focused Executioner review."
+    } else if kill_pass["recommendation"] == "redesign" {
+        disposition = "redesign"
+        verdict = "The proposal requires redesign before execution."
+    }
+    return {
+        "finalVerdict": verdict,
+        "bestArgumentFor": "The proposal can proceed if all survivable risks and required changes are resolved.",
+        "bestArgumentAgainst": "The focused review identified unresolved adversarial risk.",
+        "panelAgreement": ["The Executioner findings are authoritative for this focused panel."],
+        "unresolved": kill_pass["survivableRisks"],
+        "requiredChanges": kill_pass["requiredChanges"],
+        "confidence": 7,
+        "disposition": disposition,
+        "generatedAt": iso_now(),
+        "metadata": {"provider": "tribunal-procedure", "model": "executioner-only-rule"}
+    }
+}
+
+func procedural_packet(docket, ruling) {
+    return {
+        "decision": ruling["finalVerdict"],
+        "scope": docket["scope"],
+        "nonGoals": docket["nonGoals"],
+        "requiredNextActions": ruling["requiredChanges"],
+        "suggestedOwnerRole": "technical owner",
+        "suggestedModelLevel": "frontier reasoning for follow-up review; local model for bounded execution",
+        "acceptanceCriteria": ["All required changes are complete", "Verification and rollback evidence are captured"],
+        "escalationTriggers": ["Scope growth", "New fatal flaw", "Missing owner"],
+        "evidenceRequired": ["Test output", "Change summary", "Rollback evidence"],
+        "stopTheLineConditions": ["Secret exposure", "Unbounded destructive action", "Corrupted evidence"],
+        "generatedAt": iso_now()
+    }
+}
+
+func receipt(state, status, completed_at, record_hash) {
+    return {
+        "schemaVersion": "1.0.0",
+        "runId": state["runId"],
+        "status": status,
+        "startedAt": state["startedAt"],
+        "completedAt": completed_at,
+        "durationMs": current_timestamp() - state["startedMs"],
+        "panelId": state["panel"]["id"],
+        "modelInvocations": state["invocations"],
+        "failedInvocations": state["failures"],
+        "totalTokens": state["totalTokens"],
+        "recordSha256": record_hash,
+        "integration": {"runLedger": "compatible-receipt", "modelRuntime": state["modelRuntime"]}
+    }
+}
+
+func artifact_paths(state) {
+    mut paths := ["docket.md", "manifest.json", "context.md", "cross-examination.md", "kill-pass.md", "ruling.md", "decision-packet.md", "record.json", "events.jsonl", "receipt.json", "artifact-manifest.json"]
+    for testimony in state["testimonies"] { paths = push(paths, "testimony/" + testimony["seatId"] + ".md") }
+    return paths
+}
+
+func stop_run(config, state, reason, private_key, public_key) {
+    storage_dir := config["tribunal"]["storage_dir"]
+    run_id := state["runId"]
+    completed_at := iso_now()
+    emit(storage_dir, run_id, dict_get(state, "currentStage", "open-docket"), "stop_the_line_triggered", "Tribunal stopped on a fatal condition.", "", {"reason": reason})
+    record := {
+        "schemaVersion": "1.0.0", "runId": run_id, "status": "stopped", "startedAt": state["startedAt"], "completedAt": completed_at,
+        "panel": state["panel"], "seats": state["seats"], "stagesCompleted": state["stagesCompleted"], "testimonies": state["testimonies"],
+        "crossExaminations": state["crossExaminations"], "stopReason": reason, "artifactPaths": ["manifest.json", "events.jsonl", "record.json", "receipt.json", "artifact-manifest.json"]
+    }
+    if type(dict_get(state, "docket", null)) == "dict" { record["docket"] := state["docket"] }
+    if type(dict_get(state, "killPass", null)) == "dict" { record["killPass"] := state["killPass"] }
+    if type(dict_get(state, "ruling", null)) == "dict" { record["ruling"] := state["ruling"] }
+    if type(dict_get(state, "decisionPacket", null)) == "dict" { record["decisionPacket"] := state["decisionPacket"] }
+    save_json(storage_dir, run_id, "record.json", record)
+    hash := sha256(read_file(artifact_path(storage_dir, run_id, "record.json")))
+    save_json(storage_dir, run_id, "receipt.json", receipt(state, "stopped", completed_at, hash))
+    manifest := state["manifest"]
+    manifest["status"] := "stopped"
+    manifest["completedAt"] := completed_at
+    save_json(storage_dir, run_id, "manifest.json", manifest)
+    seal(storage_dir, run_id, private_key, public_key)
+    return {"ok": false, "runId": run_id, "runDir": state["runDir"], "error": reason, "record": record}
+}
+
+export func review(config, docket_path, panel_id, private_key, public_key) {
+    selected_panel := panel(panel_id)
+    if selected_panel == null { return {"ok": false, "error": "Invalid panel config: unknown panel '" + panel_id + "'."} }
+    selected_seats := seats_for(selected_panel)
+    if len(selected_seats) == 0 { return {"ok": false, "error": "Invalid panel config: panel has no usable seats."} }
+    storage_dir := config["tribunal"]["storage_dir"]
+    placeholder_title := basename(docket_path)
+    if placeholder_title == "" { placeholder_title = "stopped-run" }
+    run_id := generate_run_id(storage_dir, placeholder_title)
+    root := create_run(storage_dir, run_id)
+    started_at := iso_now()
+    runtime := "kujo-ai-sdk"
+    if config["kujo_ai"]["mock_mode"] == true { runtime = "mock-kujo" }
+    state := {
+        "runId": run_id, "runDir": root, "startedAt": started_at, "startedMs": current_timestamp(), "panel": selected_panel, "seats": selected_seats,
+        "stagesCompleted": [], "testimonies": [], "crossExaminations": [], "invocations": 0, "failures": 0, "totalTokens": 0, "modelRuntime": runtime, "currentStage": "open-docket"
+    }
+    manifest := {"schemaVersion": "1.0.0", "runId": run_id, "status": "running", "openedAt": started_at, "panelId": selected_panel["id"], "seatIds": selected_panel["seatIds"], "docketSource": docket_path, "mockMode": config["kujo_ai"]["mock_mode"], "blindFirstPassRequired": true, "sdkBoundary": "KujoModelClient"}
+    state["manifest"] := manifest
+    save_json(storage_dir, run_id, "manifest.json", manifest)
+    save_text(storage_dir, run_id, "events.jsonl", "")
+    emit(storage_dir, run_id, "open-docket", "run_opened", "Tribunal run opened.", "", {"panelId": panel_id})
+    opened := open_docket(docket_path)
+    if opened["ok"] != true { return stop_run(config, state, opened["error"], private_key, public_key) }
+    docket := opened["docket"]
+    state["docket"] := docket
+    save_text(storage_dir, run_id, "docket.md", docket["content"])
+    state = completed(state, "open-docket")
+
+    state["currentStage"] := "validate-scope"
+    emit(storage_dir, run_id, "validate-scope", "stage_started", "Scope validation started.", "", {})
+    if trim(docket["scope"]) == "" { return stop_run(config, state, "Docket scope is missing.", private_key, public_key) }
+    emit(storage_dir, run_id, "validate-scope", "docket_validated", "Docket scope validated.", "", {"contentSha256": docket["contentSha256"]})
+    state = completed(state, "validate-scope")
+
+    state["currentStage"] := "build-context-pack"
+    emit(storage_dir, run_id, "build-context-pack", "stage_started", "Context construction started.", "", {})
+    context_result := build_context(config, docket)
+    if context_result["ok"] != true { return stop_run(config, state, context_result["error"], private_key, public_key) }
+    context := context_result["content"]
+    state["context"] := context
+    save_text(storage_dir, run_id, "context.md", context)
+    emit(storage_dir, run_id, "build-context-pack", "context_pack_created", "Immutable context pack created.", "", {"provider": context_result["provider"], "warnings": context_result["warnings"]})
+    state = completed(state, "build-context-pack")
+
+    state["currentStage"] := "blind-first-pass"
+    emit(storage_dir, run_id, "blind-first-pass", "stage_started", "Blind first pass started.", "", {"seatCount": len(selected_seats)})
+    # Each request is built only from immutable context + its own seat contract.
+    for seat_value in selected_seats {
+        input := context + "\n\n# Seat\n\n" + seat_value["name"] + "\nAuthority: " + seat_value["authority"] + "\nNo other seat testimony is available in this stage."
+        call := call_model(config, storage_dir, state, "blind-first-pass", seat_value, input, seat_value["requiredOutputSchema"])
+        state = add_usage(state, call)
+        if call["ok"] != true { return stop_run(config, state, call["error"], private_key, public_key) }
+        testimony := {"seatId": seat_value["id"], "stageId": "blind-first-pass", "capturedAt": iso_now(), "content": call["content"], "structured": call["structured"], "metadata": call["metadata"], "blind": true}
+        state["testimonies"] := push(state["testimonies"], testimony)
+        save_text(storage_dir, run_id, "testimony/" + seat_value["id"] + ".md", testimony_markdown(seat_value, testimony))
+        emit(storage_dir, run_id, "blind-first-pass", "testimony_captured", "Blind testimony captured.", seat_value["id"], {"blind": true})
+    }
+    state = completed(state, "blind-first-pass")
+
+    state["currentStage"] := "cross-examination"
+    emit(storage_dir, run_id, "cross-examination", "stage_started", "Cross-examination started after all blind testimony was persisted.", "", {})
+    transcript := to_json_pretty(state["testimonies"])
+    for seat_value in selected_seats {
+        input := context + "\n\n# Complete blind testimony record\n\n" + transcript + "\n\nChallenge the strongest opposing claims without changing the docket scope."
+        call := call_model(config, storage_dir, state, "cross-examination", seat_value, input, seat_value["requiredOutputSchema"])
+        state = add_usage(state, call)
+        if call["ok"] != true { return stop_run(config, state, call["error"], private_key, public_key) }
+        cross := {"seatId": seat_value["id"], "capturedAt": iso_now(), "content": call["content"], "structured": call["structured"], "metadata": call["metadata"]}
+        state["crossExaminations"] := push(state["crossExaminations"], cross)
+        emit(storage_dir, run_id, "cross-examination", "cross_examination_captured", "Cross-examination captured.", seat_value["id"], {})
+    }
+    save_text(storage_dir, run_id, "cross-examination.md", cross_markdown(state["crossExaminations"], index_by_id(selected_seats)))
+    state = completed(state, "cross-examination")
+
+    state["currentStage"] := "executioner-kill-pass"
+    emit(storage_dir, run_id, "executioner-kill-pass", "stage_started", "Executioner kill pass started.", "executioner", {})
+    executioner := seat("executioner")
+    kill_schema := {"type": "object", "required": ["fatalFlaws", "survivableRisks", "requiredChanges", "recommendation"]}
+    kill_input := context + "\n\n# Testimony\n\n" + transcript + "\n\n# Cross-examination\n\n" + to_json_pretty(state["crossExaminations"])
+    kill_call := call_model(config, storage_dir, state, "executioner-kill-pass", executioner, kill_input, kill_schema)
+    state = add_usage(state, kill_call)
+    if kill_call["ok"] != true { return stop_run(config, state, kill_call["error"], private_key, public_key) }
+    ks := kill_call["structured"]
+    kill_pass := {"seatId": "executioner", "capturedAt": iso_now(), "fatalFlaws": dict_get(ks, "fatalFlaws", []), "survivableRisks": dict_get(ks, "survivableRisks", []), "requiredChanges": dict_get(ks, "requiredChanges", []), "recommendation": dict_get(ks, "recommendation", "redesign"), "content": kill_call["content"], "metadata": kill_call["metadata"]}
+    state["killPass"] := kill_pass
+    save_text(storage_dir, run_id, "kill-pass.md", kill_markdown(kill_pass))
+    emit(storage_dir, run_id, "executioner-kill-pass", "kill_pass_captured", "Executioner kill pass captured.", "executioner", {"recommendation": kill_pass["recommendation"]})
+    state = completed(state, "executioner-kill-pass")
+
+    state["currentStage"] := "judge-ruling"
+    emit(storage_dir, run_id, "judge-ruling", "stage_started", "Judge ruling started.", "judge", {})
+    ruling := null
+    if selected_panel["id"] == "executioner-only" {
+        ruling = procedural_ruling(kill_pass)
+    } else {
+        judge := seat("judge")
+        ruling_schema := {"type": "object", "required": ["finalVerdict", "bestArgumentFor", "bestArgumentAgainst", "panelAgreement", "unresolved", "requiredChanges", "confidence", "disposition"]}
+        ruling_input := context + "\n\n# Blind testimony\n\n" + transcript + "\n\n# Cross-examination\n\n" + to_json_pretty(state["crossExaminations"]) + "\n\n# Executioner findings\n\n" + to_json_pretty(kill_pass)
+        ruling_call := call_model(config, storage_dir, state, "judge-ruling", judge, ruling_input, ruling_schema)
+        state = add_usage(state, ruling_call)
+        if ruling_call["ok"] != true { return stop_run(config, state, ruling_call["error"], private_key, public_key) }
+        ruling = ruling_call["structured"]
+        ruling["generatedAt"] := iso_now()
+        ruling["metadata"] := ruling_call["metadata"]
+    }
+    state["ruling"] := ruling
+    save_text(storage_dir, run_id, "ruling.md", ruling_markdown(ruling))
+    emit(storage_dir, run_id, "judge-ruling", "ruling_generated", "Tribunal ruling generated.", "judge", {"disposition": ruling["disposition"], "confidence": ruling["confidence"]})
+    state = completed(state, "judge-ruling")
+
+    state["currentStage"] := "decision-packet"
+    emit(storage_dir, run_id, "decision-packet", "stage_started", "Decision packet generation started.", "judge", {})
+    packet := null
+    if selected_panel["id"] == "executioner-only" {
+        packet = procedural_packet(docket, ruling)
+    } else {
+        judge := seat("judge")
+        packet_schema := {"type": "object", "required": ["decision", "scope", "nonGoals", "requiredNextActions", "suggestedOwnerRole", "suggestedModelLevel", "acceptanceCriteria", "escalationTriggers", "evidenceRequired", "stopTheLineConditions"]}
+        packet_input := "# Docket\n" + docket["content"] + "\n\n# Final ruling\n" + to_json_pretty(ruling)
+        packet_call := call_model(config, storage_dir, state, "decision-packet", judge, packet_input, packet_schema)
+        state = add_usage(state, packet_call)
+        if packet_call["ok"] != true { return stop_run(config, state, packet_call["error"], private_key, public_key) }
+        packet = packet_call["structured"]
+        packet["generatedAt"] := iso_now()
+    }
+    state["decisionPacket"] := packet
+    save_text(storage_dir, run_id, "decision-packet.md", packet_markdown(packet))
+    emit(storage_dir, run_id, "decision-packet", "decision_packet_generated", "Agent-readable decision packet generated.", "judge", {})
+    state = completed(state, "decision-packet")
+
+    state["currentStage"] := "persist-record"
+    emit(storage_dir, run_id, "persist-record", "stage_started", "Durable record persistence started.", "", {})
+    completed_at := iso_now()
+    state = completed(state, "persist-record")
+    record := {"schemaVersion": "1.0.0", "runId": run_id, "status": "completed", "startedAt": started_at, "completedAt": completed_at, "docket": docket, "panel": selected_panel, "seats": selected_seats, "stagesCompleted": state["stagesCompleted"], "testimonies": state["testimonies"], "crossExaminations": state["crossExaminations"], "killPass": kill_pass, "ruling": ruling, "decisionPacket": packet, "artifactPaths": artifact_paths(state)}
+    save_json(storage_dir, run_id, "record.json", record)
+    record_hash := sha256(read_file(artifact_path(storage_dir, run_id, "record.json")))
+    emit(storage_dir, run_id, "persist-record", "record_persisted", "Structured Tribunal record persisted.", "", {"recordSha256": record_hash})
+    save_json(storage_dir, run_id, "receipt.json", receipt(state, "completed", completed_at, record_hash))
+    emit(storage_dir, run_id, "persist-record", "run_completed", "Tribunal run completed.", "", {})
+    manifest["status"] := "completed"
+    manifest["completedAt"] := completed_at
+    save_json(storage_dir, run_id, "manifest.json", manifest)
+    sealed := seal(storage_dir, run_id, private_key, public_key)
+    if sealed["ok"] != true { return {"ok": false, "runId": run_id, "runDir": root, "error": sealed["error"], "record": record} }
+    return {"ok": true, "runId": run_id, "runDir": root, "record": record}
+}
