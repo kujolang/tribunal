@@ -27,7 +27,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test --test-reporter=spec dist/tests/*.test.js",
     "test:all": "npm run build && npm run lint && npm run test",
-    "tribunal": "node dist/cli.js"
+    "tribunal": "node dist/src/cli.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
