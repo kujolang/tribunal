@@ -1,34 +1,35 @@
 # Configuration
 
-Tribunal loads `tribunal.config.json` from the current directory or the path given by `--config`/`TRIBUNAL_CONFIG`. JSON is used to keep the MVP dependency-light.
+Pass JSON configuration with `--config <path>`. Defaults are embedded in `src/config.kujo`; `tribunal.config.json` is the canonical example.
 
 ```json
 {
   "tribunal": {
-    "storageDir": "./tribunal-runs",
-    "defaultPanel": "fast-two-model",
-    "requireBlindFirstPass": true,
-    "requireDecisionPacket": true,
-    "stopTheLineEnabled": true
+    "storage_dir": "./tribunal-runs",
+    "default_panel": "fast-two-model",
+    "require_blind_first_pass": true,
+    "require_decision_packet": true,
+    "stop_the_line_enabled": true
   },
-  "kujoAi": {
-    "defaultRuntime": "kujo-ai-sdk",
-    "allowDirectProviderFallback": false,
-    "mockMode": true,
-    "sdkPath": "../ai-sdk",
-    "kujoBin": "../kujo/target/debug/kujo",
-    "provider": "openai"
+  "kujo_ai": {
+    "default_runtime": "kujo-ai-sdk",
+    "allow_direct_provider_fallback": false,
+    "mock_mode": true,
+    "sdk_path": "../ai-sdk",
+    "kujo_bin": "../kujo/target/release/kujo",
+    "provider": "openai",
+    "offline_fixture": false
   },
   "context": {
     "provider": "local",
-    "packwritePath": "../packwrite",
-    "kujoBin": "../kujo/target/debug/kujo"
+    "packwrite_path": "../packwrite",
+    "kujo_bin": "../kujo/target/release/kujo"
   }
 }
 ```
 
-`requireBlindFirstPass` and `requireDecisionPacket` are safety invariants for completed runs. `allowDirectProviderFallback` must remain `false`. Valid providers are SDK presets (`openai`, `openrouter`, `deepseek`); Tribunal never calls them directly.
+Blind first pass, decision packets, Kujo AI SDK ownership, and disabled direct-provider fallback are hard invariants. Valid provider presets are `openai`, `openrouter`, and `deepseek`.
 
-`context.provider` is `local` by default. Set it to `packwrite` or pass `--context-provider packwrite` to append PackWrite's lightweight, redacted repository context. PackWrite integration requires only its checkout and the Kujo runtime; it does not require an API key or make a model call.
+Set `context.provider` to `packwrite` to append PackWrite's deterministic, redacted repository context. No model is invoked for context enrichment.
 
-Do not put secrets in this file. Live credentials must use the environment variable convention documented by Kujo AI SDK.
+Do not store secrets here. Live credentials must use the provider environment convention documented by Kujo AI SDK.

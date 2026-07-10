@@ -1,10 +1,11 @@
-node_modules/
-dist/
-coverage/
 tribunal-runs/
 .runledger/
 .casefile/
+.dogfood/
+eval_results/
 *.log
+*.pem
+*.key
 .DS_Store
 .env
 .env.*

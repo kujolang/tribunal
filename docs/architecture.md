@@ -1,46 +1,44 @@
 # Tribunal architecture
 
-## Boundary
+## Kujo-native boundary
 
-`Tribunal` is the orchestration aggregate. It validates a docket, selects a panel, advances explicit stages, controls what each seat can observe, persists artifacts, and triggers stop-the-line behavior.
-
-`KujoModelClient` is the only inference port:
+`tribunal.kujo` is a thin entrypoint into `src/cli.kujo`. All application modules are Kujo source:
 
 ```text
-CLI -> Tribunal -> KujoModelClient -> MockKujoModelClient
-                                  -> KujoAiSdkBridge -> Kujo AI SDK model resolver -> provider preset
-    -> ContextPackBuilder -> Local | PackWrite redacted repository context
-    -> RunStore -> Markdown + JSON + JSONL -> ArtifactIntegrity -> Ed25519 signature
-    -> SignedRunIngestion -> RunLedger | CaseFile
+tribunal.kujo
+  -> src/cli.kujo
+  -> src/tribunal.kujo       hearing orchestration and blindness
+  -> src/model.kujo          mock boundary or Kujo AI SDK bridge
+  -> src/context.kujo        local or PackWrite context
+  -> src/storage.kujo        Markdown, JSON, JSONL persistence
+  -> src/integrity.kujo      SHA-256 and RSA-SHA256 signing
+  -> src/integrations.kujo   RunLedger and CaseFile Kujo CLIs
 ```
 
-`KujoAiSdkBridge` copies the two SDK source modules and the small bridge entrypoint to a temporary workspace, invokes the selected Kujo runtime, consumes the SDK's normalized contract, and deletes the workspace. It sends the complete model preference to the SDK-owned resolver and records the chosen model, preference class, and resolution source. This keeps Tribunal in TypeScript without duplicating provider routing, transport, retry, normalization, usage, or capability behavior.
-
-`ContextPackBuilder` defaults to the local deterministic context. The PackWrite implementation stages only PackWrite's redacted repository-context modules and never invokes PackWrite's model adapter.
+Tribunal contains no provider-specific SDK, endpoint, transport, retry, or credential logic. In live mode `src/model.kujo` invokes `integrations/kujo-ai-sdk-bridge.kujo` with the same Kujo runtime while the adjacent AI SDK repository supplies `src.ai_sdk` and `src.providers`.
 
 ## Blindness invariant
 
-Blind requests are constructed only from `context.md` and `docket.md`. All blind invocations are launched before any response is incorporated into a later prompt. Only after every response resolves are testimony artifacts created and a combined transcript passed to cross-examination. Model request capture in the mock client makes this invariant directly testable.
+Blind prompts are built only from the immutable `context.md` content and the current seat contract. The prompt explicitly records that peer testimony is unavailable. Only after all blind testimony is persisted does Tribunal serialize the complete testimony record into cross-examination prompts.
 
-## Persistence
+## Persistence and integrity
 
-`RunStore` constrains run IDs, uses atomic temporary-file replacement for snapshots, creates prompts/testimony directories at run open, and treats `record.json` as the complete structured hearing. Events use one append operation per line so concurrent blind-seat completions cannot overwrite one another.
+`src/storage.kujo` constrains run IDs, atomically replaces snapshot files, creates prompt/testimony directories, and appends one JSON event per line. `record.json` is the complete hearing.
 
-After final persistence, `ArtifactIntegrity` enumerates every artifact except the integrity manifest and its signature, recording byte length and SHA-256. Replay requires an exact artifact-set and digest match. Ed25519 sealing signs the raw manifest bytes. Trusted ingestion requires both a clean artifact verification and a signature matching the separately supplied public key.
+After persistence, `src/integrity.kujo` recursively enumerates every artifact except `artifact-manifest.json` and `signature.json`, then records length and SHA-256. Replay requires an exact file set and matching digests.
 
-RunLedger and CaseFile outputs are written outside the sealed run directory. This preserves source immutability while downstream receipts retain the manifest digest and signing-key fingerprint.
+Signing uses Kujo runtime `rsa_generate_keypair`, `rsa_sign`, and `rsa_verify`. The signature envelope records `RSA-PKCS1v15-SHA256`, the raw manifest digest, and the trusted public-key fingerprint. Private keys are never copied into a run.
+
+RunLedger and CaseFile output is written outside the sealed run so downstream operations cannot invalidate source evidence.
 
 ## Failure model
 
-Fatal conditions throw into one stop handler. The handler emits `stop_the_line_triggered`, writes a partial record and compatible receipt, and marks the manifest stopped. If persistence itself is unavailable, the original error wins and the CLI reports the run directory for forensic inspection.
+Each fatal result is routed through one stopped-run writer. It emits `stop_the_line_triggered`, writes the best available partial record and receipt, marks the manifest stopped, and seals an integrity manifest. The CLI returns exit code 2 for stopped hearings.
 
 ## Security
 
-- No config or request type has a credential field.
-- Events drop secret-shaped metadata keys and redact common provider-key patterns.
-- Dockets containing obvious private keys or credential assignments are rejected before model invocation.
-- Live credentials are resolved only by Kujo AI SDK from its provider conventions.
-- Run IDs are validated before path construction.
-- Direct provider fallback is rejected during config loading.
-- Private signing keys are read only for sealing, are never copied into run artifacts, and must be managed outside the repository.
-- Signed ingestion rejects absent, untrusted, malformed, or tampered evidence before invoking downstream tools.
+- No config, request, event, or record contract accepts credentials.
+- Obvious key assignments, bearer headers, and private-key material stop the line before model invocation.
+- Provider credentials are resolved only inside Kujo AI SDK.
+- Run IDs and artifact-relative paths are constrained before file access.
+- Signed ingestion requires both complete artifact verification and a separately supplied trusted public key.

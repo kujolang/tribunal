@@ -3,7 +3,7 @@
 This is an integration contract, not an installed Paperclip skill.
 
 1. Materialize the issue/plan/decision as a Markdown docket with explicit scope and non-goals.
-2. Run `tribunal review <docket> --panel fast-two-model --mock` for deterministic workflows, or an approved `--live` review through Kujo AI SDK.
+2. Run `./bin/tribunal review <docket> --panel fast-two-model --mock` for deterministic workflows, or an approved `--live` review through Kujo AI SDK.
 3. Treat a nonzero exit and `status: stopped` as a blocked task requiring human review.
 4. Read `decision-packet.md`; assign only its required next actions within its scope.
 5. Require the listed evidence and acceptance criteria before closing the Paperclip issue.
