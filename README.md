@@ -21,6 +21,10 @@ tribunal kill examples/product-decision.md
 tribunal list
 tribunal show <run-id>
 tribunal replay <run-id>
+tribunal seal <run-id> --private-key ./tribunal-private.pem
+tribunal verify <run-id> --public-key ./tribunal-public.pem
+tribunal ingest <run-id> --target runledger --public-key ./tribunal-public.pem
+tribunal ingest <run-id> --target casefile --public-key ./tribunal-public.pem
 tribunal export <run-id> --format json
 tribunal export <run-id> --format jsonl
 tribunal panels
@@ -70,9 +74,11 @@ decision-packet.md
 record.json
 events.jsonl
 receipt.json
+artifact-manifest.json
+signature.json  # present on signed runs
 ```
 
-`record.json` contains the full hearing. `events.jsonl` is append-oriented stage/model evidence. `receipt.json` is shaped for later RunLedger ingestion. Markdown artifacts are self-contained and ready for Strata or CaseFile indexing.
+`record.json` contains the full hearing. `events.jsonl` is append-oriented stage/model evidence. `artifact-manifest.json` hashes every non-integrity artifact and rejects missing, changed, or unexpected files during replay. Markdown artifacts are self-contained and ready for Strata indexing.
 
 ## Mock and live Kujo AI SDK modes
 
@@ -91,7 +97,53 @@ tribunal review examples/product-decision.md --live \
   --kujo-bin ../kujo/target/debug/kujo
 ```
 
-The bridge does not accept, log, or persist keys. It inherits the process environment so the Kujo AI SDK can resolve its own provider credential. The provider can be selected in `tribunal.config.json`; direct provider fallback is permanently disabled.
+The bridge does not accept, log, or persist keys. It inherits the process environment so the Kujo AI SDK can resolve its own provider credential. The provider can be selected in `tribunal.config.json`; direct provider fallback is permanently disabled. Tribunal forwards the seat's provider-neutral preference object to Kujo AI SDK's `resolve_model_preference(...)` contract. The SDK owns class mapping and returns the selected model plus resolution provenance, both of which are persisted in model metadata.
+
+## Integrity, signing, and ingestion
+
+Every completed or stopped run receives an unsigned SHA-256 artifact manifest. `replay` verifies the complete artifact set before showing events. Seal a run with a local Ed25519 key when it must cross a trust boundary:
+
+```bash
+openssl genpkey -algorithm ED25519 -out tribunal-private.pem
+openssl pkey -in tribunal-private.pem -pubout -out tribunal-public.pem
+
+tribunal review examples/product-decision.md \
+  --private-key ./tribunal-private.pem
+tribunal verify <run-id> --public-key ./tribunal-public.pem
+```
+
+Never commit the private key. A signature without a separately trusted public key is not accepted for ingestion.
+
+Signed ingestion verifies every artifact and the trusted key before mutating either downstream tool:
+
+```bash
+tribunal ingest <run-id> \
+  --target runledger \
+  --public-key ./tribunal-public.pem \
+  --ledger ./.runledger \
+  --runledger-bin ../runledger/bin/runledger
+
+tribunal ingest <run-id> \
+  --target casefile \
+  --public-key ./tribunal-public.pem \
+  --casefile-output ./.casefile \
+  --casefile-path ../casefile/casefile.kujo
+```
+
+RunLedger receives provider/model identity, aggregate usage, verdict, signed-manifest evidence, and required next actions. CaseFile receives a manual case plus `tribunal-evidence/` containing the signed manifest, signature, ruling, decision packet, and receipt. Ingestion outputs are external to the sealed Tribunal directory so the source signature remains valid.
+
+## Optional PackWrite context
+
+Local context remains the default. Opt into PackWrite's deterministic, secret-filtered repository summary without invoking a model:
+
+```bash
+tribunal review examples/product-decision.md \
+  --context-provider packwrite \
+  --packwrite-path ../packwrite \
+  --kujo-bin ../kujo/target/debug/kujo
+```
+
+PackWrite enrichment is appended before blind testimony, so every seat receives the same immutable context and the blindness invariant is unchanged.
 
 ## Stop the line
 
@@ -109,9 +161,11 @@ npm run typecheck
 npm run lint
 npm test
 npm run format:check
+npm run schema:gate
+npm run concord:gate
 ```
 
-All tests use the mock Kujo model client. No real provider, local model server, API key, or network is required.
+Validation exercises the mock model, Kujo AI SDK offline fixture, PackWrite context bridge, RunLedger, CaseFile, Concord, Spec/Eval metadata, signing, and tamper detection. No real provider, local model server, API key, or network is required.
 
 ## Architecture and integrations
 
@@ -125,11 +179,12 @@ All tests use the mock Kujo model client. No real provider, local model server, 
 ## Current limitations
 
 - JSON configuration is supported; YAML is deferred to avoid runtime dependency weight.
-- Live mode supports the OpenAI, OpenRouter, and DeepSeek presets currently exposed by Kujo AI SDK. Model preference classes are recorded but provider/model policy resolution is still intentionally narrow.
-- Replay inspects the original event sequence; it does not re-run models.
-- RunLedger, ChangeBucket, PackWrite, Muzzle, CaseFile, Concord, Strata, Paperclip, and BZBY integrations are contract/documentation seams, not hard dependencies.
+- Live mode supports the OpenAI, OpenRouter, and DeepSeek presets currently exposed by Kujo AI SDK. Provider class mappings currently resolve to each preset's conservative default unless an explicit resolved ID or provider override is supplied.
+- Replay verifies and inspects the original event sequence; it intentionally does not re-run models.
+- RunLedger, CaseFile, PackWrite, and Concord are optional local integrations. ChangeBucket, Muzzle, Strata, Paperclip, and BZBY remain contract/documentation seams.
+- Key generation, storage, rotation, revocation, and organizational trust policy remain the caller's responsibility.
 - A web UI is intentionally outside the MVP.
 
 ## Next
 
-The next useful slice is an SDK-owned model preference resolver plus signed RunLedger/CaseFile ingestion. After that, add replay verification (hashing every artifact), Concord schema gates, and optional PackWrite context construction without changing Tribunal's orchestration boundary.
+The completed post-MVP foundation is ready for organizational key policy and automation. The next slice is KMS/HSM-backed signing and key rotation, CI publication of signed decision bundles, and a downstream analytics index that links Tribunal, RunLedger, CaseFile, and change evidence without modifying sealed run directories.
