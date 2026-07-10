@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { generateKeyPairSync } from "node:crypto";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 import { DEFAULT_CONFIG } from "../src/config.js";
+import { PackWriteContextPackBuilder } from "../src/context.js";
+import { ArtifactIntegrity } from "../src/integrity.js";
+import { SignedRunIngestion } from "../src/integrations.js";
 import { KujoAiSdkBridge } from "../src/model/KujoAiSdkBridge.js";
 import { MockKujoModelClient } from "../src/model/MockKujoModelClient.js";
 import { RunStore } from "../src/persistence.js";
@@ -65,6 +69,7 @@ test("mock review executes every stage and writes the durable record", async (t)
     "record.json",
     "events.jsonl",
     "receipt.json",
+    "artifact-manifest.json",
   ]) {
     assert.ok(artifacts.includes(required), `missing ${required}`);
   }
@@ -74,6 +79,127 @@ test("mock review executes every stage and writes the durable record", async (t)
   );
   assert.ok(
     artifacts.filter((name) => name.startsWith("prompts/")).length >= 12,
+  );
+});
+
+test("artifact manifests cover every run artifact and detect tampering", async (t) => {
+  const f = await fixture();
+  t.after(() => rm(f.dir, { recursive: true, force: true }));
+  const result = await new Tribunal(f.config, new MockKujoModelClient()).review(
+    f.docket,
+  );
+  const store = new RunStore(f.config.tribunal.storageDir);
+  const integrity = new ArtifactIntegrity(store);
+  const verified = await integrity.verify(result.runId);
+  assert.equal(verified.ok, true);
+  assert.equal(verified.signature, "absent");
+  assert.ok(verified.artifactsChecked >= 15);
+
+  await writeFile(join(result.runDir, "ruling.md"), "tampered\n");
+  const tampered = await integrity.verify(result.runId);
+  assert.equal(tampered.ok, false);
+  assert.deepEqual(
+    tampered.mismatched.map((item) => item.path),
+    ["ruling.md"],
+  );
+});
+
+test("Ed25519-sealed runs verify and ingest into RunLedger and CaseFile", async (t) => {
+  const f = await fixture();
+  t.after(() => rm(f.dir, { recursive: true, force: true }));
+  const result = await new Tribunal(f.config, new MockKujoModelClient()).review(
+    f.docket,
+  );
+  const store = new RunStore(f.config.tribunal.storageDir);
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const privatePath = join(f.dir, "signing-private.pem");
+  const publicPath = join(f.dir, "signing-public.pem");
+  await writeFile(
+    privatePath,
+    privateKey.export({ type: "pkcs8", format: "pem" }),
+    { mode: 0o600 },
+  );
+  await writeFile(
+    publicPath,
+    publicKey.export({ type: "spki", format: "pem" }),
+    { mode: 0o600 },
+  );
+  const integrity = new ArtifactIntegrity(store);
+  const sealed = await integrity.seal(result.runId, privatePath);
+  assert.ok(sealed.signature?.keyId);
+  const verified = await integrity.verify(result.runId, publicPath);
+  assert.equal(verified.ok, true);
+  assert.equal(verified.signature, "verified");
+
+  const ingestion = new SignedRunIngestion(store);
+  const ledgerDir = join(f.dir, "ledger");
+  const runledger = await ingestion.intoRunLedger(result.runId, {
+    publicKeyPath: publicPath,
+    runledgerBin: resolve("../runledger/bin/runledger"),
+    kujoBin: resolve("../kujo/target/debug/kujo"),
+    ledgerDir,
+  });
+  assert.equal(runledger.target, "runledger");
+  const ledgerRecord = JSON.parse(
+    await readFile(runledger.targetPath, "utf8"),
+  ) as { status: string; notes: Array<{ text: string }> };
+  assert.equal(ledgerRecord.status, "pass");
+  assert.match(ledgerRecord.notes[0]?.text ?? "", /Verified Tribunal run/);
+
+  const casefile = await ingestion.intoCaseFile(result.runId, {
+    publicKeyPath: publicPath,
+    casefilePath: resolve("../casefile/casefile.kujo"),
+    kujoBin: resolve("../kujo/target/debug/kujo"),
+    outputDir: join(f.dir, "casefiles"),
+  });
+  assert.equal(casefile.target, "casefile");
+  assert.equal(
+    JSON.parse(
+      await readFile(
+        join(casefile.targetPath, "tribunal-ingestion.json"),
+        "utf8",
+      ),
+    ).manifestSha256,
+    verified.manifestSha256,
+  );
+  assert.equal(
+    JSON.parse(
+      await readFile(
+        join(casefile.targetPath, "tribunal-evidence", "signature.json"),
+        "utf8",
+      ),
+    ).keyId,
+    verified.keyId,
+  );
+});
+
+test("PackWrite optionally enriches Tribunal context without model calls", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "tribunal-packwrite-test-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const config = structuredClone(DEFAULT_CONFIG);
+  config.tribunal.storageDir = join(dir, "runs");
+  const builder = new PackWriteContextPackBuilder(
+    resolve("../packwrite"),
+    resolve("../kujo/target/debug/kujo"),
+  );
+  const result = await new Tribunal(
+    config,
+    new MockKujoModelClient(),
+    builder,
+  ).review(resolve("examples/product-decision.md"));
+  const content = await readFile(join(result.runDir, "context.md"), "utf8");
+  assert.match(content, /Repository context \(lightweight, redacted\)/);
+  assert.match(content, /Languages\/runtime: node/);
+  assert.doesNotMatch(content, /node_modules\//);
+  const events = await new RunStore(config.tribunal.storageDir).readEvents(
+    result.runId,
+  );
+  assert.ok(
+    events.some(
+      (event) =>
+        event.eventType === "context_pack_created" &&
+        event.metadata.integration === "packwrite",
+    ),
   );
 });
 
@@ -245,5 +371,8 @@ test("real Kujo AI SDK bridge normalizes an offline SDK fixture", async () => {
   assert.equal(response.error, undefined);
   assert.equal(response.metadata.provider, "openai");
   assert.equal(response.metadata.contractVersion, "1.0.0");
+  assert.equal(response.metadata.model, "gpt-4.1-mini");
+  assert.equal(response.metadata.preferenceClass, "frontier_reasoning");
+  assert.equal(response.metadata.resolutionSource, "provider_class");
   assert.match(response.content, /Standardized AI SDK responses/);
 });

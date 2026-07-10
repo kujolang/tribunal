@@ -1,5 +1,5 @@
 from src.providers import openai_provider, openrouter_provider, deepseek_provider
-from src.ai_sdk import create_client, create_message, chat_completion, provider_metadata
+from src.ai_sdk import create_client, create_message, chat_completion, provider_metadata, resolve_model_preference
 
 func dict_get_or(obj, key, fallback) {
 	if type(obj) != "dict" {
@@ -27,7 +27,22 @@ if provider_id == "deepseek" {
 	provider = deepseek_provider()
 }
 
-model := dict_get_or(payload, "model", provider["default_model"])
+model_resolution := resolve_model_preference(provider, dict_get_or(payload, "modelPreference", {}))
+if !model_resolution["ok"] {
+	print(to_json({
+		"ok": false,
+		"provider": provider["name"],
+		"model": "",
+		"error": {
+			"code": model_resolution["error"]["code"],
+			"message": model_resolution["error"]["message"],
+			"retryable": false
+		},
+		"model_resolution": model_resolution
+	}))
+	exit(1)
+}
+model := model_resolution["model"]
 provider["default_model"] = model
 messages := [
 	create_message("system", dict_get_or(payload, "systemPrompt", "")),
@@ -52,4 +67,5 @@ if dict_get_or(payload, "offlineFixture", false) {
 }
 client := create_client(provider, null)
 result := chat_completion(client, messages, options)
+result["model_resolution"] = model_resolution
 print(to_json(result))

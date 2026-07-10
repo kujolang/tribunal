@@ -1,0 +1,20 @@
+from src.repo_context import context_collect, context_render
+
+root := trim(to_string(env("TRIBUNAL_CONTEXT_ROOT")))
+if root == "" || !path_is_dir(root) {
+	print(to_json({"ok": false, "error": "TRIBUNAL_CONTEXT_ROOT must name a readable directory."}))
+	exit(1)
+}
+
+cfg := {
+	"repo_include": ["README.md", "package.json", "pyproject.toml", "Cargo.toml", "go.mod", "kujo.toml", "src", "tests", "docs"],
+	"repo_exclude": [".env", ".env.local", ".git", "node_modules", "vendor", "dist", "build", ".next", "coverage", "target", ".venv"],
+	"output_dir": "agent",
+	"prompt_file": "MEGA_PROMPT.md"
+}
+ctx := context_collect(root, cfg)
+print(to_json({
+	"ok": true,
+	"markdown": context_render(ctx),
+	"warnings": ctx["warnings"]
+}))

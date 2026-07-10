@@ -101,6 +101,8 @@ export interface KujoModelMetadata {
   cacheReadTokens?: number;
   cacheWriteTokens?: number;
   reasoningTokens?: number;
+  preferenceClass?: string;
+  resolutionSource?: string;
 }
 
 export interface KujoModelError {
@@ -251,5 +253,10 @@ export interface TribunalConfig {
     sdkPath: string;
     kujoBin: string;
     provider: "openai" | "openrouter" | "deepseek";
+  };
+  context: {
+    provider: "local" | "packwrite";
+    packwritePath: string;
+    kujoBin: string;
   };
 }

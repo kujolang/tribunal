@@ -18,6 +18,11 @@ export const DEFAULT_CONFIG: TribunalConfig = {
     kujoBin: "../kujo/target/debug/kujo",
     provider: "openai",
   },
+  context: {
+    provider: "local",
+    packwritePath: "../packwrite",
+    kujoBin: "../kujo/target/debug/kujo",
+  },
 };
 
 export async function loadConfig(configPath?: string): Promise<TribunalConfig> {
@@ -39,6 +44,7 @@ export async function loadConfig(configPath?: string): Promise<TribunalConfig> {
 
   const tribunal = { ...DEFAULT_CONFIG.tribunal, ...override.tribunal };
   const kujoAi = { ...DEFAULT_CONFIG.kujoAi, ...override.kujoAi };
+  const context = { ...DEFAULT_CONFIG.context, ...override.context };
   if (
     tribunal.requireBlindFirstPass !== true ||
     tribunal.requireDecisionPacket !== true ||
@@ -56,5 +62,8 @@ export async function loadConfig(configPath?: string): Promise<TribunalConfig> {
       `Unsupported Kujo AI SDK provider preset '${kujoAi.provider}'.`,
     );
   }
-  return { tribunal, kujoAi } as TribunalConfig;
+  if (!["local", "packwrite"].includes(context.provider)) {
+    throw new Error(`Unsupported context provider '${context.provider}'.`);
+  }
+  return { tribunal, kujoAi, context } as TribunalConfig;
 }

@@ -2,6 +2,13 @@
 import { resolve } from "node:path";
 import { PANELS, SEATS } from "./catalog.js";
 import { loadConfig } from "./config.js";
+import {
+  LocalContextPackBuilder,
+  PackWriteContextPackBuilder,
+  type ContextPackBuilder,
+} from "./context.js";
+import { ArtifactIntegrity } from "./integrity.js";
+import { SignedRunIngestion } from "./integrations.js";
 import { KujoAiSdkBridge } from "./model/KujoAiSdkBridge.js";
 import type { KujoModelClient } from "./model/KujoModelClient.js";
 import { MockKujoModelClient } from "./model/MockKujoModelClient.js";
@@ -43,15 +50,27 @@ async function main(argv: string[]): Promise<number> {
         parsed.command === "kill"
           ? "executioner-only"
           : (flagString(parsed, "panel") ?? config.tribunal.defaultPanel);
-      const tribunal = new Tribunal(config, createClient(config));
+      const tribunal = new Tribunal(
+        config,
+        createClient(config),
+        createContextBuilder(config),
+      );
       try {
         const result = await tribunal.review(file, panel);
+        const signingKey = flagString(parsed, "private-key");
+        if (signingKey) {
+          await new ArtifactIntegrity(store).seal(result.runId, signingKey);
+        }
         process.stdout.write(
           `${result.runId}\n${result.record.ruling?.disposition ?? "unknown"}: ${result.record.ruling?.finalVerdict ?? "No ruling"}\n${result.runDir}\n`,
         );
         return 0;
       } catch (error) {
         if (error instanceof TribunalStoppedError) {
+          const signingKey = flagString(parsed, "private-key");
+          if (signingKey) {
+            await new ArtifactIntegrity(store).seal(error.runId, signingKey);
+          }
           process.stderr.write(
             `Tribunal stopped: ${error.message}\nRun: ${error.runId}\nRecord: ${error.runDir}\n`,
           );
@@ -84,16 +103,91 @@ async function main(argv: string[]): Promise<number> {
     }
     case "replay": {
       const runId = requiredRunId(parsed);
+      const verification = await new ArtifactIntegrity(store).verify(
+        runId,
+        flagString(parsed, "public-key"),
+      );
+      if (!verification.ok) {
+        throw new Error(
+          `Replay verification failed: ${JSON.stringify(verification)}`,
+        );
+      }
       const events = await store.readEvents(runId);
       process.stdout.write(
-        events
-          .map(
-            (event) =>
-              `${event.timestamp}\t${event.stageId}\t${event.seatId ?? "-"}\t${event.eventType}\t${event.summary}`,
-          )
-          .join("\n") + "\n",
+        `integrity\t${verification.artifactsChecked} artifacts\t${verification.signature}\n` +
+          events
+            .map(
+              (event) =>
+                `${event.timestamp}\t${event.stageId}\t${event.seatId ?? "-"}\t${event.eventType}\t${event.summary}`,
+            )
+            .join("\n") +
+          "\n",
       );
       return 0;
+    }
+    case "seal": {
+      const runId = requiredRunId(parsed);
+      const privateKey = flagString(parsed, "private-key");
+      if (!privateKey) {
+        throw new Error("Command 'seal' requires --private-key <Ed25519 PEM>.");
+      }
+      const sealed = await new ArtifactIntegrity(store).seal(runId, privateKey);
+      process.stdout.write(
+        JSON.stringify(
+          {
+            runId,
+            artifacts: sealed.manifest.artifacts.length,
+            keyId: sealed.signature?.keyId,
+            manifestSha256: sealed.signature?.manifestSha256,
+          },
+          null,
+          2,
+        ) + "\n",
+      );
+      return 0;
+    }
+    case "verify": {
+      const runId = requiredRunId(parsed);
+      const verification = await new ArtifactIntegrity(store).verify(
+        runId,
+        flagString(parsed, "public-key"),
+      );
+      process.stdout.write(JSON.stringify(verification, null, 2) + "\n");
+      return verification.ok ? 0 : 3;
+    }
+    case "ingest": {
+      const runId = requiredRunId(parsed);
+      const target = flagString(parsed, "target");
+      const publicKeyPath = flagString(parsed, "public-key");
+      if (!publicKeyPath) {
+        throw new Error(
+          "Signed ingestion requires --public-key <Ed25519 PEM>.",
+        );
+      }
+      const ingestion = new SignedRunIngestion(store);
+      if (target === "runledger") {
+        const receipt = await ingestion.intoRunLedger(runId, {
+          publicKeyPath,
+          runledgerBin:
+            flagString(parsed, "runledger-bin") ?? "../runledger/bin/runledger",
+          kujoBin: flagString(parsed, "kujo-bin") ?? config.kujoAi.kujoBin,
+          ledgerDir: flagString(parsed, "ledger") ?? "./.runledger",
+        });
+        process.stdout.write(JSON.stringify(receipt, null, 2) + "\n");
+        return 0;
+      }
+      if (target === "casefile") {
+        const receipt = await ingestion.intoCaseFile(runId, {
+          publicKeyPath,
+          casefilePath:
+            flagString(parsed, "casefile-path") ?? "../casefile/casefile.kujo",
+          kujoBin: flagString(parsed, "kujo-bin") ?? config.kujoAi.kujoBin,
+          outputDir: flagString(parsed, "casefile-output") ?? "./.casefile",
+        });
+        process.stdout.write(JSON.stringify(receipt, null, 2) + "\n");
+        return 0;
+      }
+      throw new Error("Ingestion target must be 'runledger' or 'casefile'.");
     }
     case "export": {
       const runId = requiredRunId(parsed);
@@ -175,6 +269,15 @@ function applyCliOverrides(config: TribunalConfig, args: ParsedArgs): void {
   if (sdkPath) config.kujoAi.sdkPath = resolve(sdkPath);
   const kujoBin = flagString(args, "kujo-bin");
   if (kujoBin) config.kujoAi.kujoBin = resolve(kujoBin);
+  const contextProvider = flagString(args, "context-provider");
+  if (contextProvider === "local" || contextProvider === "packwrite") {
+    config.context.provider = contextProvider;
+  } else if (contextProvider) {
+    throw new Error("Context provider must be 'local' or 'packwrite'.");
+  }
+  const packwritePath = flagString(args, "packwrite-path");
+  if (packwritePath) config.context.packwritePath = resolve(packwritePath);
+  if (kujoBin) config.context.kujoBin = resolve(kujoBin);
 }
 
 function createClient(config: TribunalConfig): KujoModelClient {
@@ -184,6 +287,16 @@ function createClient(config: TribunalConfig): KujoModelClient {
     kujoBin: resolve(config.kujoAi.kujoBin),
     provider: config.kujoAi.provider,
   });
+}
+
+function createContextBuilder(config: TribunalConfig): ContextPackBuilder {
+  if (config.context.provider === "packwrite") {
+    return new PackWriteContextPackBuilder(
+      resolve(config.context.packwritePath),
+      resolve(config.context.kujoBin),
+    );
+  }
+  return new LocalContextPackBuilder();
 }
 
 function renderSummary(
@@ -203,7 +316,7 @@ function renderSummary(
 }
 
 function help(): string {
-  return `Tribunal — structured adversarial decision review\n\nUsage:\n  tribunal review <file> --panel <panel-name> [--mock|--live]\n  tribunal kill <file> [--mock|--live]\n  tribunal list\n  tribunal show <run-id>\n  tribunal replay <run-id>\n  tribunal export <run-id> --format json|jsonl\n  tribunal panels\n  tribunal seats\n\nGlobal options:\n  --config <path>       JSON configuration file\n  --storage-dir <path>  Override the run storage directory\n  --ai-sdk-path <path>  Kujo AI SDK checkout (live mode)\n  --kujo-bin <path>     Kujo runtime binary (live mode)\n\nMock mode is the safe, credential-free default. Live mode invokes models only through Kujo AI SDK.\n`;
+  return `Tribunal — structured adversarial decision review\n\nUsage:\n  tribunal review <file> --panel <panel-name> [--mock|--live] [--private-key <pem>]\n  tribunal kill <file> [--mock|--live] [--private-key <pem>]\n  tribunal list\n  tribunal show <run-id>\n  tribunal replay <run-id> [--public-key <pem>]\n  tribunal seal <run-id> --private-key <Ed25519 PEM>\n  tribunal verify <run-id> [--public-key <Ed25519 PEM>]\n  tribunal ingest <run-id> --target runledger|casefile --public-key <Ed25519 PEM>\n  tribunal export <run-id> --format json|jsonl\n  tribunal panels\n  tribunal seats\n\nGlobal options:\n  --config <path>              JSON configuration file\n  --storage-dir <path>         Override the run storage directory\n  --ai-sdk-path <path>         Kujo AI SDK checkout (live mode)\n  --kujo-bin <path>            Kujo runtime binary (live/integration mode)\n  --context-provider <name>    local or packwrite\n  --packwrite-path <path>      PackWrite checkout (packwrite context mode)\n\nMock mode is the safe, credential-free default. Live mode invokes models only through Kujo AI SDK. Signed ingestion requires a trusted Ed25519 public key and a verified artifact manifest.\n`;
 }
 
 main(process.argv.slice(2))

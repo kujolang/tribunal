@@ -1,0 +1,43 @@
+name: "Tribunal post-MVP integrations"
+version: "1.0.0"
+goal: "Complete every item in the Tribunal README Next section without weakening the KujoModelClient orchestration boundary."
+priority: "high"
+status: "completed"
+scope: "Kujo AI SDK-owned model preference resolution; signed RunLedger and CaseFile ingestion; artifact-wide replay integrity verification; Concord and JSON Schema gates; optional PackWrite context enrichment."
+non_goals:
+  - "Direct provider SDK calls from Tribunal"
+  - "Network-required tests"
+  - "A web UI"
+acceptance_criteria:
+  - "Kujo AI SDK resolves provider-neutral model preferences and reports resolution provenance"
+  - "Tribunal live routing consumes the SDK resolver instead of selecting the first preferred model"
+  - "Every non-integrity run artifact is hashed and replay fails on missing, unexpected, or changed files"
+  - "Ed25519-signed runs require a trusted public key before RunLedger or CaseFile ingestion"
+  - "RunLedger ingestion records usage, verdict, signed-manifest evidence, and next actions"
+  - "CaseFile ingestion preserves the signed Tribunal evidence bundle and an ingestion receipt"
+  - "Concord and JSON Schema gates validate CLI, docs, manifests, Spec/Eval, config, records, events, integrity, and signature contracts"
+  - "PackWrite context enrichment is opt-in, redacted, deterministic, and does not invoke a model"
+  - "All default tests run without secrets or network"
+eval_requirements:
+  - description: "TypeScript contracts compile without errors."
+    check_type: "command_succeeds"
+    params:
+      command: "npm run typecheck"
+  - description: "Offline Tribunal tests pass."
+    check_type: "command_succeeds"
+    params:
+      command: "npm test"
+  - description: "Runtime JSON artifacts satisfy their schemas."
+    check_type: "command_succeeds"
+    params:
+      command: "npm run schema:gate"
+  - description: "Concord reports no high or critical drift."
+    check_type: "command_succeeds"
+    params:
+      command: "npm run concord:gate"
+risks:
+  - "A self-signed bundle without a separately trusted public key does not establish provenance"
+  - "Post-seal writes inside a run directory invalidate the integrity manifest"
+review_expectations:
+  - "Verify tamper detection with a changed ruling artifact"
+  - "Exercise real offline RunLedger, CaseFile, PackWrite, Concord, and Kujo AI SDK paths"

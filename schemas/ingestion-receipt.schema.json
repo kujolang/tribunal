@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kujolang.ai/schemas/tribunal-ingestion-receipt-1.0.0.json",
+  "title": "TribunalIngestionReceipt",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "target",
+    "tribunalRunId",
+    "manifestSha256",
+    "keyId",
+    "ingestedAt",
+    "targetId",
+    "targetPath"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "target": { "enum": ["runledger", "casefile"] },
+    "tribunalRunId": { "type": "string", "minLength": 1 },
+    "manifestSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "keyId": { "type": "string", "pattern": "^[a-f0-9]{32}$" },
+    "ingestedAt": { "type": "string", "format": "date-time" },
+    "targetId": { "type": "string", "minLength": 1 },
+    "targetPath": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

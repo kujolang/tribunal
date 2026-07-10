@@ -19,6 +19,10 @@ interface SdkResult {
     total_tokens?: number;
   };
   error?: { code?: string; message?: string; retryable?: boolean };
+  model_resolution?: {
+    preference_class?: string;
+    source?: string;
+  };
 }
 
 export interface KujoAiSdkBridgeOptions {
@@ -56,9 +60,7 @@ export class KujoAiSdkBridge implements KujoModelClient {
 
       const payload = JSON.stringify({
         provider: this.options.provider,
-        model:
-          request.modelPreference.preferred[0] ??
-          request.modelPreference.fallback,
+        modelPreference: request.modelPreference,
         systemPrompt: request.systemPrompt,
         input: request.input,
         outputSchema: request.outputSchema ?? null,
@@ -100,6 +102,12 @@ export class KujoAiSdkBridge implements KujoModelClient {
           ...(usage.total_tokens === undefined
             ? {}
             : { totalTokens: usage.total_tokens }),
+          ...(sdk.model_resolution?.preference_class
+            ? { preferenceClass: sdk.model_resolution.preference_class }
+            : {}),
+          ...(sdk.model_resolution?.source
+            ? { resolutionSource: sdk.model_resolution.source }
+            : {}),
         },
         ...(!sdk.ok
           ? {

@@ -1,4 +1,6 @@
 import { getPanel, getSeats, SEATS } from "./catalog.js";
+import { LocalContextPackBuilder, type ContextPackBuilder } from "./context.js";
+import { ArtifactIntegrity } from "./integrity.js";
 import { RunStore } from "./persistence.js";
 import {
   createRunId,
@@ -41,6 +43,7 @@ export class Tribunal {
   constructor(
     private readonly config: TribunalConfig,
     private readonly client: KujoModelClient,
+    private readonly contextBuilder: ContextPackBuilder = new LocalContextPackBuilder(),
   ) {
     this.store = new RunStore(config.tribunal.storageDir);
   }
@@ -144,7 +147,11 @@ export class Tribunal {
       );
 
       await startStage("build-context-pack");
-      const context = renderContext(docket, panel, seats);
+      const contextResult = await this.contextBuilder.enrich(
+        renderContext(docket, panel, seats),
+        docket,
+      );
+      const context = contextResult.content;
       await this.store.writeText(runId, "context.md", context);
       completedStages.push("build-context-pack");
       await emit(
@@ -152,7 +159,8 @@ export class Tribunal {
         "context_pack_created",
         "Local context pack created.",
         {
-          integration: "PackWrite-ready",
+          integration: contextResult.provider,
+          warnings: contextResult.warnings,
         },
       );
 
@@ -510,6 +518,7 @@ export class Tribunal {
         "record.json",
         "events.jsonl",
         "receipt.json",
+        "artifact-manifest.json",
       ];
       const record: TribunalRecord = {
         schemaVersion: "1.0.0",
@@ -555,6 +564,7 @@ export class Tribunal {
       manifest.status = "completed";
       manifest.completedAt = completedAt;
       await this.store.writeManifest(runId, manifest);
+      await new ArtifactIntegrity(this.store).seal(runId);
       return { runId, runDir, record };
     } catch (error) {
       const reason = (error as Error).message;
@@ -589,6 +599,7 @@ export class Tribunal {
             "events.jsonl",
             "record.json",
             "receipt.json",
+            "artifact-manifest.json",
           ],
         };
         const hash = await this.store.writeRecord(runId, partial);
@@ -611,6 +622,7 @@ export class Tribunal {
         manifest.status = "stopped";
         manifest.completedAt = completedAt;
         await this.store.writeManifest(runId, manifest);
+        await new ArtifactIntegrity(this.store).seal(runId);
       } catch {
         // The original fatal condition remains authoritative when persistence itself failed.
       }

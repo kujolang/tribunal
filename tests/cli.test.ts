@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { generateKeyPairSync } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -14,6 +15,19 @@ test("CLI review, list, show, replay, and export work offline", async (t) => {
   t.after(() => rm(dir, { recursive: true, force: true }));
   const docket = join(dir, "docket.md");
   const storage = join(dir, "runs");
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const privatePath = join(dir, "private.pem");
+  const publicPath = join(dir, "public.pem");
+  await writeFile(
+    privatePath,
+    privateKey.export({ type: "pkcs8", format: "pem" }),
+    { mode: 0o600 },
+  );
+  await writeFile(
+    publicPath,
+    publicKey.export({ type: "spki", format: "pem" }),
+    { mode: 0o600 },
+  );
   await writeFile(
     docket,
     "# CLI decision\n\n## Scope\n\nProve CLI contracts.\n",
@@ -27,6 +41,8 @@ test("CLI review, list, show, replay, and export work offline", async (t) => {
     "fast-two-model",
     "--storage-dir",
     storage,
+    "--private-key",
+    privatePath,
   ]);
   const runId = review.stdout.split("\n")[0]!;
   assert.match(runId, /^\d{4}-/);
@@ -52,8 +68,21 @@ test("CLI review, list, show, replay, and export work offline", async (t) => {
     runId,
     "--storage-dir",
     storage,
+    "--public-key",
+    publicPath,
   ]);
+  assert.match(replayed.stdout, /integrity\t\d+ artifacts\tverified/);
   assert.match(replayed.stdout, /blind-first-pass/);
+  const verified = await exec(process.execPath, [
+    cli,
+    "verify",
+    runId,
+    "--storage-dir",
+    storage,
+    "--public-key",
+    publicPath,
+  ]);
+  assert.equal(JSON.parse(verified.stdout).signature, "verified");
   const exported = await exec(process.execPath, [
     cli,
     "export",
@@ -78,6 +107,27 @@ test("CLI review, list, show, replay, and export work offline", async (t) => {
       .trim()
       .split("\n")
       .every((line) => JSON.parse(line).runId === runId),
+  );
+
+  await writeFile(join(storage, runId, "ruling.md"), "tampered\n");
+  await assert.rejects(
+    () =>
+      exec(process.execPath, [
+        cli,
+        "replay",
+        runId,
+        "--storage-dir",
+        storage,
+        "--public-key",
+        publicPath,
+      ]),
+    (error: unknown) => {
+      assert.match(
+        (error as { stderr: string }).stderr,
+        /Replay verification failed/,
+      );
+      return true;
+    },
   );
 });
 

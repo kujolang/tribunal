@@ -13,5 +13,10 @@
     "sdkPath": "../ai-sdk",
     "kujoBin": "../kujo/target/debug/kujo",
     "provider": "openai"
+  },
+  "context": {
+    "provider": "local",
+    "packwritePath": "../packwrite",
+    "kujoBin": "../kujo/target/debug/kujo"
   }
 }

@@ -3,7 +3,7 @@
   "$id": "https://kujolang.ai/schemas/tribunal-config-1.0.0.json",
   "title": "TribunalConfig",
   "type": "object",
-  "required": ["tribunal", "kujoAi"],
+  "required": ["tribunal", "kujoAi", "context"],
   "properties": {
     "tribunal": {
       "type": "object",
@@ -40,6 +40,16 @@
         "sdkPath": { "type": "string" },
         "kujoBin": { "type": "string" },
         "provider": { "enum": ["openai", "openrouter", "deepseek"] }
+      },
+      "additionalProperties": false
+    },
+    "context": {
+      "type": "object",
+      "required": ["provider", "packwritePath", "kujoBin"],
+      "properties": {
+        "provider": { "enum": ["local", "packwrite"] },
+        "packwritePath": { "type": "string", "minLength": 1 },
+        "kujoBin": { "type": "string", "minLength": 1 }
       },
       "additionalProperties": false
     }
