@@ -1,30 +1,70 @@
 # Operations
 
-## Preflight
+## Preflight and identity
 
-Run `tribunal doctor --json` under the same identity, working directory, environment, and configuration used in production. A nonzero exit means a required runtime, schema, manifest, storage parent, or version contract is unavailable. Warnings identify optional live SDK/PackWrite dependencies or weaker storage posture.
+Run `tribunal doctor --json` under the production service identity and exact configuration. Use `tribunal auth-check --permission <permission>` to prove the selected identity/policy decision before automation. `local` mode is single-operator only; multi-user and service execution must use `policy` mode with `defaultDeny: true`.
 
-Validate dockets before opening hearings. Use explicit `--config`, `--storage-dir`, `--provider`, and timeout values in automation. Require signed verification before replay or ingestion.
+Validate dockets before opening hearings. Require `verify-policy` with a separately distributed trust policy before replay, import, publication, or ingestion.
 
-## Storage and retention
+## Signing and trust
 
-Use a dedicated local filesystem directory that is not a symbolic link. Restrict it to the service identity and back it up as immutable evidence. A run is append/write-active until sealing; after `artifact-manifest.json` is written, any file change makes verification fail.
+Use `seal-provider` for HSM/KMS custody. The provider config contains an opaque key reference and Kujo adapter command, never private key material. Only federated workload-identity variables are forwarded. Rotate by adding the successor key, setting the predecessor to `rotating`, populating `rotatesTo`, and later marking it `revoked` or `expired`. Revoked keys fail verification policy immediately.
 
-Retention and legal-hold policy are deployment responsibilities. Delete complete run directories only after policy approval; never delete individual sealed artifacts. Test restore by verifying restored signed runs against independently held public keys.
+## Locks and crash recovery
 
-## Monitoring
+Every hearing holds an atomic lock under `<storage>/.locks/`. Seal replacements use `<storage>/.seal-transactions/`. After a confirmed process crash, run:
 
-Use `tribunal stats --json` for local counts, dispositions, model invocations, tokens, and average duration. Use `tribunal list --json` for inventory and status/panel filters. Monitor nonzero exit codes, stopped runs, integrity failures, process timeouts, secret-safety stops, and unexpectedly high token/duration trends.
+```bash
+tribunal locks-recover --stale-after-ms 300000 --json
+```
+
+This removes stale writer locks and rolls interrupted sealing back to the prior manifest/signature. Never recover locks merely because a live hearing is slow.
+
+## Immutable storage and disaster recovery
+
+Publish signed evidence with an explicit expected version:
+
+```bash
+tribunal store-publish <run-id> --expected-version ""
+tribunal store-pull <run-id> --version <manifest-sha256> \
+  --trust-policy ./trust-policy.json --target store-pull
+```
+
+The local provider is a deterministic reference implementation. HTTP deployments must implement conditional version finalization, immutable object PUT/GET, content digests, authentication/mTLS, tenant isolation, and audit logging. A restored run is accepted only after trusted signature verification.
+
+## Retention, legal hold, and deletion
+
+Retention class/days, owner, and initial legal-hold state are sealed into each run. Post-seal changes use the external governance registry:
+
+```bash
+tribunal legal-hold <run-id> --enable --reason "Matter 2026-17"
+tribunal legal-hold <run-id> --release --reason "Matter closed"
+```
+
+Deletion is whole-run only. It is denied during retention or any legal hold. After policy approval, `delete` writes an external tombstone containing actor, reason, record/manifest hashes, key ID, and governance metadata. `--force-expired` bypasses time retention only; it never bypasses legal hold and should be restricted to governance administrators.
+
+## Monitoring and read-only projection
+
+Export redacted metrics/audit data without modifying evidence:
+
+```bash
+tribunal telemetry-export --collector jsonl --destination /var/log/tribunal/audit.jsonl
+tribunal dashboard-export --output /var/lib/tribunal/dashboard.html
+```
+
+The dashboard is static, script-free, CSP-restricted, and capped at 500 rows. Treat it as an offline projection. Do not expose it through an unauthenticated server.
 
 ## Incident response
 
-1. Stop new ingestion when integrity or key compromise is suspected.
-2. Preserve the run directory read-only and record its filesystem metadata.
-3. Verify with an independently sourced public key.
-4. Compare RunLedger/CaseFile idempotency receipts outside the sealed run.
-5. Rotate compromised credentials or signing keys and apply organizational revocation controls.
-6. Reopen work from the original docket; do not edit sealed evidence to repair it.
+1. Stop new ingestion/publication when integrity, identity, or key compromise is suspected.
+2. Preserve run, lock, transaction, trust-policy, and external receipt metadata.
+3. Mark the key revoked in the trusted-key policy and distribute the policy through the trusted channel.
+4. Run `verify-policy`, `contracts`, and bundle/store verification against preserved evidence.
+5. Apply legal hold when investigation or litigation requires retention.
+6. Rotate federated identity and signing references; do not edit sealed evidence.
 
-## Upgrade and rollback
+## Release and rollback
 
-Run the full offline gate suite before upgrading. Keep the previous Kujo binary and Tribunal commit available. Tribunal v0.3.0 verifies legacy v1.0.0 signature envelopes while emitting v1.1.0. Rollback does not authorize modifying runs created by a newer version.
+Tag releases run all Kujo checks, four test suites, 17 schema contracts, Concord, Spec, Eval, and both benchmarks on a self-hosted Kujo runner. CI uses an external signing-provider config and publishes a signed evidence bundle. See [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md).
+
+Tribunal v0.4.0 verifies signature schemas v1.0, v1.1, and v1.2. Rollback does not authorize modifying newer runs.

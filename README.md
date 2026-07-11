@@ -37,7 +37,7 @@ Mock mode is deterministic, offline, credential-free, and the default. The launc
 tribunal review <file> --panel <panel-name> [--mock|--live]
 tribunal kill <file> [--mock|--live]
 tribunal validate <file> [--json]
-tribunal list [--status <status> --panel <panel> --limit <n> --json]
+tribunal list [--status <status> --panel <panel> --limit <n> --cursor <run-id> --json]
 tribunal show <run-id> [--json]
 tribunal replay <run-id> [--public-key <pem> --require-signature]
 tribunal keys --private-key <pem> --public-key <pem> [--bits 2048|4096]
@@ -49,6 +49,19 @@ tribunal panels [--json]
 tribunal seats [--json]
 tribunal doctor [--json]
 tribunal stats [--json]
+tribunal contracts <run-id> [--json]
+tribunal seal-provider <run-id> --provider-config <json>
+tribunal verify-policy <run-id> --trust-policy <json> --target <name>
+tribunal bundle-export <run-id> --output <directory>
+tribunal bundle-import <directory> --trust-policy <json> --target <name>
+tribunal store-publish <run-id> [--expected-version <sha256>]
+tribunal store-pull <run-id> [--version <sha256>] --trust-policy <json>
+tribunal telemetry-export [--collector jsonl|http --destination <path|url>]
+tribunal dashboard-export --output <html>
+tribunal legal-hold <run-id> --enable|--release --reason <text>
+tribunal delete <run-id> --reason <text> [--force-expired]
+tribunal locks-recover [--stale-after-ms <n>]
+tribunal auth-check --permission <permission>
 tribunal version
 ```
 
@@ -106,7 +119,7 @@ Every completed or stopped run receives a byte-accurate SHA-256 manifest. Option
   --require-signature
 ```
 
-Never commit private keys. Tribunal does not replace organizational key custody, rotation, revocation, or trust policy.
+Never commit private keys. For managed custody, `seal-provider` invokes an external Kujo HSM/KMS adapter with an opaque key reference and federated workload identity. Private key material never enters Tribunal. Versioned trust policies separately enforce key status, validity, rotation, revocation, and target permissions.
 
 Signed runs can be ingested idempotently into Kujo RunLedger or CaseFile. The source run remains immutable; downstream receipts are kept outside its sealed evidence directory.
 
@@ -119,7 +132,19 @@ Optional PackWrite context enrichment is deterministic and redacted:
 
 ## Enterprise controls
 
-Tribunal v0.3.0 adds strict config/CLI contracts, bounded docket/context/model/process sizes, model timeouts, secret detection, subprocess environment isolation, safe artifact paths, symlink rejection, signed-envelope metadata binding, idempotent ingestion, local diagnostics, filtered JSON inventory, and aggregate local statistics.
+Tribunal v0.4.0 adds:
+
+- default-deny service/user identity and role authorization;
+- external HSM/KMS signing-provider contracts and v1.2 signer provenance;
+- trusted-key lifecycle and allowed-target policies;
+- signed bundle export/import and conditional versioned local/HTTP artifact stores;
+- atomic per-run locks, stale-writer recovery, and interrupted-seal rollback journals;
+- immutable retention metadata, external post-seal legal holds, whole-run deletion, and tombstones;
+- external JSONL/HTTP metrics and audit export;
+- executable Kujo JSON Schema validation for every emitted contract;
+- provider output type/range/enum validation and deterministic property corpora;
+- cursor pagination, large-hearing/inventory budgets, and tag release publication;
+- an authorized offline read-only HTML dashboard without introducing a network API.
 
 See [Security](SECURITY.md), [Operations](docs/OPERATIONS.md), and [Enterprise readiness](docs/ENTERPRISE_READINESS.md) before production adoption. Machine-readable contracts live in [`schemas/`](schemas/).
 
@@ -134,13 +159,16 @@ for file in $(find . -name '*.kujo' -not -path './.git/*'); do
 done
 "$KUJO_BIN" run tests/tribunal_tests.kujo
 "$KUJO_BIN" run tests/cli_integration.kujo
+"$KUJO_BIN" run tests/enterprise_tests.kujo
+"$KUJO_BIN" run tests/property_tests.kujo
 "$KUJO_BIN" run scripts/schema_gate.kujo
 "$KUJO_BIN" run scripts/drift_gate.kujo
 "$KUJO_BIN" run scripts/spec_gate.kujo
-"$KUJO_BIN" run scripts/benchmark.kujo
+"$KUJO_BIN" run scripts/perf_gate.kujo
+"$KUJO_BIN" run scripts/scale_perf_gate.kujo
 ```
 
-The offline gates exercise 23 Kujo source files, 91 core assertions, 25 CLI assertions, nine schemas, signing/tamper detection, PackWrite, RunLedger, CaseFile, the AI SDK fixture, Spec, Concord, and Eval. See [Contributing](CONTRIBUTING.md).
+The offline gates exercise 39 Kujo source files, 186 assertions across four suites, 17 executable schemas, signing/tamper/recovery, authorization, governance, bundles/stores, telemetry/dashboard export, PackWrite, RunLedger, CaseFile, the AI SDK fixture, Spec, Concord, ten Eval checks, and two performance gates. See [Contributing](CONTRIBUTING.md).
 
 ## Project map
 
@@ -148,10 +176,16 @@ The offline gates exercise 23 Kujo source files, 91 core assertions, 25 CLI asse
 - [Configuration](docs/configuration.md)
 - [Operations](docs/OPERATIONS.md)
 - [Enterprise readiness](docs/ENTERPRISE_READINESS.md)
+- [Threat model](docs/THREAT_MODEL.md)
+- [Authorization](docs/AUTHORIZATION.md)
+- [Artifact stores and bundles](docs/ARTIFACT_STORES.md)
+- [Release evidence](docs/RELEASE_EVIDENCE.md)
+- [Read-only UI evaluation](docs/UI_EVALUATION.md)
 - [Integrations](docs/integrations.md)
-- [Next-session review](docs/NEXT_SESSION_REVIEW.md)
+- [Completed next-session review](docs/NEXT_SESSION_REVIEW.md)
+- [Next-session handoff](docs/NEXT_SESSION_HANDOFF.md)
 - [Changelog](CHANGELOG.md)
 
 ## Boundaries
 
-JSON is currently the only config format. Replay verifies recorded evidence and intentionally does not rerun models. Managed signing services, revocation, multi-tenant authorization, remote retention, and a web UI are not built in; the production implications are tracked in the readiness and next-session documents.
+JSON is currently the only config format. Replay verifies recorded evidence and intentionally does not rerun models. Tribunal publishes provider contracts for HSM/KMS and HTTP immutable stores; each deployment must supply and certify its authenticated adapter. The dashboard is an offline projection by design. No network API or hosted UI is exposed until transport authentication, tenant isolation, rate limiting, and deployment authorization are selected and threat-modeled.

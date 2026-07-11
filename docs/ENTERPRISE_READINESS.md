@@ -2,26 +2,41 @@
 
 ## Current posture
 
-Tribunal is production-capable for local, single-tenant, operator-controlled decision evidence when deployed with external identity, filesystem, secret, key-custody, backup, and monitoring controls.
+Tribunal v0.4.0 provides the application-level contracts required for enterprise decision evidence: default-deny authorization, external managed signing, trusted-key lifecycle, immutable versioned stores, concurrency/recovery, retention/legal hold/deletion, external telemetry, executable schemas, fuzz/property gates, cursor pagination, release budgets, CI publication, and a safe offline dashboard.
 
-Built-in controls include strict CLI/config parsing, required process invariants, resource limits and timeouts, secret detection, provider environment isolation, path and symlink defenses, byte-accurate manifests, signed metadata binding, trusted-key verification, stopped-run evidence, JSON contracts, idempotent downstream ingestion, diagnostics, analytics, and offline deterministic gates.
+Deployment-specific HSM/KMS and HTTP store adapters remain deliberately outside the core. They must be certified against the published Kujo contracts with the target organization's identity, network, custody, retention, and audit controls.
 
 ## Deployment matrix
 
 | Area | Built in | Deployment responsibility |
 | --- | --- | --- |
-| Model boundary | Kujo AI SDK only; provider allowlist | provider account policy and network egress |
-| Credentials | no config/record credential fields; child env allowlist | managed secret injection and rotation |
-| Evidence | exact artifact hashing and optional RSA signature | immutable storage, retention, backup, legal hold |
-| Trust | independent public-key verification | key custody, distribution, rotation, revocation |
-| Availability | timeouts, bounded outputs, stopped records | scheduling, retries, capacity, alerting |
-| Access | local filesystem boundary | authentication, authorization, service identity |
-| Audit | events, receipts, signed handoff | centralized collection and access review |
+| Model boundary | Kujo AI SDK only; provider allowlist | provider account policy and egress |
+| Access | default-deny identities, roles, command permissions | identity proofing, policy distribution, tenant mapping |
+| Signing | external Kujo provider contract; federated identity allowlist | HSM/KMS adapter, key custody and availability |
+| Trust | status, validity, rotation, revocation, target restrictions | independent policy/public-key distribution |
+| Evidence | exact hashing, v1.0–v1.2 verification, bundles | storage IAM, backup, regional durability |
+| Artifact store | conditional local/HTTP immutable versions | authenticated HTTP implementation and SLAs |
+| Concurrency | atomic per-run locks and seal rollback journals | multi-host coordination if sharing non-local filesystems |
+| Governance | sealed retention, external holds, whole-run tombstones | legal policy, approvals, retention schedule |
+| Audit | redacted JSONL/HTTP telemetry | collector durability, SIEM access and alerting |
+| Experience | offline CSP dashboard | authenticated hosting if an organization chooses to publish it |
 
-## Not yet universal enterprise infrastructure
+## Threat and authorization boundary
 
-Tribunal does not include multi-tenant authorization, a network service/API, an HSM/KMS signing provider, revocation registry, policy-as-code engine, distributed locking, remote object-storage adapter, centralized telemetry exporter, automated retention/legal hold, or high-availability orchestration. These are explicit integration layers, not hidden claims.
+The detailed threat model is [THREAT_MODEL.md](THREAT_MODEL.md). No network API is included. The access policy settles application permissions, but a future service still requires transport authentication, tenant isolation, rate limits, request-size limits, CSRF/CORS policy, secure headers, and network threat testing before exposure.
 
 ## Release evidence
 
-A releasable commit must pass every Kujo source check, 91 core assertions, 25 CLI assertions, nine schema contracts, Concord drift, strict Spec validation, six Eval checks, the offline benchmark, and interpreter execution. The exact next strengthening slice is maintained in [NEXT_SESSION_REVIEW.md](NEXT_SESSION_REVIEW.md).
+A releasable commit must pass:
+
+- every Kujo source check;
+- 91 core, 44 CLI, 37 enterprise, and 13 property assertions;
+- 17 executable JSON Schemas;
+- Concord with no high/critical drift;
+- strict Spec validation;
+- ten Eval checks;
+- local and scale performance gates;
+- `tribunal doctor --json` with zero failures;
+- signed release bundle creation through an external provider.
+
+See [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) and [NEXT_SESSION_REVIEW.md](NEXT_SESSION_REVIEW.md).

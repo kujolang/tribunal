@@ -31,6 +31,26 @@ Pass JSON configuration with `--config <path>`. Defaults are embedded in `src/co
     "max_model_output_bytes": 1048576,
     "max_process_output_bytes": 8388608,
     "model_timeout_ms": 60000
+  },
+  "authorization": {
+    "mode": "local",
+    "identity": "local-operator",
+    "policy_path": "./examples/access-policy.json"
+  },
+  "governance": {
+    "retention_class": "standard",
+    "retention_days": 365,
+    "legal_hold": false,
+    "owner": "local-operator"
+  },
+  "artifact_store": {
+    "provider": "local-immutable",
+    "root": "./.tribunal/artifact-store",
+    "endpoint": ""
+  },
+  "telemetry": {
+    "collector": "jsonl",
+    "destination": "./.tribunal/telemetry.jsonl"
   }
 }
 ```
@@ -42,3 +62,9 @@ Set `context.provider` to `packwrite` to append PackWrite's deterministic, redac
 Do not store secrets here. Live credentials must use the provider environment convention documented by Kujo AI SDK.
 
 Unknown fields and invalid types are rejected. Limits have guarded ranges: docket/context/process output up to 64 MiB, model output up to 16 MiB, and timeouts from 1 to 600 seconds. CLI `--model-timeout-ms` overrides the configured timeout for a run.
+
+`authorization.mode=local` is intentionally single-operator and accepts only `local-operator`. Set `mode=policy`, select an identity, and provide a default-deny policy for service or multi-user automation. CLI `--identity` and `--access-policy` provide explicit overrides.
+
+Governance metadata is sealed into every new run. Post-seal legal-hold changes are stored in the external `.governance/` registry so evidence remains immutable. Artifact stores support `local-immutable` roots or authenticated deployment-owned `http-immutable` endpoints. Telemetry supports append-only JSONL or HTTP collectors and never writes inside a run.
+
+See `examples/access-policy.json`, `examples/trust-policy.json`, and `examples/signing-provider.json` for the policy/provider contracts. These files contain no credentials or private key material.

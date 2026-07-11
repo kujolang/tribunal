@@ -1,33 +1,41 @@
-# Next-session review
+# Next-session review — completed in v0.4.0
 
-This is the prioritized work list for the next production-readiness session. Revalidate assumptions before implementation.
+Every item from the v0.3.0 production-readiness list is complete and evidenced below.
 
 ## P0 — trust and tenancy
 
-- Design a Kujo signing-provider contract for HSM/KMS-backed signing without exposing private key material to Tribunal.
-- Add trusted-key policy files with key status, rotation, revocation, and allowed ingestion targets.
-- Define an authorization boundary for multi-user or service deployments before introducing a network API.
+- [x] HSM/KMS signing-provider contract: `src/signing_provider.kujo`, v1.2 envelopes, federated workload identity, offline external-provider test.
+- [x] Trusted-key lifecycle: `src/policy.kujo`, `schemas/trust-policy.schema.json`, active/rotating/revoked/expired status, validity, rotation, revocation, and allowed targets.
+- [x] Authorization boundary: default-deny identity/role policies authorize CLI actions; no network API was introduced.
 
 ## P1 — durable operations
 
-- Add a remote immutable artifact-store interface with conditional writes and object versioning.
-- Add per-run locking and crash-recovery tests for concurrent writers and interrupted sealing.
-- Add retention/legal-hold metadata and a policy-driven whole-run deletion workflow.
-- Export structured metrics and audit events to an external collector without mutating sealed runs.
+- [x] Remote immutable artifact-store interface: local reference plus complete conditional HTTP PUT/finalize/GET contract and object versioning.
+- [x] Per-run locking and crash recovery: atomic owner-token locks, stale recovery, seal journals, and interrupted-seal restoration tests.
+- [x] Retention/legal hold/deletion: sealed retention metadata, post-seal external hold history, whole-run deletion, and external tombstones.
+- [x] External metrics/audit: redacted JSONL/HTTP telemetry export outside sealed runs.
 
 ## P1 — contract depth
 
-- Apply a complete JSON Schema validator to emitted records, events, receipts, rulings, packets, manifests, and signatures rather than structural assertions alone.
-- Add property/fuzz tests for CLI tokens, config boundaries, Unicode/byte limits, path normalization, corrupt JSONL, and signature envelopes.
-- Add provider-response type/range validation beyond required-field presence.
+- [x] Complete schema validation: Kujo `json_schema_validate` executes 17 schemas across config, policies, emitted evidence, telemetry, bundles, and store indexes.
+- [x] Property/fuzz coverage: 500 generated CLI cases, 500 safe paths plus traversal corpus, config boundaries, Unicode bytes, corrupt JSONL, and signature mutations.
+- [x] Provider responses: full object types, required fields, ranges, enums, arrays, and additional-property rules are enforced before persistence.
 
 ## P2 — scale and experience
 
-- Benchmark strategic-five hearings with large allowed dockets and context packs; publish memory and latency budgets.
-- Add pagination/cursors for very large local run inventories.
-- Add signed bundle export/import and CI release publication.
-- Evaluate a read-only local UI only after service identity and authorization contracts are settled.
+- [x] Scale budgets: 256 KiB-class strategic-five hearing, artifact/context measurement, cursor inventory benchmark, 45-second hearing, 3-second pagination, and 256 MiB deployment RSS budget.
+- [x] Pagination: bounded cursor pages with `nextCursor`/`hasMore` and CLI support.
+- [x] Signed bundles and CI: trusted export/import, Kujo ZIP archiving, tag workflow, external signer, validation, artifact upload, and release attachment.
+- [x] Read-only UI evaluation: authorized static dashboard selected; network UI explicitly deferred until transport authentication/tenancy is designed.
 
-## Exit criteria
+## Exit evidence
 
-The next session should leave updated threat modeling, schemas, tests, benchmarks, operations docs, release evidence, and a new prioritized handoff. Do not weaken Kujo-only runtime, blind testimony, stop-the-line behavior, or sealed evidence immutability.
+- Threat model: [THREAT_MODEL.md](THREAT_MODEL.md)
+- Schemas: 17 executable files under `schemas/`
+- Tests: 91 core + 44 CLI + 37 enterprise + 13 property assertions
+- Performance gates: `scripts/perf_gate.kujo` and `scripts/scale_perf_gate.kujo`
+- Operations: [OPERATIONS.md](OPERATIONS.md)
+- Release evidence: [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md)
+- New handoff: [NEXT_SESSION_HANDOFF.md](NEXT_SESSION_HANDOFF.md)
+
+The Kujo-only runtime, blind testimony, stop-the-line behavior, and sealed evidence immutability remain intact.

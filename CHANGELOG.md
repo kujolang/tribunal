@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 0.4.0 - 2026-07-11
+
+- Added default-deny identity/role authorization and trusted-key lifecycle policies with rotation, revocation, validity, and allowed-target enforcement.
+- Added an external Kujo HSM/KMS signing-provider contract, federated workload identity allowlist, and v1.2 signer provenance without private key exposure.
+- Added signed bundle export/import and conditional, immutable, versioned local/HTTP artifact-store providers.
+- Added atomic per-run locking, stale-owner recovery, seal transaction journals, and interrupted-seal rollback.
+- Added sealed retention metadata, post-seal legal-hold history, policy-driven whole-run deletion, and external tombstones.
+- Added external JSONL/HTTP telemetry, cursor pagination, and an offline CSP-restricted dashboard.
+- Upgraded contract validation to 17 executable Kujo JSON Schemas and added strict provider-response types/ranges plus deterministic property corpora.
+- Added a large strategic-five/inventory benchmark with published latency/memory budgets and tag CI publication of externally signed evidence.
+- Completed every v0.3.0 next-session review item and published a new deployment-adapter handoff.
+
 ## 0.3.0 - 2026-07-11
 
 - Hardened artifact storage and sealing against traversal, symbolic links, oversized input, and character/byte length confusion.

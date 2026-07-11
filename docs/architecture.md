@@ -15,6 +15,15 @@ tribunal.kujo
   -> src/integrations.kujo   RunLedger and CaseFile Kujo CLIs
   -> src/diagnostics.kujo    local dependency/readiness checks
   -> src/analytics.kujo      local run/usage aggregation
+  -> src/policy.kujo         identity/role and trusted-key policy
+  -> src/signing_provider.kujo external HSM/KMS signing contract
+  -> src/locking.kujo        per-run locks and stale-writer recovery
+  -> src/governance.kujo     retention, legal holds, deletion tombstones
+  -> src/bundles.kujo        signed evidence export/import
+  -> src/artifact_store.kujo conditional immutable object versions
+  -> src/contracts.kujo      executable JSON Schema validation
+  -> src/telemetry.kujo      external metrics/audit projection
+  -> src/dashboard.kujo      offline read-only HTML projection
 ```
 
 Tribunal contains no provider-specific SDK, endpoint, transport, retry, or credential logic. In live mode `src/model.kujo` invokes `src/bridges/ai_sdk_bridge.kujo` with the same Kujo runtime while the adjacent AI SDK repository supplies `src.ai_sdk` and `src.providers`.
@@ -30,6 +39,12 @@ Blind prompts are built only from the immutable `context.md` content and the cur
 After persistence, `src/integrity.kujo` recursively enumerates every artifact except `artifact-manifest.json` and `signature.json`, rejects unsafe paths and symbolic links, enforces size limits, then records byte length and SHA-256. Replay requires an exact file set and matching digests.
 
 Signing uses Kujo runtime `rsa_generate_keypair`, `rsa_sign`, and `rsa_verify`. The v1.1 envelope signs a canonical payload containing the run ID, algorithm, manifest digest, trusted public-key fingerprint, and signing time. Private keys are never copied into a run. Verification remains backward-compatible with legacy v1.0 envelopes.
+
+External signing emits v1.2 envelopes with provider and signer-reference provenance. The external Kujo adapter owns key access and receives only an opaque key reference plus federated workload identity. A separate trust policy resolves independently distributed public keys and enforces lifecycle/target rules.
+
+Seal replacement is journaled outside run directories. A crash leaves a recoverable transaction that restores the prior manifest/signature. Per-run atomic directory locks prevent concurrent writers; stale locks can be recovered after the configured operational threshold.
+
+Bundles copy exact signed artifacts into external portable directories. Local and HTTP artifact-store providers use manifest SHA-256 as the immutable version and require conditional expected-version writes. Pull/import always re-verifies against a trust policy before accepting a run.
 
 RunLedger and CaseFile output is written outside the sealed run so downstream operations cannot invalidate source evidence.
 

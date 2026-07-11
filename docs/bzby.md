@@ -1,6 +1,6 @@
 # BZBY future analytics path
 
-BZBY can index `manifest.json`, `events.jsonl`, `record.json`, and `receipt.json` to provide:
+BZBY can consume the external `telemetry-export` contract or independently index verified `manifest.json`, `events.jsonl`, `record.json`, and `receipt.json` to provide:
 
 - hearing throughput and completion/stopped rates;
 - disposition and confidence distributions;
@@ -9,4 +9,4 @@ BZBY can index `manifest.json`, `events.jsonl`, `record.json`, and `receipt.json
 - time from ruling to accepted evidence;
 - decision reversals or repeated review patterns.
 
-Dashboards should use run IDs and content hashes as join keys, preserve stopped/partial records, distinguish mock from live evidence, and never ingest raw environment values. Tribunal intentionally ships no BZBY UI or network integration in the MVP.
+Dashboards should use run IDs and content hashes as join keys, preserve stopped/partial records, distinguish mock from live evidence, and never ingest raw environment values. Tribunal v0.4.0 includes a dependency-free offline dashboard export for local inspection; it still embeds no BZBY or network-service dependency.
