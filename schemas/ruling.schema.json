@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kujolang.ai/schemas/tribunal-ruling-1.0.0.json",
+  "title": "TribunalRuling",
+  "type": "object",
+  "required": ["finalVerdict", "bestArgumentFor", "bestArgumentAgainst", "panelAgreement", "unresolved", "requiredChanges", "confidence", "disposition", "generatedAt", "metadata"],
+  "properties": {
+    "finalVerdict": { "type": "string", "minLength": 1 },
+    "bestArgumentFor": { "type": "string" },
+    "bestArgumentAgainst": { "type": "string" },
+    "panelAgreement": { "type": "array", "items": { "type": "string" } },
+    "unresolved": { "type": "array", "items": { "type": "string" } },
+    "requiredChanges": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "type": "integer", "minimum": 0, "maximum": 10 },
+    "disposition": { "enum": ["proceed", "reject", "redesign"] },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "metadata": { "type": "object" }
+  },
+  "additionalProperties": false
+}

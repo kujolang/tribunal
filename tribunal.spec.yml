@@ -1,9 +1,9 @@
-name: "Tribunal Kujo-native implementation"
-version: "2.0.0"
-goal: "Recreate Tribunal entirely in the Kujo programming language and Kujo ecosystem tooling while preserving the completed decision-engine contracts."
+name: "Tribunal Kujo-native enterprise hardening"
+version: "3.0.0"
+goal: "Deliver a secure, bounded, operable, and well-documented Kujo-native adversarial decision engine while preserving all decision-evidence contracts."
 priority: "high"
 status: "completed"
-scope: "Kujo-native CLI, orchestration, persistence, mock model boundary, Kujo AI SDK bridge, PackWrite context, signed RunLedger/CaseFile ingestion, replay integrity, schemas, Concord, Spec, and Eval."
+scope: "Kujo-native CLI, orchestration, persistence, security/resource boundaries, model and context bridges, signed idempotent ingestion, diagnostics, analytics, replay integrity, schemas, operations documentation, Concord, Spec, and Eval."
 non_goals:
   - "Direct provider SDK calls from Tribunal"
   - "TypeScript or JavaScript runtime dependencies on main"
@@ -20,6 +20,10 @@ acceptance_criteria:
   - "PackWrite context enrichment is opt-in, redacted, deterministic, and does not invoke a model"
   - "All default tests run without secrets or network"
   - "The previous TypeScript implementation remains preserved on the pushed typescript branch"
+  - "CLI and configuration reject unknown, duplicate, conflicting, missing-value, and unsafe limit inputs"
+  - "Artifacts reject traversal, symbolic links, oversize content, and signed-envelope metadata tampering"
+  - "Operators can validate dockets, diagnose the installation, filter machine-readable inventories, and inspect aggregate local statistics"
+  - "Production responsibilities and next-session priorities are explicitly documented"
 eval_requirements:
   - description: "Every Kujo source module passes runtime checking."
     check_type: "command_succeeds"
@@ -41,6 +45,10 @@ eval_requirements:
     check_type: "command_succeeds"
     params:
       command: "TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/drift_gate.kujo"
+  - description: "Deterministic strategic-five review stays within the local performance budget."
+    check_type: "command_succeeds"
+    params:
+      command: "TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/benchmark.kujo"
 risks:
   - "A self-signed bundle without a separately trusted public key does not establish provenance"
   - "Post-seal writes inside a run directory invalidate the integrity manifest"

@@ -100,14 +100,31 @@ export func safe_run_id(id) {
     return truthy(contains(id, "/")) == false && truthy(contains(id, "\\")) == false
 }
 
+export func safe_relative_path(path) {
+    if type(path) != "string" || path == "" || starts_with(path, "/") || truthy(contains(path, "\\")) { return false }
+    for part in split(path, "/") {
+        if part == "" || part == "." || part == ".." { return false }
+    }
+    return true
+}
+
 export func parse_args(tokens, bool_flags) {
     mut positionals := []
     mut flags := {}
+    mut errors := []
     mut i := 0
     while i < len(tokens) {
         token := tokens[i]
         if starts_with(token, "--") {
             key := substring(token, 2, len(token))
+            if key == "" {
+                errors = push(errors, "Invalid empty option '--'.")
+                i = i + 1
+                continue
+            }
+            if truthy(has_key(flags, key)) {
+                errors = push(errors, "Option '--" + key + "' was supplied more than once.")
+            }
             if array_includes(bool_flags, key) {
                 flags[key] := true
             } else if i + 1 < len(tokens) && starts_with(tokens[i + 1], "--") == false {
@@ -115,13 +132,14 @@ export func parse_args(tokens, bool_flags) {
                 i = i + 1
             } else {
                 flags[key] := ""
+                errors = push(errors, "Option '--" + key + "' requires a value.")
             }
         } else {
             positionals = push(positionals, token)
         }
         i = i + 1
     }
-    return {"positionals": positionals, "flags": flags}
+    return {"positionals": positionals, "flags": flags, "errors": errors}
 }
 
 export func flag(parsed, name, fallback) {
@@ -174,16 +192,55 @@ export func redact(text) {
     value = regex_replace(value, "(?i)(api[_-]?key|authorization|token|password)([\\s:=\\\"']+)[^\\s,}\\\"']+", "$1$2[REDACTED]")
     value = regex_replace(value, "sk-[A-Za-z0-9_-]{8}[A-Za-z0-9_-]+", "sk-[REDACTED]")
     value = regex_replace(value, "-----BEGIN [A-Z ]*PRIVATE KEY-----", "[REDACTED PRIVATE KEY]")
+    value = regex_replace(value, "AKIA[0-9A-Z]{16}", "AKIA[REDACTED]")
+    value = regex_replace(value, "github_pat_[A-Za-z0-9_]{20,}", "github_pat_[REDACTED]")
+    value = regex_replace(value, "gh[pousr]_[A-Za-z0-9]{20,}", "gh_[REDACTED]")
+    value = regex_replace(value, "xox[baprs]-[A-Za-z0-9-]{10,}", "xox-[REDACTED]")
     return value
 }
 
 export func contains_secret(text) {
-    lowered := to_lower(to_string(text))
-    checks := ["api_key=", "api-key=", "authorization: bearer", "token=", "password=", "begin private key", "begin rsa private key"]
-    for check in checks {
-        if truthy(contains(lowered, check)) { return true }
+    value := to_string(text)
+    patterns := [
+        "(?i)(api[_-]?key|access[_-]?token|auth[_-]?token|password|client[_-]?secret)\\s*[:=]\\s*[\\\"']?[^\\s,}\\\"']{6,}",
+        "(?i)authorization\\s*:\\s*(bearer|basic)\\s+[^\\s]+",
+        "-----BEGIN [A-Z ]*PRIVATE KEY-----",
+        "AKIA[0-9A-Z]{16}",
+        "github_pat_[A-Za-z0-9_]{20,}",
+        "gh[pousr]_[A-Za-z0-9]{20,}",
+        "xox[baprs]-[A-Za-z0-9-]{10,}",
+        "sk-[A-Za-z0-9_-]{20,}"
+    ]
+    for pattern in patterns {
+        if len(regex_find_all(value, pattern)) > 0 { return true }
     }
     return false
+}
+
+export func safe_process_env(extra) {
+    mut values := {}
+    for name in ["PATH", "HOME", "TMPDIR", "LANG", "LC_ALL", "TZ"] {
+        value := env_or(name, "")
+        if value != "" { values[name] := value }
+    }
+    if type(extra) == "dict" {
+        for key in keys(extra) { values[key] := extra[key] }
+    }
+    return values
+}
+
+export func utf8_byte_length(text) {
+    return len(decode_base64(encode_base64(to_string(text))))
+}
+
+export func read_file_digest(path, max_bytes) {
+    if file_exists(path) == false { return {"ok": false, "error": "File does not exist: " + path} }
+    if path_is_symlink(path) { return {"ok": false, "error": "Symbolic links are not allowed in sealed artifacts: " + path} }
+    size := file_size(path)
+    if size < 0 { return {"ok": false, "error": "Unable to determine file size: " + path} }
+    if size > max_bytes { return {"ok": false, "error": "Artifact exceeds the " + to_string(max_bytes) + " byte safety limit: " + path} }
+    bytes := io_read_bytes(path, size)
+    return {"ok": true, "bytes": size, "sha256": sha256(bytes)}
 }
 
 export func relative_files(root, relative) {
@@ -196,7 +253,9 @@ export func relative_files(root, relative) {
         child_relative := name
         if relative != "" { child_relative = relative + "/" + name }
         child := join_path(root, child_relative)
-        if path_is_dir(child) {
+        if path_is_symlink(child) {
+            out = push(out, child_relative)
+        } else if path_is_dir(child) {
             out = append_all(out, relative_files(root, child_relative))
         } else {
             out = push(out, child_relative)
@@ -209,7 +268,9 @@ export func remove_tree(path) {
     if path_is_dir(path) == false { return }
     for name in list_dir(path) {
         child := join_path(path, name)
-        if path_is_dir(child) {
+        if path_is_symlink(child) {
+            delete_file(child)
+        } else if path_is_dir(child) {
             remove_tree(child)
         } else if file_exists(child) {
             delete_file(child)

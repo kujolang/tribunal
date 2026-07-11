@@ -1,6 +1,6 @@
 # Tribunal :: local and optional PackWrite context construction
 
-from src.common import dict_get, last_json_line, parent_dir, redact
+from src.common import dict_get, last_json_line, parent_dir, redact, safe_process_env
 
 func repository_root(start) {
     mut current := path_absolute(start)
@@ -31,17 +31,19 @@ export func build_context(config, docket) {
         return {"ok": true, "content": base, "provider": "local", "warnings": []}
     }
     home := path_absolute(env_or("TRIBUNAL_HOME", "."))
-    bridge := join_path(home, "integrations/packwrite-context-bridge.kujo")
+    bridge := join_path(home, "src/bridges/packwrite_context_bridge.kujo")
+    kujo_bin := context_config["kujo_bin"]
+    if starts_with(kujo_bin, "/") == false { kujo_bin = path_absolute(kujo_bin) }
     root := repository_root(parent_dir(docket["sourcePath"]))
     proc := null
     previous_cwd := os_getcwd()
     try {
         os_chdir(context_config["packwrite_path"])
-        proc = spawn_process([context_config["kujo_bin"], "run", bridge, "--interpreter"], {
-            "inherit_env": true,
-            "env": {"TRIBUNAL_CONTEXT_ROOT": root},
-            "timeout_ms": 60000,
-            "max_output_bytes": 1024 * 1024 * 8
+        proc = spawn_process([kujo_bin, "run", bridge, "--interpreter"], {
+            "inherit_env": false,
+            "env": safe_process_env({"TRIBUNAL_CONTEXT_ROOT": root}),
+            "timeout_ms": config["limits"]["model_timeout_ms"],
+            "max_output_bytes": config["limits"]["max_process_output_bytes"]
         })
     } except err {
         os_chdir(previous_cwd)

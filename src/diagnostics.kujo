@@ -1,0 +1,67 @@
+# Tribunal :: deterministic enterprise diagnostics
+
+from src.common import dict_get, parent_dir
+from src.version import VERSION
+
+func add(checks, name, status, message) {
+    return push(checks, {"name": name, "status": status, "message": message})
+}
+
+func path_check(checks, name, path, kind, required) {
+    exists := file_exists(path)
+    if kind == "directory" { exists = path_is_dir(path) }
+    if exists { return add(checks, name, "pass", path) }
+    if required { return add(checks, name, "fail", "Missing " + kind + ": " + path) }
+    return add(checks, name, "warn", "Optional " + kind + " not found: " + path)
+}
+
+export func doctor(config, home) {
+    mut checks := []
+    checks = path_check(checks, "Kujo runtime", config["kujo_ai"]["kujo_bin"], "file", true)
+    checks = path_check(checks, "Tribunal entrypoint", join_path(home, "tribunal.kujo"), "file", true)
+    checks = path_check(checks, "Kujo project manifest", join_path(home, "kujo.toml"), "file", true)
+    checks = path_check(checks, "Schema directory", join_path(home, "schemas"), "directory", true)
+    for name in ["artifact-manifest.schema.json", "decision-packet.schema.json", "ingestion-receipt.schema.json", "receipt.schema.json", "ruling.schema.json", "signature.schema.json", "tribunal-config.schema.json", "tribunal-event.schema.json", "tribunal-record.schema.json"] {
+        checks = path_check(checks, "Schema " + name, join_path(join_path(home, "schemas"), name), "file", true)
+    }
+    live_required := config["kujo_ai"]["mock_mode"] == false
+    checks = path_check(checks, "Kujo AI SDK", config["kujo_ai"]["sdk_path"], "directory", live_required)
+    if path_is_dir(config["kujo_ai"]["sdk_path"]) {
+        checks = path_check(checks, "Kujo AI SDK bridge source", join_path(config["kujo_ai"]["sdk_path"], "src/ai_sdk.kujo"), "file", live_required)
+    }
+    packwrite_required := config["context"]["provider"] == "packwrite"
+    checks = path_check(checks, "PackWrite", config["context"]["packwrite_path"], "directory", packwrite_required)
+    storage := config["tribunal"]["storage_dir"]
+    if path_is_dir(storage) {
+        if path_is_symlink(storage) {
+            checks = add(checks, "Run storage", "warn", "Storage root is a symbolic link: " + storage)
+        } else {
+            checks = add(checks, "Run storage", "pass", storage)
+        }
+    } else if path_is_dir(parent_dir(storage)) {
+        checks = add(checks, "Run storage", "pass", "Will be created under " + parent_dir(storage))
+    } else {
+        checks = add(checks, "Run storage", "fail", "Storage parent does not exist: " + parent_dir(storage))
+    }
+    version_path := join_path(home, "VERSION")
+    checks = path_check(checks, "VERSION file", version_path, "file", true)
+    if file_exists(version_path) {
+        if trim(read_file(version_path)) == VERSION {
+            checks = add(checks, "Version consistency", "pass", VERSION)
+        } else {
+            checks = add(checks, "Version consistency", "fail", "src/version.kujo and VERSION differ")
+        }
+    }
+    for obsolete in ["package.json", "package-lock.json", "tsconfig.json", "eslint.config.js"] {
+        if file_exists(join_path(home, obsolete)) {
+            checks = add(checks, "Kujo-only root", "fail", "Obsolete runtime file remains: " + obsolete)
+        }
+    }
+    mut failures := 0
+    mut warnings := 0
+    for check in checks {
+        if check["status"] == "fail" { failures = failures + 1 }
+        if check["status"] == "warn" { warnings = warnings + 1 }
+    }
+    return {"ok": failures == 0, "version": VERSION, "failures": failures, "warnings": warnings, "checks": checks}
+}

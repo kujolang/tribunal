@@ -13,7 +13,7 @@ func require(condition, message) {
 }
 
 home := env_or("TRIBUNAL_HOME", ".")
-for name in ["tribunal-config.schema.json", "tribunal-record.schema.json", "tribunal-event.schema.json", "artifact-manifest.schema.json", "signature.schema.json", "ingestion-receipt.schema.json"] {
+for name in ["tribunal-config.schema.json", "tribunal-record.schema.json", "tribunal-event.schema.json", "artifact-manifest.schema.json", "signature.schema.json", "ingestion-receipt.schema.json", "receipt.schema.json", "ruling.schema.json", "decision-packet.schema.json"] {
     path := join_path(join_path(home, "schemas"), name)
     require(file_exists(path), "Missing schema: " + name)
     if file_exists(path) {
@@ -24,8 +24,8 @@ for name in ["tribunal-config.schema.json", "tribunal-record.schema.json", "trib
     }
 }
 
-loaded := load_config(join_path(home, "tribunal.config.json"))
-require(loaded["ok"] == true, "tribunal.config.json failed Kujo validation")
+loaded := load_config(join_path(home, "examples/tribunal.config.json"))
+require(loaded["ok"] == true, "examples/tribunal.config.json failed Kujo validation")
 
 root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-schema-gate-" + to_string(current_timestamp()))
 ensure_dir(root)
@@ -33,7 +33,7 @@ docket := join_path(root, "docket.md")
 write_file(docket, "# Schema gate\n\n## Scope\n\nValidate every emitted Kujo Tribunal contract.\n")
 private_key := join_path(root, "private.pem")
 public_key := join_path(root, "public.pem")
-keys_result := generate_keys(private_key, public_key)
+keys_result := generate_keys(private_key, public_key, 2048)
 require(keys_result["ok"] == true, "Kujo RSA key generation failed")
 
 if loaded["ok"] == true && keys_result["ok"] == true {
@@ -59,6 +59,10 @@ if loaded["ok"] == true && keys_result["ok"] == true {
         }
         signature := parse_json(read_file(artifact_path(tribunal["storage_dir"], run_id, "signature.json")))
         require(signature["algorithm"] == "RSA-PKCS1v15-SHA256", "signature algorithm is not Kujo-native RSA")
+        require(signature["schemaVersion"] == "1.1.0" && len(signature["payloadSha256"]) == 64, "signature payload contract is not v1.1.0")
+        receipt := parse_json(read_file(artifact_path(tribunal["storage_dir"], run_id, "receipt.json")))
+        require(receipt["runId"] == run_id && len(receipt["recordSha256"]) == 64, "receipt contract is invalid")
+        require(type(record["ruling"]) == "dict" && type(record["decisionPacket"]) == "dict", "ruling or decision packet contract is missing")
         checked := verify(tribunal["storage_dir"], run_id, public_key)
         require(checked["ok"] == true && checked["signature"] == "verified", "signed artifact set did not verify")
         require(checked["artifactsChecked"] >= 18, "artifact manifest coverage is incomplete")
@@ -70,5 +74,5 @@ if len(failures) > 0 {
     for failure in failures { print("FAIL: " + failure) }
     exit(1)
 }
-print("Schema gate passed: 6 schemas; emitted record, events, manifest, and RSA signature verified with Kujo tooling.")
+print("Schema gate passed: 9 schemas; emitted record, events, receipt, ruling, decision packet, manifest, and RSA signature verified with Kujo tooling.")
 exit(0)

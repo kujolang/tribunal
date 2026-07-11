@@ -1,13 +1,14 @@
 # Tribunal Kujo-native offline and real-local-integration test suite.
 
-from src.common import remove_tree, ensure_dir, dict_get
-from src.config import default_config, validate_config
+from src.common import remove_tree, ensure_dir, dict_get, safe_relative_path, parse_args, contains_secret, safe_process_env, utf8_byte_length
+from src.config import default_config, validate_config, load_config
 from src.catalog import STAGES, PANELS, SEATS
-from src.tribunal import review
-from src.storage import load_record, load_events, artifact_path
+from src.tribunal import review, validate_docket
+from src.storage import load_record, load_events, artifact_path, list_runs_filtered
 from src.integrity import generate_keys, verify
 from src.integrations import ingest_runledger, ingest_casefile
 from src.model import invoke
+from src.analytics import collect_stats
 
 mut passed := 0
 mut failed := 0
@@ -60,6 +61,31 @@ func test_catalog_and_config() {
         check(type(SEATS[id]["defaultModelPreference"]) == "dict", "provider-neutral preference: " + id)
     }
     check(validate_config(default_config()) == "", "default config is valid")
+    invalid := default_config()
+    invalid["unexpected"] := true
+    check(validate_config(invalid) != "", "unknown top-level config is rejected")
+    invalid = default_config()
+    invalid_tribunal := invalid["tribunal"]
+    invalid_tribunal["stop_the_line_enabled"] := false
+    invalid["tribunal"] := invalid_tribunal
+    check(validate_config(invalid) != "", "stop-the-line invariant cannot be disabled")
+    invalid = default_config()
+    invalid_limits := invalid["limits"]
+    invalid_limits["max_docket_bytes"] := 12
+    invalid["limits"] := invalid_limits
+    check(validate_config(invalid) != "", "unsafe docket limit is rejected")
+    check(safe_relative_path("testimony/judge.md"), "safe artifact path is accepted")
+    check(safe_relative_path("../private.pem") == false && safe_relative_path("a/../b") == false, "artifact traversal is rejected")
+    parsed := parse_args(["--json", "--json", "--limit"], ["json"])
+    check(len(parsed["errors"]) == 2, "duplicate and missing CLI options are reported")
+    check(contains_secret("Authorization: Bearer example-secret-token"), "bearer credentials are detected")
+    check(contains_secret("github_pat_abcdefghijklmnopqrstuvwxyz") , "GitHub credentials are detected")
+    env_values := safe_process_env({"TRIBUNAL_TEST": "yes"})
+    check(env_values["TRIBUNAL_TEST"] == "yes" && has_key(env_values, "OPENAI_API_KEY") == 0, "subprocess environment is allowlisted")
+    check(utf8_byte_length("é") == 2, "resource accounting uses UTF-8 bytes")
+    invalid_path := join_path(ROOT, "invalid-config.json")
+    write_file(invalid_path, "{\"limits\":\"unbounded\"}")
+    check(load_config(invalid_path)["ok"] == false, "non-object config sections are rejected")
 }
 
 func test_full_mock_review() {
@@ -94,16 +120,25 @@ func test_signing_and_tamper() {
     storage := join_path(ROOT, "signed-runs")
     private_key := join_path(ROOT, "private.pem")
     public_key := join_path(ROOT, "public.pem")
-    keys := generate_keys(private_key, public_key)
+    keys := generate_keys(private_key, public_key, 2048)
     check(keys["ok"] == true, "Kujo RSA keys generated")
-    check(generate_keys(private_key, public_key)["ok"] == false, "key generation refuses overwrite")
+    check(generate_keys(private_key, public_key, 2048)["ok"] == false, "key generation refuses overwrite")
     result := review(base_config(storage), DOCKET, "executioner-only", private_key, public_key)
     check(result["ok"] == true, "signed executioner review succeeds")
     if result["ok"] != true { return }
     run_id := result["runId"]
     checked := verify(storage, run_id, public_key)
     check(checked["ok"] == true && checked["signature"] == "verified", "trusted signature verifies")
-    wrong_pair := generate_keys(join_path(ROOT, "wrong-private.pem"), join_path(ROOT, "wrong-public.pem"))
+    signature_path := artifact_path(storage, run_id, "signature.json")
+    signature := parse_json(read_file(signature_path))
+    original_signed_at := signature["signedAt"]
+    signature["signedAt"] := "2020-01-01T00:00:00Z"
+    write_file(signature_path, to_json_pretty(signature) + "\n", true)
+    envelope_tampered := verify(storage, run_id, public_key)
+    check(envelope_tampered["ok"] == false && envelope_tampered["signature"] == "invalid", "signed envelope metadata tampering is detected")
+    signature["signedAt"] := original_signed_at
+    write_file(signature_path, to_json_pretty(signature) + "\n", true)
+    wrong_pair := generate_keys(join_path(ROOT, "wrong-private.pem"), join_path(ROOT, "wrong-public.pem"), 2048)
     check(wrong_pair["ok"] == true, "wrong test key generated")
     wrong := verify(storage, run_id, join_path(ROOT, "wrong-public.pem"))
     check(wrong["ok"] == false && wrong["signature"] == "invalid", "wrong trusted key is rejected")
@@ -118,6 +153,8 @@ func test_signing_and_tamper() {
     runledger := ingest_runledger(storage, run_id, {"public_key": public_key, "kujo_bin": KUJO_BIN, "runledger_path": join_path(HOME, "../runledger/runledger.kujo"), "ledger": ledger})
     check(runledger["ok"] == true, "signed run ingests through real RunLedger Kujo CLI")
     if runledger["ok"] == true { check(file_exists(runledger["receipt"]["targetPath"]), "RunLedger record exists") }
+    repeated_runledger := ingest_runledger(storage, run_id, {"public_key": public_key, "kujo_bin": KUJO_BIN, "runledger_path": join_path(HOME, "../runledger/runledger.kujo"), "ledger": ledger})
+    check(repeated_runledger["ok"] == true && repeated_runledger["receipt"]["targetId"] == runledger["receipt"]["targetId"], "RunLedger ingestion is idempotent")
     case_root := join_path(ROOT, "casefiles")
     casefile := ingest_casefile(storage, run_id, {"public_key": public_key, "kujo_bin": KUJO_BIN, "casefile_path": join_path(HOME, "../casefile/casefile.kujo"), "output_dir": case_root})
     if casefile["ok"] != true { print("  CaseFile detail: " + dict_get(casefile, "error", "unknown")) }
@@ -126,6 +163,8 @@ func test_signing_and_tamper() {
         check(file_exists(join_path(casefile["receipt"]["targetPath"], "tribunal-ingestion.json")), "CaseFile ingestion receipt exists")
         check(file_exists(join_path(join_path(casefile["receipt"]["targetPath"], "tribunal-evidence"), "signature.json")), "CaseFile preserves signed evidence")
     }
+    repeated_casefile := ingest_casefile(storage, run_id, {"public_key": public_key, "kujo_bin": KUJO_BIN, "casefile_path": join_path(HOME, "../casefile/casefile.kujo"), "output_dir": case_root})
+    check(repeated_casefile["ok"] == true && repeated_casefile["receipt"]["targetId"] == casefile["receipt"]["targetId"], "CaseFile ingestion is idempotent")
 }
 
 func test_stop_the_line() {
@@ -171,12 +210,34 @@ func test_packwrite_and_sdk_bridge() {
     check(response["metadata"]["resolutionSource"] == "provider_class", "SDK-owned model resolution provenance is preserved")
 }
 
+func test_limits_and_analytics() {
+    storage := join_path(ROOT, "limit-runs")
+    oversized := join_path(ROOT, "oversized.md")
+    mut content := "# Oversized\n\n## Scope\n\n"
+    mut i := 0
+    while i < 1100 { content = content + "x"; i = i + 1 }
+    write_file(oversized, content)
+    config := base_config(storage)
+    limits := config["limits"]
+    limits["max_docket_bytes"] := 1024
+    config["limits"] := limits
+    checked := validate_docket(config, oversized)
+    check(checked["ok"] == false, "oversized docket is rejected before model execution")
+    result := review(base_config(storage), DOCKET, "executioner-only", "", "")
+    check(result["ok"] == true, "analytics fixture review succeeds")
+    stats := collect_stats(storage)
+    check(stats["runs"] == 1 && stats["completed"] == 1 && stats["modelInvocations"] > 0, "local aggregate analytics summarize run receipts")
+    filtered := list_runs_filtered(storage, "completed", "executioner-only", 1)
+    check(len(filtered) == 1, "run list supports status, panel, and limit filters")
+}
+
 setup()
 test_catalog_and_config()
 test_full_mock_review()
 test_signing_and_tamper()
 test_stop_the_line()
 test_packwrite_and_sdk_bridge()
+test_limits_and_analytics()
 remove_tree(ROOT)
 
 print("")

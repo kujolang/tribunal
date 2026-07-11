@@ -19,5 +19,12 @@
     "provider": "local",
     "packwrite_path": "../packwrite",
     "kujo_bin": "../kujo/target/release/kujo"
+  },
+  "limits": {
+    "max_docket_bytes": 1048576,
+    "max_context_bytes": 4194304,
+    "max_model_output_bytes": 1048576,
+    "max_process_output_bytes": 8388608,
+    "model_timeout_ms": 60000
   }
 }

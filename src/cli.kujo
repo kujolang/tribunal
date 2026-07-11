@@ -1,15 +1,16 @@
 # Tribunal :: Kujo-native CLI
 
-from src.common import parse_args, flag, has_flag, positional, slice_from, dict_get
+from src.common import parse_args, flag, has_flag, positional, slice_from, dict_get, array_includes
 from src.config import load_config, apply_overrides, validate_config
 from src.catalog import PANELS, SEATS
-from src.tribunal import review
-from src.storage import list_runs, load_record, load_events
+from src.tribunal import review, validate_docket
+from src.storage import list_runs_filtered, load_record, load_events
 from src.render import summary
 from src.integrity import generate_keys, seal, verify
 from src.integrations import ingest_runledger, ingest_casefile
-
-VERSION := "0.2.0"
+from src.diagnostics import doctor
+from src.analytics import collect_stats
+from src.version import VERSION
 
 func print_lines(lines) {
     for line in lines { print(line) }
@@ -22,16 +23,19 @@ func help() {
         "Usage:",
         "  tribunal review <file> --panel <panel-name> [--mock|--live] [--private-key <pem> --public-key <pem>]",
         "  tribunal kill <file> [--mock|--live] [--private-key <pem> --public-key <pem>]",
-        "  tribunal list",
-        "  tribunal show <run-id>",
-        "  tribunal replay <run-id> [--public-key <pem>]",
-        "  tribunal keys --private-key <pem> --public-key <pem>",
+        "  tribunal validate <file> [--json]",
+        "  tribunal list [--status <status> --panel <panel> --limit <n> --json]",
+        "  tribunal show <run-id> [--json]",
+        "  tribunal replay <run-id> [--public-key <pem> --require-signature]",
+        "  tribunal keys --private-key <pem> --public-key <pem> [--bits 2048|4096]",
         "  tribunal seal <run-id> --private-key <pem> --public-key <pem>",
-        "  tribunal verify <run-id> [--public-key <pem>]",
+        "  tribunal verify <run-id> [--public-key <pem> --require-signature]",
         "  tribunal ingest <run-id> --target runledger|casefile --public-key <pem>",
         "  tribunal export <run-id> --format json|jsonl",
         "  tribunal panels",
         "  tribunal seats",
+        "  tribunal doctor [--json]",
+        "  tribunal stats [--json]",
         "  tribunal version",
         "",
         "Global options:",
@@ -42,14 +46,61 @@ func help() {
         "  --context-provider <name>    local or packwrite",
         "  --packwrite-path <path>      PackWrite checkout",
         "  --offline-fixture            Exercise real Kujo AI SDK without network",
+        "  --model-timeout-ms <n>        Model and provider timeout (1,000-600,000 ms)",
+        "  --json                        Emit machine-readable JSON where supported",
+        "  --require-signature           Reject unsigned evidence",
+        "",
+        "Exit codes: 0 success; 1 runtime failure; 2 usage/configuration error; 3 integrity failure.",
         "",
         "Mock mode is the credential-free default. Tribunal orchestration and every executable source module are written in Kujo."
     ])
 }
 
 func command_error(message, code) {
-    print("tribunal: " + message)
+    eprint("tribunal: " + message)
     return code
+}
+
+func allowed_options(parsed, command) {
+    global := ["help", "config", "storage-dir", "ai-sdk-path", "kujo-bin", "provider", "context-provider", "packwrite-path", "offline-fixture", "model-timeout-ms"]
+    command_options := {
+        "review": ["panel", "mock", "live", "private-key", "public-key"],
+        "kill": ["mock", "live", "private-key", "public-key"],
+        "validate": ["json"],
+        "list": ["status", "panel", "limit", "json"],
+        "show": ["json"],
+        "replay": ["public-key", "require-signature"],
+        "keys": ["private-key", "public-key", "bits"],
+        "seal": ["private-key", "public-key"],
+        "verify": ["public-key", "require-signature"],
+        "ingest": ["target", "public-key", "runledger-path", "ledger", "casefile-path", "casefile-output"],
+        "export": ["format"],
+        "panels": ["json"],
+        "seats": ["json"],
+        "doctor": ["json"],
+        "stats": ["json"],
+        "version": []
+    }
+    allowed := global
+    if has_key(command_options, command) == 1 {
+        for option in command_options[command] { allowed = push(allowed, option) }
+    }
+    for key in keys(parsed["flags"]) {
+        if array_includes(allowed, key) == false { return "Unknown option '--" + key + "' for " + command + "." }
+    }
+    if has_flag(parsed, "mock") && has_flag(parsed, "live") { return "--mock and --live are mutually exclusive." }
+    return ""
+}
+
+func validate_cli(command, parsed) {
+    errors := dict_get(parsed, "errors", [])
+    if len(errors) > 0 { return errors[0] }
+    return allowed_options(parsed, command)
+}
+
+func require_positionals(parsed, exact, usage) {
+    if len(parsed["positionals"]) != exact { return usage }
+    return ""
 }
 
 func config_for(parsed) {
@@ -66,6 +117,8 @@ func required_run(parsed) {
 }
 
 func cmd_review(command, parsed, config) {
+    usage_error := require_positionals(parsed, 1, "Usage: tribunal " + command + " <file>")
+    if usage_error != "" { return command_error(usage_error, 2) }
     file := positional(parsed, 0, "")
     if file == "" { return command_error("Usage: tribunal " + command + " <file>", 2) }
     panel_id := flag(parsed, "panel", config["tribunal"]["default_panel"])
@@ -87,8 +140,25 @@ func cmd_review(command, parsed, config) {
     return 0
 }
 
-func cmd_list(config) {
-    runs := list_runs(config["tribunal"]["storage_dir"])
+func cmd_validate(parsed, config) {
+    usage_error := require_positionals(parsed, 1, "Usage: tribunal validate <file>")
+    if usage_error != "" { return command_error(usage_error, 2) }
+    result := validate_docket(config, positional(parsed, 0, ""))
+    if has_flag(parsed, "json") { print(to_json_pretty(result)) }
+    else if result["ok"] { print("valid\t" + result["docket"]["id"] + "\t" + result["docket"]["title"]) }
+    else { eprint("invalid\t" + result["error"]) }
+    if result["ok"] { return 0 }
+    return 1
+}
+
+func cmd_list(parsed, config) {
+    limit := 0
+    if has_flag(parsed, "limit") {
+        try { limit = to_int(flag(parsed, "limit", "0")) } except err { limit = -1 }
+        if limit < 1 || limit > 10000 { return command_error("--limit must be between 1 and 10000.", 2) }
+    }
+    runs := list_runs_filtered(config["tribunal"]["storage_dir"], flag(parsed, "status", ""), flag(parsed, "panel", ""), limit)
+    if has_flag(parsed, "json") { print(to_json_pretty(runs)); return 0 }
     if len(runs) == 0 { print("No Tribunal runs found."); return 0 }
     for run in runs {
         print(run["runId"] + "\t" + run["status"] + "\t" + run["panelId"] + "\t" + run["openedAt"])
@@ -101,7 +171,7 @@ func cmd_show(parsed, config) {
     if run_id == "" { return command_error("show requires a run ID.", 2) }
     record := load_record(config["tribunal"]["storage_dir"], run_id)
     if type(record) != "dict" { return command_error("No such run: " + run_id, 1) }
-    print(summary(record))
+    if has_flag(parsed, "json") { print(to_json_pretty(record)) } else { print(summary(record)) }
     return 0
 }
 
@@ -109,6 +179,10 @@ func cmd_replay(parsed, config) {
     run_id := required_run(parsed)
     if run_id == "" { return command_error("replay requires a run ID.", 2) }
     checked := verify(config["tribunal"]["storage_dir"], run_id, flag(parsed, "public-key", ""))
+    if has_flag(parsed, "require-signature") && checked["signature"] != "verified" {
+        checked["ok"] := false
+        checked["errors"] := push(checked["errors"], "A verified signature is required.")
+    }
     if checked["ok"] != true { return command_error("Replay verification failed: " + to_json(checked), 3) }
     print("integrity\t" + to_string(checked["artifactsChecked"]) + " artifacts\t" + checked["signature"])
     events := load_events(config["tribunal"]["storage_dir"], run_id)
@@ -117,7 +191,9 @@ func cmd_replay(parsed, config) {
 }
 
 func cmd_keys(parsed) {
-    created := generate_keys(flag(parsed, "private-key", ""), flag(parsed, "public-key", ""))
+    bits := 4096
+    try { bits = to_int(flag(parsed, "bits", "4096")) } except err { bits = 0 }
+    created := generate_keys(flag(parsed, "private-key", ""), flag(parsed, "public-key", ""), bits)
     if created["ok"] != true { return command_error(created["error"], 2) }
     print(to_json_pretty(created))
     return 0
@@ -136,6 +212,10 @@ func cmd_verify(parsed, config) {
     run_id := required_run(parsed)
     if run_id == "" { return command_error("verify requires a run ID.", 2) }
     result := verify(config["tribunal"]["storage_dir"], run_id, flag(parsed, "public-key", ""))
+    if has_flag(parsed, "require-signature") && result["signature"] != "verified" {
+        result["ok"] := false
+        result["errors"] := push(result["errors"], "A verified signature is required.")
+    }
     print(to_json_pretty(result))
     if result["ok"] { return 0 }
     return 3
@@ -187,7 +267,8 @@ func cmd_export(parsed, config) {
     return command_error("Export format must be json or jsonl.", 2)
 }
 
-func cmd_panels() {
+func cmd_panels(parsed) {
+    if has_flag(parsed, "json") { print(to_json_pretty(PANELS)); return 0 }
     for id in sort(keys(PANELS)) {
         value := PANELS[id]
         print(value["id"] + "\t" + join(value["seatIds"], ",") + "\t" + value["description"])
@@ -195,7 +276,8 @@ func cmd_panels() {
     return 0
 }
 
-func cmd_seats() {
+func cmd_seats(parsed) {
+    if has_flag(parsed, "json") { print(to_json_pretty(SEATS)); return 0 }
     for id in sort(keys(SEATS)) {
         value := SEATS[id]
         print(value["id"] + "\t" + value["name"] + "\t" + value["authority"])
@@ -203,25 +285,66 @@ func cmd_seats() {
     return 0
 }
 
+func cmd_doctor(parsed, config) {
+    result := doctor(config, path_absolute(env_or("TRIBUNAL_HOME", ".")))
+    if has_flag(parsed, "json") { print(to_json_pretty(result)) }
+    else {
+        for check in result["checks"] { print(check["status"] + "\t" + check["name"] + "\t" + check["message"]) }
+        print("failures=" + to_string(result["failures"]) + " warnings=" + to_string(result["warnings"]))
+    }
+    if result["ok"] { return 0 }
+    return 1
+}
+
+func cmd_stats(parsed, config) {
+    result := collect_stats(config["tribunal"]["storage_dir"])
+    if has_flag(parsed, "json") { print(to_json_pretty(result)) }
+    else {
+        print("runs\t" + to_string(result["runs"]))
+        print("completed\t" + to_string(result["completed"]))
+        print("stopped\t" + to_string(result["stopped"]))
+        print("model invocations\t" + to_string(result["modelInvocations"]))
+        print("total tokens\t" + to_string(result["totalTokens"]))
+        print("average duration ms\t" + to_string(result["averageDurationMs"]))
+    }
+    return 0
+}
+
 export func main(argv) {
     command := "help"
     if len(argv) > 0 { command = argv[0] }
-    parsed := parse_args(slice_from(argv, 1), ["help", "mock", "live", "offline-fixture"])
+    parsed := parse_args(slice_from(argv, 1), ["help", "mock", "live", "offline-fixture", "json", "require-signature"])
     if command == "help" || command == "--help" || has_flag(parsed, "help") { help(); return 0 }
-    if command == "version" || command == "--version" { print("Tribunal v" + VERSION); return 0 }
-    if command == "panels" { return cmd_panels() }
-    if command == "seats" { return cmd_seats() }
+    if command == "--version" { command = "version" }
+    known := ["version", "panels", "seats", "keys", "review", "kill", "validate", "list", "show", "replay", "seal", "verify", "ingest", "export", "doctor", "stats"]
+    if array_includes(known, command) == false { return command_error("Unknown command '" + command + "'. Run tribunal help.", 2) }
+    cli_error := validate_cli(command, parsed)
+    if cli_error != "" { return command_error(cli_error, 2) }
+    if command != "review" && command != "kill" && command != "validate" && command != "show" && command != "replay" && command != "seal" && command != "verify" && command != "ingest" && command != "export" {
+        usage_error := require_positionals(parsed, 0, command + " does not accept positional arguments.")
+        if usage_error != "" { return command_error(usage_error, 2) }
+    }
+    if array_includes(["validate", "show", "replay", "seal", "verify", "ingest", "export"], command) {
+        usage_error := require_positionals(parsed, 1, command + " requires exactly one positional argument.")
+        if usage_error != "" { return command_error(usage_error, 2) }
+    }
+    if command == "version" { print("Tribunal v" + VERSION); return 0 }
+    if command == "panels" { return cmd_panels(parsed) }
+    if command == "seats" { return cmd_seats(parsed) }
     if command == "keys" { return cmd_keys(parsed) }
     loaded := config_for(parsed)
     if loaded["ok"] != true { return command_error(loaded["error"], 2) }
     config := loaded["config"]
     if command == "review" || command == "kill" { return cmd_review(command, parsed, config) }
-    if command == "list" { return cmd_list(config) }
+    if command == "validate" { return cmd_validate(parsed, config) }
+    if command == "list" { return cmd_list(parsed, config) }
     if command == "show" { return cmd_show(parsed, config) }
     if command == "replay" { return cmd_replay(parsed, config) }
     if command == "seal" { return cmd_seal(parsed, config) }
     if command == "verify" { return cmd_verify(parsed, config) }
     if command == "ingest" { return cmd_ingest(parsed, config) }
     if command == "export" { return cmd_export(parsed, config) }
-    return command_error("Unknown command '" + command + "'. Run tribunal help.", 2)
+    if command == "doctor" { return cmd_doctor(parsed, config) }
+    if command == "stats" { return cmd_stats(parsed, config) }
+    return 2
 }

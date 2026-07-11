@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kujolang.ai/schemas/tribunal-signature-1.0.0.json",
+  "$id": "https://kujolang.ai/schemas/tribunal-signature-1.1.0.json",
   "title": "TribunalSignatureEnvelope",
   "type": "object",
   "required": [
@@ -10,15 +10,17 @@
     "manifestSha256",
     "keyId",
     "signedAt",
+    "payloadSha256",
     "signature"
   ],
   "properties": {
-    "schemaVersion": { "const": "1.0.0" },
+    "schemaVersion": { "const": "1.1.0" },
     "runId": { "type": "string", "minLength": 1 },
     "algorithm": { "const": "RSA-PKCS1v15-SHA256" },
     "manifestSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "keyId": { "type": "string", "pattern": "^[a-f0-9]{32}$" },
     "signedAt": { "type": "string", "format": "date-time" },
+    "payloadSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "signature": { "type": "string", "minLength": 40 }
   },
   "additionalProperties": false

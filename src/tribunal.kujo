@@ -1,6 +1,6 @@
 # Tribunal :: Kujo-native staged adversarial decision engine
 
-from src.common import dict_get, iso_now, contains_secret, index_by_id
+from src.common import dict_get, iso_now, contains_secret, index_by_id, utf8_byte_length
 from src.catalog import panel, seats_for, seat
 from src.storage import generate_run_id, create_run, save_json, save_text, append_event, artifact_path
 from src.model import invoke
@@ -61,8 +61,10 @@ func docket_title(content, source) {
     return basename(source)
 }
 
-func open_docket(path) {
+func open_docket(path, max_bytes) {
     if path == "" || file_exists(path) == false { return {"ok": false, "error": "Missing or unreadable docket file: " + path} }
+    size := file_size(path)
+    if size > max_bytes { return {"ok": false, "error": "Docket exceeds the configured " + to_string(max_bytes) + " byte limit."} }
     content := ""
     try { content = read_file(path) } except err { return {"ok": false, "error": "Missing or unreadable docket file: " + path} }
     if trim(content) == "" { return {"ok": false, "error": "Docket is empty."} }
@@ -75,6 +77,19 @@ func open_docket(path) {
     return {"ok": true, "docket": {"id": substring(hash, 0, 16), "title": title, "sourcePath": path_absolute(path), "content": content, "scope": scope, "nonGoals": list_section(content, "Non-goals"), "openedAt": opened, "contentSha256": hash}}
 }
 
+export func validate_docket(config, path) {
+    return open_docket(path, config["limits"]["max_docket_bytes"])
+}
+
+func validate_structured(structured, schema) {
+    if type(structured) != "dict" { return "Model returned no structured object." }
+    required := dict_get(schema, "required", [])
+    for key in required {
+        if has_key(structured, key) == 0 { return "Model response is missing required field '" + key + "'." }
+    }
+    return ""
+}
+
 func system_prompt(seat_value, stage) {
     return "You are the " + seat_value["name"] + " seat in Tribunal. Authority: " + seat_value["authority"] + " Stay within the explicit " + stage + " contract. Return only valid JSON matching the requested schema."
 }
@@ -83,7 +98,7 @@ func call_model(config, storage_dir, state, stage, seat_value, input, output_sch
     run_id := state["runId"]
     system := system_prompt(seat_value, stage)
     save_text(storage_dir, run_id, "prompts/" + stage + "-" + seat_value["id"] + ".md", "# System\n\n" + system + "\n\n# Input\n\n" + input + "\n")
-    request := {"runId": run_id, "stageId": stage, "seatId": seat_value["id"], "modelPreference": seat_value["defaultModelPreference"], "systemPrompt": system, "input": input, "outputSchema": output_schema, "timeoutMs": 60000}
+    request := {"runId": run_id, "stageId": stage, "seatId": seat_value["id"], "modelPreference": seat_value["defaultModelPreference"], "systemPrompt": system, "input": input, "outputSchema": output_schema, "timeoutMs": config["limits"]["model_timeout_ms"]}
     emit(storage_dir, run_id, stage, "model_invocation_requested", "Model invocation requested through Kujo AI SDK boundary.", seat_value["id"], {"preference": seat_value["defaultModelPreference"]})
     response := invoke(config, request)
     if dict_get(response, "ok", false) != true {
@@ -91,17 +106,27 @@ func call_model(config, storage_dir, state, stage, seat_value, input, output_sch
         emit(storage_dir, run_id, stage, "model_invocation_failed", dict_get(error, "message", "Model invocation failed."), seat_value["id"], {"code": dict_get(error, "code", "model_error")})
         return {"ok": false, "error": dict_get(error, "message", "Model invocation failed."), "response": response}
     }
+    content := dict_get(response, "content", "")
+    if utf8_byte_length(content) > config["limits"]["max_model_output_bytes"] {
+        emit(storage_dir, run_id, stage, "model_invocation_failed", "Model output exceeded the configured safety limit.", seat_value["id"], {})
+        return {"ok": false, "error": "Model output exceeded the configured safety limit.", "response": response}
+    }
+    if contains_secret(content) {
+        emit(storage_dir, run_id, stage, "model_invocation_failed", "Potential secret exposure detected in model output.", seat_value["id"], {})
+        return {"ok": false, "error": "Potential secret exposure detected in model output.", "response": response}
+    }
     structured := dict_get(response, "structured", null)
     if type(structured) != "dict" {
         try { structured = parse_json(response["content"]) } except err { structured = null }
     }
-    if type(structured) != "dict" {
-        emit(storage_dir, run_id, stage, "model_invocation_failed", "Model returned no structured object.", seat_value["id"], {})
-        return {"ok": false, "error": "Model returned no structured object.", "response": response}
+    contract_error := validate_structured(structured, output_schema)
+    if contract_error != "" {
+        emit(storage_dir, run_id, stage, "model_invocation_failed", contract_error, seat_value["id"], {})
+        return {"ok": false, "error": contract_error, "response": response}
     }
     metadata := dict_get(response, "metadata", {})
     emit(storage_dir, run_id, stage, "model_invocation_completed", "Model invocation completed.", seat_value["id"], metadata)
-    return {"ok": true, "content": response["content"], "structured": structured, "metadata": metadata}
+    return {"ok": true, "content": content, "structured": structured, "metadata": metadata}
 }
 
 func add_usage(state, call) {
@@ -209,7 +234,9 @@ export func review(config, docket_path, panel_id, private_key, public_key) {
     placeholder_title := basename(docket_path)
     if placeholder_title == "" { placeholder_title = "stopped-run" }
     run_id := generate_run_id(storage_dir, placeholder_title)
+    if run_id == "" { return {"ok": false, "error": "Run storage is unsafe or unavailable."} }
     root := create_run(storage_dir, run_id)
+    if root == "" { return {"ok": false, "error": "Run storage is unsafe or unavailable."} }
     started_at := iso_now()
     runtime := "kujo-ai-sdk"
     if config["kujo_ai"]["mock_mode"] == true { runtime = "mock-kujo" }
@@ -222,7 +249,7 @@ export func review(config, docket_path, panel_id, private_key, public_key) {
     save_json(storage_dir, run_id, "manifest.json", manifest)
     save_text(storage_dir, run_id, "events.jsonl", "")
     emit(storage_dir, run_id, "open-docket", "run_opened", "Tribunal run opened.", "", {"panelId": panel_id})
-    opened := open_docket(docket_path)
+    opened := open_docket(docket_path, config["limits"]["max_docket_bytes"])
     if opened["ok"] != true { return stop_run(config, state, opened["error"], private_key, public_key) }
     docket := opened["docket"]
     state["docket"] := docket
@@ -240,6 +267,7 @@ export func review(config, docket_path, panel_id, private_key, public_key) {
     context_result := build_context(config, docket)
     if context_result["ok"] != true { return stop_run(config, state, context_result["error"], private_key, public_key) }
     context := context_result["content"]
+    if utf8_byte_length(context) > config["limits"]["max_context_bytes"] { return stop_run(config, state, "Context pack exceeds the configured safety limit.", private_key, public_key) }
     state["context"] := context
     save_text(storage_dir, run_id, "context.md", context)
     emit(storage_dir, run_id, "build-context-pack", "context_pack_created", "Immutable context pack created.", "", {"provider": context_result["provider"], "warnings": context_result["warnings"]})

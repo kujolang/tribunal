@@ -1,0 +1,37 @@
+# Tribunal deterministic local benchmark and regression budget.
+
+from src.common import ensure_dir, remove_tree
+from src.config import default_config
+from src.tribunal import review
+
+home := path_absolute(env_or("TRIBUNAL_HOME", "."))
+root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-benchmark-" + to_string(current_timestamp()))
+storage := join_path(root, "runs")
+docket := join_path(root, "docket.md")
+ensure_dir(root)
+write_file(docket, "# Benchmark\n\n## Scope\n\nMeasure deterministic strategic review overhead.\n")
+
+config := default_config()
+tribunal := config["tribunal"]
+tribunal["storage_dir"] := storage
+config["tribunal"] := tribunal
+ai := config["kujo_ai"]
+ai["kujo_bin"] := env_or("KUJO_BIN", join_path(home, "../kujo/target/release/kujo"))
+config["kujo_ai"] := ai
+
+started := current_timestamp()
+result := review(config, docket, "strategic-five", "", "")
+duration := current_timestamp() - started
+remove_tree(root)
+
+if result["ok"] != true {
+    print(to_json({"ok": false, "durationMs": duration, "error": result["error"]}))
+    exit(1)
+}
+
+# Generous cross-platform regression budget for a credential-free local run.
+budget_ms := 15000
+report := {"ok": duration <= budget_ms, "panel": "strategic-five", "durationMs": duration, "budgetMs": budget_ms, "modelInvocations": 13}
+print(to_json(report))
+if duration > budget_ms { exit(1) }
+exit(0)

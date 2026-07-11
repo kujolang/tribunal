@@ -3,7 +3,7 @@
   "$id": "https://kujolang.ai/schemas/tribunal-config-1.0.0.json",
   "title": "TribunalConfig",
   "type": "object",
-  "required": ["tribunal", "kujo_ai", "context"],
+  "required": ["tribunal", "kujo_ai", "context", "limits"],
   "properties": {
     "tribunal": {
       "type": "object",
@@ -51,6 +51,24 @@
         "provider": { "enum": ["local", "packwrite"] },
         "packwrite_path": { "type": "string", "minLength": 1 },
         "kujo_bin": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "max_docket_bytes",
+        "max_context_bytes",
+        "max_model_output_bytes",
+        "max_process_output_bytes",
+        "model_timeout_ms"
+      ],
+      "properties": {
+        "max_docket_bytes": { "type": "integer", "minimum": 1024, "maximum": 67108864 },
+        "max_context_bytes": { "type": "integer", "minimum": 4096, "maximum": 67108864 },
+        "max_model_output_bytes": { "type": "integer", "minimum": 1024, "maximum": 16777216 },
+        "max_process_output_bytes": { "type": "integer", "minimum": 4096, "maximum": 67108864 },
+        "model_timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
       },
       "additionalProperties": false
     }

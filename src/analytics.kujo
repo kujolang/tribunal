@@ -1,0 +1,63 @@
+# Tribunal :: local aggregate decision analytics
+
+from src.common import dict_get
+from src.storage import list_runs, load_record, artifact_path
+
+func increment(values, key) {
+    current := 0
+    if has_key(values, key) == 1 { current = values[key] }
+    values[key] := current + 1
+    return values
+}
+
+export func collect_stats(storage_dir) {
+    manifests := list_runs(storage_dir)
+    mut by_status := {}
+    mut by_panel := {}
+    mut by_disposition := {}
+    mut completed := 0
+    mut stopped := 0
+    mut corrupt := 0
+    mut invocations := 0
+    mut tokens := 0
+    mut duration_ms := 0
+    for manifest in manifests {
+        status := dict_get(manifest, "status", "unknown")
+        by_status = increment(by_status, status)
+        by_panel = increment(by_panel, dict_get(manifest, "panelId", "unknown"))
+        if status == "completed" { completed = completed + 1 }
+        if status == "stopped" { stopped = stopped + 1 }
+        record := load_record(storage_dir, manifest["runId"])
+        if type(record) == "dict" {
+            ruling := dict_get(record, "ruling", {})
+            by_disposition = increment(by_disposition, dict_get(ruling, "disposition", "unavailable"))
+        } else {
+            corrupt = corrupt + 1
+        }
+        receipt_path := artifact_path(storage_dir, manifest["runId"], "receipt.json")
+        if receipt_path != "" && file_exists(receipt_path) {
+            receipt := null
+            try { receipt = parse_json(read_file(receipt_path)) } except err { receipt = null }
+            if type(receipt) == "dict" {
+                invocations = invocations + dict_get(receipt, "modelInvocations", 0)
+                tokens = tokens + dict_get(receipt, "totalTokens", 0)
+                duration_ms = duration_ms + dict_get(receipt, "durationMs", 0)
+            }
+        }
+    }
+    average_duration_ms := 0
+    if len(manifests) > 0 { average_duration_ms = to_int(duration_ms / len(manifests)) }
+    return {
+        "schemaVersion": "1.0.0",
+        "runs": len(manifests),
+        "completed": completed,
+        "stopped": stopped,
+        "corruptRecords": corrupt,
+        "modelInvocations": invocations,
+        "totalTokens": tokens,
+        "averageDurationMs": average_duration_ms,
+        "byStatus": by_status,
+        "byPanel": by_panel,
+        "byDisposition": by_disposition
+    }
+}

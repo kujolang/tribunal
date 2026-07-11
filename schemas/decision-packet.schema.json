@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kujolang.ai/schemas/tribunal-decision-packet-1.0.0.json",
+  "title": "TribunalDecisionPacket",
+  "type": "object",
+  "required": ["decision", "scope", "nonGoals", "requiredNextActions", "suggestedOwnerRole", "suggestedModelLevel", "acceptanceCriteria", "escalationTriggers", "evidenceRequired", "stopTheLineConditions", "generatedAt"],
+  "properties": {
+    "decision": { "type": "string", "minLength": 1 },
+    "scope": { "type": "string", "minLength": 1 },
+    "nonGoals": { "type": "array", "items": { "type": "string" } },
+    "requiredNextActions": { "type": "array", "items": { "type": "string" } },
+    "suggestedOwnerRole": { "type": "string", "minLength": 1 },
+    "suggestedModelLevel": { "type": "string", "minLength": 1 },
+    "acceptanceCriteria": { "type": "array", "items": { "type": "string" } },
+    "escalationTriggers": { "type": "array", "items": { "type": "string" } },
+    "evidenceRequired": { "type": "array", "items": { "type": "string" } },
+    "stopTheLineConditions": { "type": "array", "items": { "type": "string" } },
+    "generatedAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

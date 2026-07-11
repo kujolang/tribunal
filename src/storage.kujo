@@ -1,13 +1,17 @@
 # Tribunal :: durable local run storage
 
-from src.common import ensure_dir, safe_run_id, slug, today_utc, write_json, write_text, read_json, relative_files, truthy
+from src.common import ensure_dir, safe_run_id, safe_relative_path, slug, today_utc, write_json, write_text, read_json, relative_files
 
 export func run_dir(storage_dir, run_id) {
     if safe_run_id(run_id) == false { return "" }
-    return join_path(storage_dir, run_id)
+    if file_exists(storage_dir) && path_is_symlink(storage_dir) { return "" }
+    path := join_path(storage_dir, run_id)
+    if file_exists(path) && path_is_symlink(path) { return "" }
+    return path
 }
 
 export func generate_run_id(storage_dir, title) {
+    if file_exists(storage_dir) && path_is_symlink(storage_dir) { return "" }
     ensure_dir(storage_dir)
     prefix := today_utc() + "-" + slug(title)
     mut i := 0
@@ -30,7 +34,7 @@ export func create_run(storage_dir, run_id) {
 
 export func artifact_path(storage_dir, run_id, name) {
     root := run_dir(storage_dir, run_id)
-    if root == "" || starts_with(name, "/") || truthy(contains(name, "..")) { return "" }
+    if root == "" || safe_relative_path(name) == false { return "" }
     return join_path(root, name)
 }
 
@@ -80,14 +84,27 @@ export func load_events(storage_dir, run_id) {
 }
 
 export func list_runs(storage_dir) {
+    return list_runs_filtered(storage_dir, "", "", 0)
+}
+
+export func list_runs_filtered(storage_dir, status, panel_id, limit) {
     if path_is_dir(storage_dir) == false { return [] }
+    if path_is_symlink(storage_dir) { return [] }
     names := sort(list_dir(storage_dir))
     mut runs := []
-    for name in names {
+    mut i := len(names) - 1
+    while i >= 0 {
+        name := names[i]
         if safe_run_id(name) {
             manifest := load_manifest(storage_dir, name)
-            if type(manifest) == "dict" { runs = push(runs, manifest) }
+            if type(manifest) == "dict" {
+                status_match := status == "" || manifest["status"] == status
+                panel_match := panel_id == "" || manifest["panelId"] == panel_id
+                if status_match && panel_match { runs = push(runs, manifest) }
+                if limit > 0 && len(runs) >= limit { return runs }
+            }
         }
+        i = i - 1
     }
     return runs
 }

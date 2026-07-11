@@ -1,7 +1,21 @@
 # Tribunal :: Kujo model boundary
 # Tribunal owns orchestration. Kujo AI SDK owns provider/model resolution and calls.
 
-from src.common import dict_get, last_json_line, redact
+from src.common import dict_get, last_json_line, redact, safe_process_env
+
+func provider_env(provider, payload) {
+    values := {"KUJO_TRIBUNAL_PAYLOAD": to_json(payload)}
+    credential := "OPENAI_API_KEY"
+    if provider == "openrouter" { credential = "OPENROUTER_API_KEY" }
+    if provider == "deepseek" { credential = "DEEPSEEK_API_KEY" }
+    secret := env_or(credential, "")
+    if secret != "" { values[credential] := secret }
+    for name in ["HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "SSL_CERT_FILE", "SSL_CERT_DIR"] {
+        value := env_or(name, "")
+        if value != "" { values[name] := value }
+    }
+    return safe_process_env(values)
+}
 
 func mock_structured(stage, seat_id) {
     if stage == "executioner-kill-pass" {
@@ -82,7 +96,9 @@ func mock_invoke(request) {
 func live_invoke(config, request) {
     ai := config["kujo_ai"]
     home := path_absolute(env_or("TRIBUNAL_HOME", "."))
-    bridge := join_path(home, "integrations/kujo-ai-sdk-bridge.kujo")
+    bridge := join_path(home, "src/bridges/ai_sdk_bridge.kujo")
+    kujo_bin := ai["kujo_bin"]
+    if starts_with(kujo_bin, "/") == false { kujo_bin = path_absolute(kujo_bin) }
     payload := {
         "provider": ai["provider"],
         "modelPreference": request["modelPreference"],
@@ -97,11 +113,11 @@ func live_invoke(config, request) {
     previous_cwd := os_getcwd()
     try {
         os_chdir(ai["sdk_path"])
-        proc = spawn_process([ai["kujo_bin"], "run", bridge, "--interpreter"], {
-            "inherit_env": true,
-            "env": {"KUJO_TRIBUNAL_PAYLOAD": to_json(payload)},
+        proc = spawn_process([kujo_bin, "run", bridge, "--interpreter"], {
+            "inherit_env": false,
+            "env": provider_env(ai["provider"], payload),
             "timeout_ms": dict_get(request, "timeoutMs", 60000),
-            "max_output_bytes": 1024 * 1024 * 8
+            "max_output_bytes": config["limits"]["max_process_output_bytes"]
         })
     } except err {
         os_chdir(previous_cwd)

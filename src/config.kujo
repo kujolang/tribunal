@@ -26,6 +26,13 @@ export func default_config() {
             "provider": "local",
             "packwrite_path": join_path(home, "../packwrite"),
             "kujo_bin": join_path(home, "../kujo/target/release/kujo")
+        },
+        "limits": {
+            "max_docket_bytes": 1048576,
+            "max_context_bytes": 4194304,
+            "max_model_output_bytes": 1048576,
+            "max_process_output_bytes": 8388608,
+            "model_timeout_ms": 60000
         }
     }
 }
@@ -49,29 +56,70 @@ export func load_config(path) {
             return {"ok": false, "error": "Config is not valid JSON: " + to_string(err)}
         }
         if type(parsed) != "dict" { return {"ok": false, "error": "Config root must be an object."} }
+        top_unknown := unknown_key(parsed, ["tribunal", "kujo_ai", "context", "limits"])
+        if top_unknown != "" { return {"ok": false, "error": "Unknown top-level config field: " + top_unknown} }
+        for section in ["tribunal", "kujo_ai", "context", "limits"] {
+            if has_key(parsed, section) == 1 && type(parsed[section]) != "dict" { return {"ok": false, "error": "Config section '" + section + "' must be an object."} }
+        }
         config["tribunal"] := merge_section(config, parsed, "tribunal")
         config["kujo_ai"] := merge_section(config, parsed, "kujo_ai")
         config["context"] := merge_section(config, parsed, "context")
+        config["limits"] := merge_section(config, parsed, "limits")
     }
     validation := validate_config(config)
     if validation != "" { return {"ok": false, "error": validation} }
     return {"ok": true, "config": config}
 }
 
+func unknown_key(value, allowed) {
+    if type(value) != "dict" { return "" }
+    for key in keys(value) {
+        if array_includes(allowed, key) == false { return key }
+    }
+    return ""
+}
+
+func valid_positive_int(value, minimum, maximum) {
+    return type(value) == "int" && value >= minimum && value <= maximum
+}
+
 export func validate_config(config) {
     tribunal := dict_get(config, "tribunal", {})
     ai := dict_get(config, "kujo_ai", {})
     context := dict_get(config, "context", {})
-    if trim(to_string(dict_get(tribunal, "storage_dir", ""))) == "" { return "tribunal.storage_dir is required." }
+    limits := dict_get(config, "limits", {})
+    if type(config) != "dict" { return "Config root must be an object." }
+    unknown := unknown_key(config, ["tribunal", "kujo_ai", "context", "limits"])
+    if unknown != "" { return "Unknown top-level config field: " + unknown }
+    unknown = unknown_key(tribunal, ["storage_dir", "default_panel", "require_blind_first_pass", "require_decision_packet", "stop_the_line_enabled"])
+    if unknown != "" { return "Unknown tribunal config field: " + unknown }
+    unknown = unknown_key(ai, ["default_runtime", "allow_direct_provider_fallback", "mock_mode", "sdk_path", "kujo_bin", "provider", "offline_fixture"])
+    if unknown != "" { return "Unknown kujo_ai config field: " + unknown }
+    unknown = unknown_key(context, ["provider", "packwrite_path", "kujo_bin"])
+    if unknown != "" { return "Unknown context config field: " + unknown }
+    unknown = unknown_key(limits, ["max_docket_bytes", "max_context_bytes", "max_model_output_bytes", "max_process_output_bytes", "model_timeout_ms"])
+    if unknown != "" { return "Unknown limits config field: " + unknown }
+    if type(dict_get(tribunal, "storage_dir", null)) != "string" || trim(dict_get(tribunal, "storage_dir", "")) == "" { return "tribunal.storage_dir is required and must be a string." }
     if panel(dict_get(tribunal, "default_panel", "")) == null { return "tribunal.default_panel is invalid." }
+    if type(dict_get(tribunal, "require_blind_first_pass", null)) != "bool" || type(dict_get(tribunal, "require_decision_packet", null)) != "bool" || type(dict_get(tribunal, "stop_the_line_enabled", null)) != "bool" { return "Tribunal invariant fields must be booleans." }
     if dict_get(tribunal, "require_blind_first_pass", false) != true { return "Blind first pass is a mandatory Tribunal invariant." }
     if dict_get(tribunal, "require_decision_packet", false) != true { return "Decision packets are mandatory." }
+    if dict_get(tribunal, "stop_the_line_enabled", false) != true { return "Stop-the-line handling is mandatory." }
     if dict_get(ai, "default_runtime", "") != "kujo-ai-sdk" { return "kujo_ai.default_runtime must be kujo-ai-sdk." }
     if dict_get(ai, "allow_direct_provider_fallback", true) != false { return "Direct provider fallback is forbidden." }
+    if type(dict_get(ai, "mock_mode", null)) != "bool" || type(dict_get(ai, "offline_fixture", null)) != "bool" { return "kujo_ai mock and fixture fields must be booleans." }
+    if type(dict_get(ai, "sdk_path", null)) != "string" || trim(dict_get(ai, "sdk_path", "")) == "" { return "kujo_ai.sdk_path is required." }
+    if type(dict_get(ai, "kujo_bin", null)) != "string" || trim(dict_get(ai, "kujo_bin", "")) == "" { return "kujo_ai.kujo_bin is required." }
     provider := dict_get(ai, "provider", "")
     if array_includes(["openai", "openrouter", "deepseek"], provider) == false { return "kujo_ai.provider is invalid." }
     context_provider := dict_get(context, "provider", "")
     if array_includes(["local", "packwrite"], context_provider) == false { return "context.provider must be local or packwrite." }
+    if type(dict_get(context, "packwrite_path", null)) != "string" || type(dict_get(context, "kujo_bin", null)) != "string" { return "PackWrite path and Kujo binary must be strings." }
+    if valid_positive_int(dict_get(limits, "max_docket_bytes", 0), 1024, 67108864) == false { return "limits.max_docket_bytes must be between 1024 and 67108864." }
+    if valid_positive_int(dict_get(limits, "max_context_bytes", 0), 4096, 67108864) == false { return "limits.max_context_bytes must be between 4096 and 67108864." }
+    if valid_positive_int(dict_get(limits, "max_model_output_bytes", 0), 1024, 16777216) == false { return "limits.max_model_output_bytes must be between 1024 and 16777216." }
+    if valid_positive_int(dict_get(limits, "max_process_output_bytes", 0), 4096, 67108864) == false { return "limits.max_process_output_bytes must be between 4096 and 67108864." }
+    if valid_positive_int(dict_get(limits, "model_timeout_ms", 0), 1000, 600000) == false { return "limits.model_timeout_ms must be between 1000 and 600000." }
     return ""
 }
 
@@ -80,6 +128,7 @@ export func apply_overrides(config, parsed) {
     tribunal := config["tribunal"]
     ai := config["kujo_ai"]
     context := config["context"]
+    limits := config["limits"]
     if has_key(flags, "storage-dir") == 1 && flags["storage-dir"] != "" { tribunal["storage_dir"] := flags["storage-dir"] }
     if has_key(flags, "mock") == 1 { ai["mock_mode"] := true }
     if has_key(flags, "live") == 1 { ai["mock_mode"] := false }
@@ -92,8 +141,12 @@ export func apply_overrides(config, parsed) {
     if has_key(flags, "offline-fixture") == 1 { ai["offline_fixture"] := true }
     if has_key(flags, "context-provider") == 1 && flags["context-provider"] != "" { context["provider"] := flags["context-provider"] }
     if has_key(flags, "packwrite-path") == 1 && flags["packwrite-path"] != "" { context["packwrite_path"] := flags["packwrite-path"] }
+    if has_key(flags, "model-timeout-ms") == 1 && flags["model-timeout-ms"] != "" {
+        try { limits["model_timeout_ms"] := to_int(flags["model-timeout-ms"]) } except err { limits["model_timeout_ms"] := 0 }
+    }
     config["tribunal"] := tribunal
     config["kujo_ai"] := ai
     config["context"] := context
+    config["limits"] := limits
     return config
 }
