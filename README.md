@@ -197,6 +197,7 @@ done
 "$KUJO_BIN" run scripts/spec_gate.kujo
 "$KUJO_BIN" run scripts/perf_gate.kujo
 "$KUJO_BIN" run scripts/scale_perf_gate.kujo
+(cd ../eval && "$KUJO_BIN" run main.kujo --interpreter run "$TRIBUNAL_HOME/tests/tribunal_eval.json")
 ```
 
 The offline gates exercise 40 Kujo source files, 202 assertions across four suites, 18 executable schemas, signing/tamper/recovery, authorization, governance, bounded bundles/stores, audit reports, telemetry/dashboard isolation, PackWrite, RunLedger, CaseFile, the AI SDK fixture, Spec, Concord, ten Eval checks, and two performance gates. See [Contributing](CONTRIBUTING.md).
