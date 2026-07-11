@@ -1,7 +1,7 @@
 {
   "name": "tribunal-kujo-native-gate",
   "description": "Deterministic Kujo-only checks for Tribunal's native implementation.",
-  "version": "2.0.0",
+  "version": "4.0.0",
   "output_dir": "./eval_results/tribunal",
   "snapshot_dir": "./tests/snapshots",
   "stop_on_failure": true,
@@ -28,6 +28,20 @@
       }
     },
     {
+      "name": "Tribunal enterprise trust and operations pass",
+      "check": "command_succeeds",
+      "params": {
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run tests/enterprise_tests.kujo"
+      }
+    },
+    {
+      "name": "Tribunal property boundary corpus passes",
+      "check": "command_succeeds",
+      "params": {
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run tests/property_tests.kujo"
+      }
+    },
+    {
       "name": "Kujo-native schema gate passes",
       "check": "command_succeeds",
       "params": {
@@ -46,6 +60,20 @@
       "check": "command_succeeds",
       "params": {
         "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/spec_gate.kujo"
+      }
+    },
+    {
+      "name": "Tribunal local benchmark passes",
+      "check": "command_succeeds",
+      "params": {
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/perf_gate.kujo"
+      }
+    },
+    {
+      "name": "Tribunal scale budget passes",
+      "check": "command_succeeds",
+      "params": {
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/scale_perf_gate.kujo"
       }
     }
   ]

@@ -21,7 +21,7 @@ export func doctor(config, home) {
     checks = path_check(checks, "Tribunal entrypoint", join_path(home, "tribunal.kujo"), "file", true)
     checks = path_check(checks, "Kujo project manifest", join_path(home, "kujo.toml"), "file", true)
     checks = path_check(checks, "Schema directory", join_path(home, "schemas"), "directory", true)
-    for name in ["artifact-manifest.schema.json", "decision-packet.schema.json", "ingestion-receipt.schema.json", "receipt.schema.json", "ruling.schema.json", "signature.schema.json", "tribunal-config.schema.json", "tribunal-event.schema.json", "tribunal-record.schema.json"] {
+    for name in ["access-policy.schema.json", "artifact-manifest.schema.json", "artifact-store-index.schema.json", "bundle.schema.json", "decision-packet.schema.json", "governance.schema.json", "ingestion-receipt.schema.json", "legal-hold.schema.json", "receipt.schema.json", "ruling.schema.json", "signature.schema.json", "signing-provider.schema.json", "telemetry.schema.json", "tribunal-config.schema.json", "tribunal-event.schema.json", "tribunal-record.schema.json", "trust-policy.schema.json"] {
         checks = path_check(checks, "Schema " + name, join_path(join_path(home, "schemas"), name), "file", true)
     }
     live_required := config["kujo_ai"]["mock_mode"] == false
@@ -31,6 +31,10 @@ export func doctor(config, home) {
     }
     packwrite_required := config["context"]["provider"] == "packwrite"
     checks = path_check(checks, "PackWrite", config["context"]["packwrite_path"], "directory", packwrite_required)
+    if config["authorization"]["mode"] == "policy" {
+        checks = path_check(checks, "Access policy", config["authorization"]["policy_path"], "file", true)
+    }
+    checks = path_check(checks, "Release workflow", join_path(home, ".github/workflows/release.yml"), "file", true)
     storage := config["tribunal"]["storage_dir"]
     if path_is_dir(storage) {
         if path_is_symlink(storage) {

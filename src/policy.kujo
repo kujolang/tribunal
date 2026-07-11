@@ -1,0 +1,144 @@
+# Tribunal :: authorization and trusted-key policy boundaries
+
+from src.common import array_includes, dict_get, parent_dir, read_json
+
+ACCESS_SCHEMA := {
+    "type": "object",
+    "required": ["schemaVersion", "defaultDeny", "identities", "roles"],
+    "properties": {
+        "schemaVersion": {"const": "1.0.0"},
+        "defaultDeny": {"const": true},
+        "identities": {"type": "object"},
+        "roles": {"type": "object"}
+    },
+    "additionalProperties": false
+}
+
+TRUST_SCHEMA := {
+    "type": "object",
+    "required": ["schemaVersion", "defaultDeny", "keys"],
+    "properties": {
+        "schemaVersion": {"const": "1.0.0"},
+        "defaultDeny": {"const": true},
+        "keys": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["keyId", "status", "algorithm", "publicKeyPath", "validFrom", "validUntil", "allowedTargets"],
+                "properties": {
+                    "keyId": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
+                    "status": {"enum": ["active", "rotating", "revoked", "expired"]},
+                    "algorithm": {"const": "RSA-PKCS1v15-SHA256"},
+                    "publicKeyPath": {"type": "string", "minLength": 1},
+                    "signerRef": {"type": "string"},
+                    "validFrom": {"type": "integer", "minimum": 0},
+                    "validUntil": {"type": "integer", "minimum": 0},
+                    "rotatesTo": {"type": "string"},
+                    "revokedAt": {"type": "integer", "minimum": 0},
+                    "revocationReason": {"type": "string"},
+                    "allowedTargets": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+                },
+                "additionalProperties": false
+            }
+        }
+    },
+    "additionalProperties": false
+}
+
+func load_typed(path, schema, label) {
+    if path == "" || file_exists(path) == false { return {"ok": false, "error": label + " policy does not exist: " + path} }
+    if path_is_symlink(path) { return {"ok": false, "error": label + " policy must not be a symbolic link."} }
+    value := null
+    try { value = read_json(path) } except err { return {"ok": false, "error": label + " policy is invalid JSON."} }
+    checked := json_schema_validate(value, schema)
+    if checked["valid"] != true { return {"ok": false, "error": label + " policy failed validation: " + to_json(checked["errors"])} }
+    return {"ok": true, "policy": value, "path": path_absolute(path)}
+}
+
+func string_array(value) {
+    if type(value) != "array" || len(value) == 0 { return false }
+    for item in value { if type(item) != "string" || trim(item) == "" { return false } }
+    return true
+}
+
+export func load_access_policy(path) {
+    loaded := load_typed(path, ACCESS_SCHEMA, "Access")
+    if loaded["ok"] != true { return loaded }
+    policy := loaded["policy"]
+    for identity in keys(policy["identities"]) {
+        principal := policy["identities"][identity]
+        if type(principal) != "dict" || string_array(dict_get(principal, "roles", null)) == false || type(dict_get(principal, "disabled", null)) != "bool" { return {"ok": false, "error": "Access identity '" + identity + "' is invalid."} }
+        for key in keys(principal) { if array_includes(["roles", "disabled"], key) == false { return {"ok": false, "error": "Unknown field on access identity '" + identity + "': " + key} } }
+    }
+    for role in keys(policy["roles"]) {
+        value := policy["roles"][role]
+        if type(value) != "dict" || string_array(dict_get(value, "permissions", null)) == false { return {"ok": false, "error": "Access role '" + role + "' is invalid."} }
+        for key in keys(value) { if key != "permissions" { return {"ok": false, "error": "Unknown field on access role '" + role + "': " + key} } }
+    }
+    for identity in keys(policy["identities"]) {
+        for role in policy["identities"][identity]["roles"] {
+            if has_key(policy["roles"], role) == 0 { return {"ok": false, "error": "Identity '" + identity + "' references unknown role '" + role + "'."} }
+        }
+    }
+    return loaded
+}
+export func load_trust_policy(path) {
+    loaded := load_typed(path, TRUST_SCHEMA, "Trust")
+    if loaded["ok"] != true { return loaded }
+    policy := loaded["policy"]
+    mut normalized := []
+    mut seen := {}
+    for entry in policy["keys"] {
+        key_id := entry["keyId"]
+        if has_key(seen, key_id) == 1 { return {"ok": false, "error": "Trust policy contains duplicate key ID: " + key_id} }
+        seen[key_id] := true
+        if entry["validFrom"] > entry["validUntil"] { return {"ok": false, "error": "Trust key validity window is inverted: " + key_id} }
+        if entry["status"] == "rotating" && trim(dict_get(entry, "rotatesTo", "")) == "" { return {"ok": false, "error": "Rotating key must identify rotatesTo: " + key_id} }
+        if entry["status"] == "revoked" && (dict_get(entry, "revokedAt", 0) == 0 || trim(dict_get(entry, "revocationReason", "")) == "") { return {"ok": false, "error": "Revoked key requires time and reason: " + key_id} }
+        public_path := entry["publicKeyPath"]
+        if starts_with(public_path, "/") == false { entry["publicKeyPath"] := join_path(parent_dir(loaded["path"]), public_path) }
+        normalized = push(normalized, entry)
+    }
+    policy["keys"] := normalized
+    loaded["policy"] := policy
+    return loaded
+}
+
+export func authorize(policy, identity, permission) {
+    if type(policy) != "dict" || dict_get(policy, "defaultDeny", false) != true { return {"ok": false, "error": "Authorization policy must be default-deny."} }
+    identities := dict_get(policy, "identities", {})
+    if has_key(identities, identity) == 0 { return {"ok": false, "error": "Unknown identity: " + identity} }
+    principal := identities[identity]
+    if dict_get(principal, "disabled", false) == true { return {"ok": false, "error": "Identity is disabled: " + identity} }
+    roles := dict_get(policy, "roles", {})
+    for role_id in dict_get(principal, "roles", []) {
+        if has_key(roles, role_id) == 1 {
+            permissions := dict_get(roles[role_id], "permissions", [])
+            if array_includes(permissions, "*") || array_includes(permissions, permission) {
+                return {"ok": true, "identity": identity, "role": role_id, "permission": permission}
+            }
+        }
+    }
+    return {"ok": false, "error": "Identity '" + identity + "' is not allowed to perform '" + permission + "'."}
+}
+
+func target_allowed(targets, target) {
+    return array_includes(targets, "*") || array_includes(targets, target)
+}
+
+export func trusted_key(policy, key_id, target, at_ms) {
+    if type(policy) != "dict" || dict_get(policy, "defaultDeny", false) != true { return {"ok": false, "error": "Trust policy must be default-deny."} }
+    for entry in dict_get(policy, "keys", []) {
+        if dict_get(entry, "keyId", "") == key_id {
+            status := dict_get(entry, "status", "")
+            if status != "active" && status != "rotating" { return {"ok": false, "error": "Signing key is not trusted: status=" + status} }
+            if at_ms < entry["validFrom"] || at_ms > entry["validUntil"] { return {"ok": false, "error": "Signing key is outside its validity window."} }
+            if target_allowed(entry["allowedTargets"], target) == false { return {"ok": false, "error": "Signing key is not allowed for target '" + target + "'."} }
+            public_path := entry["publicKeyPath"]
+            if file_exists(public_path) == false || path_is_symlink(public_path) { return {"ok": false, "error": "Trusted public key file is missing or unsafe."} }
+            if substring(sha256(read_file(public_path)), 0, 32) != key_id { return {"ok": false, "error": "Trusted public key fingerprint does not match policy key ID."} }
+            return {"ok": true, "key": entry}
+        }
+    }
+    return {"ok": false, "error": "Signing key is not present in the trust policy."}
+}

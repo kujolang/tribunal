@@ -7,6 +7,8 @@ from src.model import invoke
 from src.context import build_context
 from src.render import testimony_markdown, cross_markdown, kill_markdown, ruling_markdown, packet_markdown
 from src.integrity import seal
+from src.locking import acquire_lock, release_lock
+from src.governance import governance_metadata
 
 func emit(storage_dir, run_id, stage, event_type, summary, seat_id, metadata) {
     event := {
@@ -81,12 +83,11 @@ export func validate_docket(config, path) {
     return open_docket(path, config["limits"]["max_docket_bytes"])
 }
 
-func validate_structured(structured, schema) {
+export func validate_model_output(structured, schema) {
     if type(structured) != "dict" { return "Model returned no structured object." }
-    required := dict_get(schema, "required", [])
-    for key in required {
-        if has_key(structured, key) == 0 { return "Model response is missing required field '" + key + "'." }
-    }
+    checked := null
+    try { checked = json_schema_validate(structured, schema) } except err { return "Model output schema is invalid: " + to_string(err) }
+    if checked["valid"] != true { return "Model response failed its output contract: " + to_json(checked["errors"]) }
     return ""
 }
 
@@ -119,7 +120,12 @@ func call_model(config, storage_dir, state, stage, seat_value, input, output_sch
     if type(structured) != "dict" {
         try { structured = parse_json(response["content"]) } except err { structured = null }
     }
-    contract_error := validate_structured(structured, output_schema)
+    if type(structured) == "dict" {
+        structured_text := to_json(structured)
+        if utf8_byte_length(structured_text) > config["limits"]["max_model_output_bytes"] { emit(storage_dir, run_id, stage, "model_invocation_failed", "Structured model output exceeded the configured safety limit.", seat_value["id"], {}); return {"ok": false, "error": "Structured model output exceeded the configured safety limit.", "response": response} }
+        if contains_secret(structured_text) { emit(storage_dir, run_id, stage, "model_invocation_failed", "Potential secret exposure detected in structured model output.", seat_value["id"], {}); return {"ok": false, "error": "Potential secret exposure detected in structured model output.", "response": response} }
+    }
+    contract_error := validate_model_output(structured, output_schema)
     if contract_error != "" {
         emit(storage_dir, run_id, stage, "model_invocation_failed", contract_error, seat_value["id"], {})
         return {"ok": false, "error": contract_error, "response": response}
@@ -208,7 +214,7 @@ func stop_run(config, state, reason, private_key, public_key) {
     record := {
         "schemaVersion": "1.0.0", "runId": run_id, "status": "stopped", "startedAt": state["startedAt"], "completedAt": completed_at,
         "panel": state["panel"], "seats": state["seats"], "stagesCompleted": state["stagesCompleted"], "testimonies": state["testimonies"],
-        "crossExaminations": state["crossExaminations"], "stopReason": reason, "artifactPaths": ["manifest.json", "events.jsonl", "record.json", "receipt.json", "artifact-manifest.json"]
+        "crossExaminations": state["crossExaminations"], "stopReason": reason, "governance": state["governance"], "artifactPaths": ["manifest.json", "events.jsonl", "record.json", "receipt.json", "artifact-manifest.json"]
     }
     if type(dict_get(state, "docket", null)) == "dict" { record["docket"] := state["docket"] }
     if type(dict_get(state, "killPass", null)) == "dict" { record["killPass"] := state["killPass"] }
@@ -222,6 +228,7 @@ func stop_run(config, state, reason, private_key, public_key) {
     manifest["completedAt"] := completed_at
     save_json(storage_dir, run_id, "manifest.json", manifest)
     seal(storage_dir, run_id, private_key, public_key)
+    release_lock(storage_dir, run_id, state["lockToken"])
     return {"ok": false, "runId": run_id, "runDir": state["runDir"], "error": reason, "record": record}
 }
 
@@ -235,16 +242,20 @@ export func review(config, docket_path, panel_id, private_key, public_key) {
     if placeholder_title == "" { placeholder_title = "stopped-run" }
     run_id := generate_run_id(storage_dir, placeholder_title)
     if run_id == "" { return {"ok": false, "error": "Run storage is unsafe or unavailable."} }
+    actor := config["authorization"]["identity"]
+    locked := acquire_lock(storage_dir, run_id, "review:" + actor, 300000)
+    if locked["ok"] != true { return {"ok": false, "error": locked["error"]} }
     root := create_run(storage_dir, run_id)
-    if root == "" { return {"ok": false, "error": "Run storage is unsafe or unavailable."} }
+    if root == "" { release_lock(storage_dir, run_id, locked["lock"]["token"]); return {"ok": false, "error": "Run storage is unsafe or unavailable."} }
     started_at := iso_now()
     runtime := "kujo-ai-sdk"
     if config["kujo_ai"]["mock_mode"] == true { runtime = "mock-kujo" }
     state := {
         "runId": run_id, "runDir": root, "startedAt": started_at, "startedMs": current_timestamp(), "panel": selected_panel, "seats": selected_seats,
-        "stagesCompleted": [], "testimonies": [], "crossExaminations": [], "invocations": 0, "failures": 0, "totalTokens": 0, "modelRuntime": runtime, "currentStage": "open-docket"
+        "stagesCompleted": [], "testimonies": [], "crossExaminations": [], "invocations": 0, "failures": 0, "totalTokens": 0, "modelRuntime": runtime, "currentStage": "open-docket",
+        "lockToken": locked["lock"]["token"], "governance": governance_metadata(config, actor)
     }
-    manifest := {"schemaVersion": "1.0.0", "runId": run_id, "status": "running", "openedAt": started_at, "panelId": selected_panel["id"], "seatIds": selected_panel["seatIds"], "docketSource": docket_path, "mockMode": config["kujo_ai"]["mock_mode"], "blindFirstPassRequired": true, "sdkBoundary": "KujoModelClient"}
+    manifest := {"schemaVersion": "1.0.0", "runId": run_id, "status": "running", "openedAt": started_at, "panelId": selected_panel["id"], "seatIds": selected_panel["seatIds"], "docketSource": docket_path, "mockMode": config["kujo_ai"]["mock_mode"], "blindFirstPassRequired": true, "sdkBoundary": "KujoModelClient", "governance": state["governance"]}
     state["manifest"] := manifest
     save_json(storage_dir, run_id, "manifest.json", manifest)
     save_text(storage_dir, run_id, "events.jsonl", "")
@@ -306,7 +317,7 @@ export func review(config, docket_path, panel_id, private_key, public_key) {
     state["currentStage"] := "executioner-kill-pass"
     emit(storage_dir, run_id, "executioner-kill-pass", "stage_started", "Executioner kill pass started.", "executioner", {})
     executioner := seat("executioner")
-    kill_schema := {"type": "object", "required": ["fatalFlaws", "survivableRisks", "requiredChanges", "recommendation"]}
+    kill_schema := {"type": "object", "required": ["fatalFlaws", "survivableRisks", "requiredChanges", "recommendation"], "properties": {"fatalFlaws": {"type": "array", "items": {"type": "string"}}, "survivableRisks": {"type": "array", "items": {"type": "string"}}, "requiredChanges": {"type": "array", "items": {"type": "string"}}, "recommendation": {"enum": ["kill", "survive", "redesign"]}}, "additionalProperties": false}
     kill_input := context + "\n\n# Testimony\n\n" + transcript + "\n\n# Cross-examination\n\n" + to_json_pretty(state["crossExaminations"])
     kill_call := call_model(config, storage_dir, state, "executioner-kill-pass", executioner, kill_input, kill_schema)
     state = add_usage(state, kill_call)
@@ -325,7 +336,7 @@ export func review(config, docket_path, panel_id, private_key, public_key) {
         ruling = procedural_ruling(kill_pass)
     } else {
         judge := seat("judge")
-        ruling_schema := {"type": "object", "required": ["finalVerdict", "bestArgumentFor", "bestArgumentAgainst", "panelAgreement", "unresolved", "requiredChanges", "confidence", "disposition"]}
+        ruling_schema := {"type": "object", "required": ["finalVerdict", "bestArgumentFor", "bestArgumentAgainst", "panelAgreement", "unresolved", "requiredChanges", "confidence", "disposition"], "properties": {"finalVerdict": {"type": "string", "minLength": 1}, "bestArgumentFor": {"type": "string"}, "bestArgumentAgainst": {"type": "string"}, "panelAgreement": {"type": "array", "items": {"type": "string"}}, "unresolved": {"type": "array", "items": {"type": "string"}}, "requiredChanges": {"type": "array", "items": {"type": "string"}}, "confidence": {"type": "integer", "minimum": 0, "maximum": 10}, "disposition": {"enum": ["proceed", "reject", "redesign"]}}, "additionalProperties": false}
         ruling_input := context + "\n\n# Blind testimony\n\n" + transcript + "\n\n# Cross-examination\n\n" + to_json_pretty(state["crossExaminations"]) + "\n\n# Executioner findings\n\n" + to_json_pretty(kill_pass)
         ruling_call := call_model(config, storage_dir, state, "judge-ruling", judge, ruling_input, ruling_schema)
         state = add_usage(state, ruling_call)
@@ -346,7 +357,7 @@ export func review(config, docket_path, panel_id, private_key, public_key) {
         packet = procedural_packet(docket, ruling)
     } else {
         judge := seat("judge")
-        packet_schema := {"type": "object", "required": ["decision", "scope", "nonGoals", "requiredNextActions", "suggestedOwnerRole", "suggestedModelLevel", "acceptanceCriteria", "escalationTriggers", "evidenceRequired", "stopTheLineConditions"]}
+        packet_schema := {"type": "object", "required": ["decision", "scope", "nonGoals", "requiredNextActions", "suggestedOwnerRole", "suggestedModelLevel", "acceptanceCriteria", "escalationTriggers", "evidenceRequired", "stopTheLineConditions"], "properties": {"decision": {"type": "string", "minLength": 1}, "scope": {"type": "string", "minLength": 1}, "nonGoals": {"type": "array", "items": {"type": "string"}}, "requiredNextActions": {"type": "array", "items": {"type": "string"}}, "suggestedOwnerRole": {"type": "string", "minLength": 1}, "suggestedModelLevel": {"type": "string", "minLength": 1}, "acceptanceCriteria": {"type": "array", "items": {"type": "string"}}, "escalationTriggers": {"type": "array", "items": {"type": "string"}}, "evidenceRequired": {"type": "array", "items": {"type": "string"}}, "stopTheLineConditions": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false}
         packet_input := "# Docket\n" + docket["content"] + "\n\n# Final ruling\n" + to_json_pretty(ruling)
         packet_call := call_model(config, storage_dir, state, "decision-packet", judge, packet_input, packet_schema)
         state = add_usage(state, packet_call)
@@ -363,7 +374,7 @@ export func review(config, docket_path, panel_id, private_key, public_key) {
     emit(storage_dir, run_id, "persist-record", "stage_started", "Durable record persistence started.", "", {})
     completed_at := iso_now()
     state = completed(state, "persist-record")
-    record := {"schemaVersion": "1.0.0", "runId": run_id, "status": "completed", "startedAt": started_at, "completedAt": completed_at, "docket": docket, "panel": selected_panel, "seats": selected_seats, "stagesCompleted": state["stagesCompleted"], "testimonies": state["testimonies"], "crossExaminations": state["crossExaminations"], "killPass": kill_pass, "ruling": ruling, "decisionPacket": packet, "artifactPaths": artifact_paths(state)}
+    record := {"schemaVersion": "1.0.0", "runId": run_id, "status": "completed", "startedAt": started_at, "completedAt": completed_at, "docket": docket, "panel": selected_panel, "seats": selected_seats, "stagesCompleted": state["stagesCompleted"], "testimonies": state["testimonies"], "crossExaminations": state["crossExaminations"], "killPass": kill_pass, "ruling": ruling, "decisionPacket": packet, "governance": state["governance"], "artifactPaths": artifact_paths(state)}
     save_json(storage_dir, run_id, "record.json", record)
     record_hash := sha256(read_file(artifact_path(storage_dir, run_id, "record.json")))
     emit(storage_dir, run_id, "persist-record", "record_persisted", "Structured Tribunal record persisted.", "", {"recordSha256": record_hash})
@@ -373,6 +384,7 @@ export func review(config, docket_path, panel_id, private_key, public_key) {
     manifest["completedAt"] := completed_at
     save_json(storage_dir, run_id, "manifest.json", manifest)
     sealed := seal(storage_dir, run_id, private_key, public_key)
+    release_lock(storage_dir, run_id, state["lockToken"])
     if sealed["ok"] != true { return {"ok": false, "runId": run_id, "runDir": root, "error": sealed["error"], "record": record} }
     return {"ok": true, "runId": run_id, "runDir": root, "record": record}
 }

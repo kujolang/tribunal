@@ -1,0 +1,70 @@
+# Tribunal :: signed evidence bundle export and import
+
+from src.common import dict_get, ensure_dir, iso_now, read_json, relative_files, remove_tree, safe_relative_path, write_json
+from src.integrity import verify
+from src.policy import trusted_key
+from src.storage import artifact_path, run_dir
+
+func copy_relative(source_root, destination_root, names) {
+    for name in names {
+        if safe_relative_path(name) == false { return {"ok": false, "error": "Unsafe bundle artifact path: " + name} }
+        source := join_path(source_root, name)
+        if path_is_symlink(source) { return {"ok": false, "error": "Bundle source contains a symbolic link: " + name} }
+        target := join_path(destination_root, name)
+        ensure_dir(dirname(target))
+        copy_file(source, target)
+    }
+    return {"ok": true}
+}
+
+export func export_bundle(storage_dir, run_id, destination) {
+    if trim(destination) == "" { return {"ok": false, "error": "Bundle destination is required."} }
+    run_root := run_dir(storage_dir, run_id)
+    if run_root == "" || path_is_dir(run_root) == false { return {"ok": false, "error": "Run does not exist."} }
+    signature := artifact_path(storage_dir, run_id, "signature.json")
+    if file_exists(signature) == false { return {"ok": false, "error": "Only signed runs can be exported as trusted bundles."} }
+    integrity := verify(storage_dir, run_id, "")
+    if integrity["ok"] != true { return {"ok": false, "error": "Run integrity must pass before bundle export.", "verification": integrity} }
+    if file_exists(destination) || path_is_dir(destination) { return {"ok": false, "error": "Bundle destination already exists."} }
+    ensure_dir(destination)
+    artifacts_root := join_path(destination, "artifacts")
+    ensure_dir(artifacts_root)
+    names := relative_files(run_root, "")
+    copied := copy_relative(run_root, artifacts_root, names)
+    if copied["ok"] != true { remove_tree(destination); return copied }
+    envelope := read_json(signature)
+    bundle := {
+        "schemaVersion": "1.0.0",
+        "runId": run_id,
+        "exportedAt": iso_now(),
+        "manifestSha256": dict_get(envelope, "manifestSha256", ""),
+        "keyId": dict_get(envelope, "keyId", ""),
+        "artifactCount": len(names),
+        "artifacts": names
+    }
+    write_json(join_path(destination, "bundle.json"), bundle)
+    return {"ok": true, "bundle": bundle, "path": path_absolute(destination)}
+}
+
+export func import_bundle(bundle_path, storage_dir, trust_policy, target) {
+    if trim(bundle_path) == "" || path_is_symlink(bundle_path) { return {"ok": false, "error": "Bundle path is unsafe."} }
+    metadata_path := join_path(bundle_path, "bundle.json")
+    artifacts_root := join_path(bundle_path, "artifacts")
+    if file_exists(metadata_path) == false || path_is_dir(artifacts_root) == false { return {"ok": false, "error": "Bundle structure is incomplete."} }
+    metadata := null
+    try { metadata = read_json(metadata_path) } except err { return {"ok": false, "error": "Bundle metadata is invalid."} }
+    run_id := dict_get(metadata, "runId", "")
+    destination := run_dir(storage_dir, run_id)
+    if destination == "" || path_is_dir(destination) { return {"ok": false, "error": "Bundle run ID is unsafe or already exists."} }
+    trusted := trusted_key(trust_policy, dict_get(metadata, "keyId", ""), target, current_timestamp())
+    if trusted["ok"] != true { return trusted }
+    ensure_dir(destination)
+    copied := copy_relative(artifacts_root, destination, dict_get(metadata, "artifacts", []))
+    if copied["ok"] != true { remove_tree(destination); return copied }
+    checked := verify(storage_dir, run_id, trusted["key"]["publicKeyPath"])
+    if checked["ok"] != true || checked["signature"] != "verified" || checked["manifestSha256"] != metadata["manifestSha256"] {
+        remove_tree(destination)
+        return {"ok": false, "error": "Imported bundle failed trusted verification.", "verification": checked}
+    }
+    return {"ok": true, "runId": run_id, "path": destination, "verification": checked}
+}

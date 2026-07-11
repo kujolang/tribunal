@@ -26,5 +26,25 @@
     "max_model_output_bytes": 1048576,
     "max_process_output_bytes": 8388608,
     "model_timeout_ms": 60000
+  },
+  "authorization": {
+    "mode": "local",
+    "identity": "local-operator",
+    "policy_path": "./examples/access-policy.json"
+  },
+  "governance": {
+    "retention_class": "standard",
+    "retention_days": 365,
+    "legal_hold": false,
+    "owner": "local-operator"
+  },
+  "artifact_store": {
+    "provider": "local-immutable",
+    "root": "./.tribunal/artifact-store",
+    "endpoint": ""
+  },
+  "telemetry": {
+    "collector": "jsonl",
+    "destination": "./.tribunal/telemetry.jsonl"
   }
 }

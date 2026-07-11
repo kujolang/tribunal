@@ -1,0 +1,62 @@
+name: Kujo Tribunal release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  verify-and-publish:
+    runs-on: [self-hosted, kujo]
+    env:
+      TRIBUNAL_HOME: ${{ github.workspace }}
+      KUJO_BIN: ${{ vars.KUJO_BIN }}
+      TRIBUNAL_SIGNING_PROVIDER_CONFIG: ${{ vars.TRIBUNAL_SIGNING_PROVIDER_CONFIG }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify release inputs
+        run: |
+          test -x "$KUJO_BIN"
+          test -f "$TRIBUNAL_SIGNING_PROVIDER_CONFIG"
+
+      - name: Run Kujo release gates
+        run: |
+          for file in $(find . -name '*.kujo' -not -path './.git/*'); do "$KUJO_BIN" check "$file"; done
+          "$KUJO_BIN" run tests/tribunal_tests.kujo
+          "$KUJO_BIN" run tests/cli_integration.kujo
+          "$KUJO_BIN" run tests/enterprise_tests.kujo
+          "$KUJO_BIN" run tests/property_tests.kujo
+          "$KUJO_BIN" run scripts/schema_gate.kujo
+          "$KUJO_BIN" run scripts/drift_gate.kujo
+          "$KUJO_BIN" run scripts/spec_gate.kujo
+          "$KUJO_BIN" run scripts/perf_gate.kujo
+          "$KUJO_BIN" run scripts/scale_perf_gate.kujo
+
+      - name: Create signed release evidence bundle
+        env:
+          TRIBUNAL_RELEASE_OUTPUT: ${{ runner.temp }}/tribunal-release-evidence
+        run: |
+          rm -rf "$TRIBUNAL_RELEASE_OUTPUT"
+          "$KUJO_BIN" run scripts/release_evidence.kujo
+
+      - name: Upload immutable signed evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: tribunal-${{ github.ref_name }}-signed-evidence
+          path: ${{ runner.temp }}/tribunal-release-evidence
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish tagged release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1 || gh release create "${GITHUB_REF_NAME}" --verify-tag --title "Tribunal ${GITHUB_REF_NAME}" --generate-notes
+          gh release upload "${GITHUB_REF_NAME}" "$RUNNER_TEMP/tribunal-release-evidence/tribunal-v${GITHUB_REF_NAME#v}-signed-evidence.zip" --clobber

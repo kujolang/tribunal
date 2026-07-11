@@ -1,0 +1,17 @@
+# Offline contract fixture for an external HSM/KMS adapter. The Tribunal process
+# passes only an opaque key reference; this provider owns key material access.
+
+from src.integrity import signature_payload_for
+
+request_text := env_or("TRIBUNAL_SIGNING_REQUEST", "")
+if request_text == "" { print(to_json({"ok": false, "error": "missing request"})); exit(1) }
+request := parse_json(request_text)
+key_root := request["keyReference"]
+private_path := join_path(key_root, "private.pem")
+public_path := join_path(key_root, "public.pem")
+if file_exists(private_path) == false || file_exists(public_path) == false { print(to_json({"ok": false, "error": "key reference unavailable"})); exit(1) }
+public_key := read_file(public_path)
+key_id := substring(sha256(public_key), 0, 32)
+payload := signature_payload_for("1.2.0", request["runId"], request["manifestSha256"], key_id, request["signedAt"])
+signature := rsa_sign(to_json(payload), read_file(private_path))
+print(to_json({"ok": true, "algorithm": "RSA-PKCS1v15-SHA256", "keyId": key_id, "publicKey": public_key, "signature": signature}))

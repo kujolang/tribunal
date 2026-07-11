@@ -1,0 +1,50 @@
+# Tribunal :: external metrics and audit export without sealed-run mutation
+
+from src.analytics import collect_stats
+from src.common import dict_get, ensure_dir, iso_now, parent_dir, redact, write_json
+from src.storage import list_runs, load_events
+
+func audit_event(event) {
+    return {
+        "timestamp": dict_get(event, "timestamp", ""),
+        "runId": dict_get(event, "runId", ""),
+        "stageId": dict_get(event, "stageId", ""),
+        "seatId": dict_get(event, "seatId", ""),
+        "eventType": dict_get(event, "eventType", ""),
+        "summary": redact(dict_get(event, "summary", ""))
+    }
+}
+
+export func telemetry_payload(storage_dir) {
+    mut audit := []
+    for manifest in list_runs(storage_dir) {
+        for event in load_events(storage_dir, manifest["runId"]) { audit = push(audit, audit_event(event)) }
+    }
+    return {"schemaVersion": "1.0.0", "exportedAt": iso_now(), "metrics": collect_stats(storage_dir), "auditEvents": audit}
+}
+
+export func export_telemetry(storage_dir, collector, destination) {
+    payload := telemetry_payload(storage_dir)
+    if collector == "jsonl" {
+        ensure_dir(parent_dir(destination))
+        append_file(destination, to_json(payload) + "\n")
+        receipt := {"ok": true, "collector": collector, "destination": path_absolute(destination), "events": len(payload["auditEvents"]), "exportedAt": payload["exportedAt"]}
+        write_json(destination + ".receipt.json", receipt)
+        return receipt
+    }
+    if collector == "http" {
+        status := 0
+        error := ""
+        try {
+            result := http_request(destination, {"method": "POST", "_headers": {"Content-Type": "application/json"}, "_body": to_json(payload), "timeout": 30})
+            match result {
+                case Ok(response): { status = dict_get(response, "_status", dict_get(response, "status", 0)) }
+                case Err(request_error): { error = redact(request_error) }
+            }
+        } except err { error = redact(err) }
+        if error != "" { return {"ok": false, "error": "Telemetry collector request failed: " + error} }
+        if status < 200 || status >= 300 { return {"ok": false, "error": "Telemetry collector returned HTTP " + to_string(status) + "."} }
+        return {"ok": true, "collector": collector, "destination": destination, "events": len(payload["auditEvents"]), "exportedAt": payload["exportedAt"]}
+    }
+    return {"ok": false, "error": "Collector must be jsonl or http."}
+}

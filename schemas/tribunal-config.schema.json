@@ -1,9 +1,7 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kujolang.ai/schemas/tribunal-config-1.0.0.json",
   "title": "TribunalConfig",
   "type": "object",
-  "required": ["tribunal", "kujo_ai", "context", "limits"],
+  "required": ["tribunal", "kujo_ai", "context", "limits", "authorization", "governance", "artifact_store", "telemetry"],
   "properties": {
     "tribunal": {
       "type": "object",
@@ -69,6 +67,46 @@
         "max_model_output_bytes": { "type": "integer", "minimum": 1024, "maximum": 16777216 },
         "max_process_output_bytes": { "type": "integer", "minimum": 4096, "maximum": 67108864 },
         "model_timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
+      },
+      "additionalProperties": false
+    },
+    "authorization": {
+      "type": "object",
+      "required": ["mode", "identity", "policy_path"],
+      "properties": {
+        "mode": { "enum": ["local", "policy"] },
+        "identity": { "type": "string", "minLength": 1 },
+        "policy_path": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "governance": {
+      "type": "object",
+      "required": ["retention_class", "retention_days", "legal_hold", "owner"],
+      "properties": {
+        "retention_class": { "type": "string", "minLength": 1 },
+        "retention_days": { "type": "integer", "minimum": 1, "maximum": 36500 },
+        "legal_hold": { "type": "boolean" },
+        "owner": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "artifact_store": {
+      "type": "object",
+      "required": ["provider", "root", "endpoint"],
+      "properties": {
+        "provider": { "enum": ["local-immutable", "http-immutable"] },
+        "root": { "type": "string" },
+        "endpoint": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "telemetry": {
+      "type": "object",
+      "required": ["collector", "destination"],
+      "properties": {
+        "collector": { "enum": ["jsonl", "http"] },
+        "destination": { "type": "string", "minLength": 1 }
       },
       "additionalProperties": false
     }

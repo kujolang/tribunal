@@ -1,0 +1,109 @@
+# Tribunal :: external HSM/KMS signing-provider contract
+
+from src.common import dict_get, last_json_line, parent_dir, read_json, redact, safe_process_env, write_json
+from src.integrity import begin_seal_transaction, finish_seal_transaction, rollback_seal_transaction, seal, signature_payload_for, verify
+from src.storage import artifact_path
+
+PROVIDER_SCHEMA := {
+    "type": "object",
+    "required": ["schemaVersion", "provider", "command", "keyReference", "kujoBin"],
+    "properties": {
+        "schemaVersion": {"const": "1.0.0"},
+        "provider": {"type": "string", "minLength": 1},
+        "command": {"type": "string", "minLength": 1},
+        "keyReference": {"type": "string", "minLength": 1},
+        "kujoBin": {"type": "string", "minLength": 1},
+        "timeoutMs": {"type": "integer", "minimum": 1000, "maximum": 120000}
+    },
+    "additionalProperties": false
+}
+
+export func load_signing_provider(path) {
+    if path == "" || file_exists(path) == false { return {"ok": false, "error": "Signing-provider config is missing."} }
+    if path_is_symlink(path) { return {"ok": false, "error": "Signing-provider config must not be a symbolic link."} }
+    config := null
+    try { config = read_json(path) } except err { return {"ok": false, "error": "Signing-provider config is invalid JSON."} }
+    checked := json_schema_validate(config, PROVIDER_SCHEMA)
+    if checked["valid"] != true { return {"ok": false, "error": "Signing-provider config failed validation: " + to_json(checked["errors"])} }
+    base := parent_dir(path_absolute(path))
+    if starts_with(config["command"], "/") == false { config["command"] := join_path(base, config["command"]) }
+    if starts_with(config["kujoBin"], "/") == false { config["kujoBin"] := join_path(base, config["kujoBin"]) }
+    if file_exists(config["command"]) == false || path_is_symlink(config["command"]) { return {"ok": false, "error": "Signing-provider command is missing or unsafe."} }
+    if file_exists(config["kujoBin"]) == false || path_is_symlink(config["kujoBin"]) { return {"ok": false, "error": "Signing-provider Kujo runtime is missing or unsafe."} }
+    return {"ok": true, "config": config}
+}
+
+func provider_environment(request) {
+    values := {"TRIBUNAL_SIGNING_REQUEST": to_json(request)}
+    # Federated workload identity only. Long-lived cloud secret variables are deliberately excluded.
+    for name in ["AWS_ROLE_ARN", "AWS_WEB_IDENTITY_TOKEN_FILE", "AWS_REGION", "AWS_DEFAULT_REGION", "AZURE_CLIENT_ID", "AZURE_TENANT_ID", "AZURE_FEDERATED_TOKEN_FILE", "GOOGLE_APPLICATION_CREDENTIALS", "ACTIONS_ID_TOKEN_REQUEST_URL", "ACTIONS_ID_TOKEN_REQUEST_TOKEN"] {
+        value := env_or(name, "")
+        if value != "" { values[name] := value }
+    }
+    return safe_process_env(values)
+}
+
+export func seal_with_provider(storage_dir, run_id, provider_config) {
+    prepared := verify(storage_dir, run_id, "")
+    if prepared["ok"] != true {
+        unsigned := seal(storage_dir, run_id, "", "")
+        if unsigned["ok"] != true { return unsigned }
+        prepared = verify(storage_dir, run_id, "")
+    }
+    manifest_path := artifact_path(storage_dir, run_id, "artifact-manifest.json")
+    manifest_text := read_file(manifest_path)
+    manifest_hash := sha256(manifest_text)
+    signed_at := format_date(now(), "YYYY-MM-DDTHH:mm:ssZ")
+    request := {
+        "schemaVersion": "1.0.0",
+        "operation": "sign",
+        "algorithm": "RSA-PKCS1v15-SHA256",
+        "runId": run_id,
+        "manifestSha256": manifest_hash,
+        "signedAt": signed_at,
+        "keyReference": provider_config["keyReference"]
+    }
+    if file_exists(provider_config["kujoBin"]) == false || file_exists(provider_config["command"]) == false { return {"ok": false, "error": "Signing provider runtime or command is unavailable."} }
+    kujo_bin := path_absolute(provider_config["kujoBin"])
+    command := path_absolute(provider_config["command"])
+    proc := spawn_process([kujo_bin, "run", command, "--interpreter"], {
+        "inherit_env": false,
+        "env": provider_environment(request),
+        "timeout_ms": dict_get(provider_config, "timeoutMs", 60000),
+        "max_output_bytes": 1048576
+    })
+    line := last_json_line(proc.stdout)
+    if line == "" { return {"ok": false, "error": "Signing provider returned no JSON: " + redact(proc.stderr)} }
+    response := null
+    try { response = parse_json(line) } except err { return {"ok": false, "error": "Signing provider returned invalid JSON."} }
+    if dict_get(response, "ok", false) != true { return {"ok": false, "error": "Signing provider failed: " + redact(dict_get(response, "error", "unknown error"))} }
+    if dict_get(response, "algorithm", "") != "RSA-PKCS1v15-SHA256" { return {"ok": false, "error": "Signing provider returned an unsupported algorithm."} }
+    public_key := dict_get(response, "publicKey", "")
+    if contains(public_key, "PRIVATE KEY") { return {"ok": false, "error": "Signing provider attempted to return private key material."} }
+    if contains(public_key, "PUBLIC KEY") == false { return {"ok": false, "error": "Signing provider returned no usable public key."} }
+    key_id := substring(sha256(public_key), 0, 32)
+    if dict_get(response, "keyId", "") != key_id { return {"ok": false, "error": "Signing provider key identity is inconsistent."} }
+    payload := signature_payload_for("1.2.0", run_id, manifest_hash, key_id, signed_at)
+    payload_text := to_json(payload)
+    signature := dict_get(response, "signature", "")
+    valid := false
+    try { valid = rsa_verify(payload_text, signature, public_key) } except err { valid = false }
+    if valid != true { return {"ok": false, "error": "Signing provider signature did not verify."} }
+    envelope := {
+        "schemaVersion": "1.2.0",
+        "runId": run_id,
+        "algorithm": "RSA-PKCS1v15-SHA256",
+        "manifestSha256": manifest_hash,
+        "keyId": key_id,
+        "signedAt": signed_at,
+        "payloadSha256": sha256(payload_text),
+        "signature": signature,
+        "signingProvider": provider_config["provider"],
+        "signerRef": provider_config["keyReference"]
+    }
+    transaction := begin_seal_transaction(storage_dir, run_id)
+    if transaction["ok"] != true { return transaction }
+    try { write_json(artifact_path(storage_dir, run_id, "signature.json"), envelope) } except err { rollback_seal_transaction(storage_dir, run_id); return {"ok": false, "error": "Unable to persist external signature."} }
+    finish_seal_transaction(storage_dir, run_id)
+    return {"ok": true, "manifestSha256": manifest_hash, "signature": envelope, "publicKey": public_key}
+}

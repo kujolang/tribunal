@@ -2,6 +2,8 @@ tribunal-runs/
 .runledger/
 .casefile/
 .dogfood/
+.tribunal/
+dist/
 eval_results/
 *.log
 *.pem

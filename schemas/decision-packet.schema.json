@@ -1,6 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kujolang.ai/schemas/tribunal-decision-packet-1.0.0.json",
   "title": "TribunalDecisionPacket",
   "type": "object",
   "required": ["decision", "scope", "nonGoals", "requiredNextActions", "suggestedOwnerRole", "suggestedModelLevel", "acceptanceCriteria", "escalationTriggers", "evidenceRequired", "stopTheLineConditions", "generatedAt"],
@@ -15,7 +13,7 @@
     "escalationTriggers": { "type": "array", "items": { "type": "string" } },
     "evidenceRequired": { "type": "array", "items": { "type": "string" } },
     "stopTheLineConditions": { "type": "array", "items": { "type": "string" } },
-    "generatedAt": { "type": "string", "format": "date-time" }
+    "generatedAt": { "type": "string", "minLength": 1 }
   },
   "additionalProperties": false
 }

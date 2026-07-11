@@ -1,0 +1,16 @@
+{
+  "title": "TribunalGovernance",
+  "type": "object",
+  "required": ["schemaVersion", "retentionClass", "retentionDays", "retainUntilMs", "legalHold", "owner", "createdBy", "createdAt"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "retentionClass": { "type": "string", "minLength": 1 },
+    "retentionDays": { "type": "integer", "minimum": 1 },
+    "retainUntilMs": { "type": "integer", "minimum": 0 },
+    "legalHold": { "type": "boolean" },
+    "owner": { "type": "string", "minLength": 1 },
+    "createdBy": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

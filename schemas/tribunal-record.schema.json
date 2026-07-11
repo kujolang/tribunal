@@ -1,6 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kujolang.ai/schemas/tribunal-record-1.0.0.json",
   "title": "TribunalRecord",
   "type": "object",
   "required": [
@@ -20,8 +18,8 @@
     "schemaVersion": { "const": "1.0.0" },
     "runId": { "type": "string" },
     "status": { "enum": ["completed", "stopped"] },
-    "startedAt": { "type": "string", "format": "date-time" },
-    "completedAt": { "type": "string", "format": "date-time" },
+    "startedAt": { "type": "string", "minLength": 1 },
+    "completedAt": { "type": "string", "minLength": 1 },
     "docket": { "type": "object" },
     "panel": { "type": "object" },
     "seats": { "type": "array", "items": { "type": "object" } },
@@ -32,6 +30,21 @@
     "ruling": { "type": "object" },
     "decisionPacket": { "type": "object" },
     "stopReason": { "type": "string" },
+    "governance": {
+      "type": "object",
+      "required": ["schemaVersion", "retentionClass", "retentionDays", "retainUntilMs", "legalHold", "owner", "createdBy", "createdAt"],
+      "properties": {
+        "schemaVersion": { "const": "1.0.0" },
+        "retentionClass": { "type": "string", "minLength": 1 },
+        "retentionDays": { "type": "integer", "minimum": 1 },
+        "retainUntilMs": { "type": "integer", "minimum": 0 },
+        "legalHold": { "type": "boolean" },
+        "owner": { "type": "string", "minLength": 1 },
+        "createdBy": { "type": "string", "minLength": 1 },
+        "createdAt": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
     "artifactPaths": { "type": "array", "items": { "type": "string" } }
   },
   "additionalProperties": false

@@ -1,6 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kujolang.ai/schemas/tribunal-receipt-1.0.0.json",
   "title": "TribunalRunReceipt",
   "type": "object",
   "required": ["schemaVersion", "runId", "status", "startedAt", "completedAt", "durationMs", "panelId", "modelInvocations", "failedInvocations", "totalTokens", "recordSha256", "integration"],
@@ -8,8 +6,8 @@
     "schemaVersion": { "const": "1.0.0" },
     "runId": { "type": "string", "minLength": 1 },
     "status": { "enum": ["completed", "stopped"] },
-    "startedAt": { "type": "string", "format": "date-time" },
-    "completedAt": { "type": "string", "format": "date-time" },
+    "startedAt": { "type": "string", "minLength": 1 },
+    "completedAt": { "type": "string", "minLength": 1 },
     "durationMs": { "type": "integer", "minimum": 0 },
     "panelId": { "type": "string", "minLength": 1 },
     "modelInvocations": { "type": "integer", "minimum": 0 },

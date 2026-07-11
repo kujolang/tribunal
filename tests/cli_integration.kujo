@@ -19,6 +19,11 @@ func proc_stdout(proc) {
     try { return to_string(proc.stdout) } except err { return "" }
 }
 
+func proc_stderr(proc) {
+    if type(proc) == "dict" { if has_key(proc, "stderr") == 1 { return to_string(proc["stderr"]) }; return "" }
+    try { return to_string(proc.stderr) } except err { return "" }
+}
+
 HOME := path_absolute(env_or("TRIBUNAL_HOME", "."))
 KUJO_BIN := path_absolute(env_or("KUJO_BIN", join_path(HOME, "../kujo/target/release/kujo")))
 ROOT := join_path(env_or("TMPDIR", "/tmp"), "tribunal-cli-tests-" + to_string(current_timestamp()))
@@ -40,6 +45,7 @@ check(proc_success(cli(["panels"])), "panels command succeeds")
 check(proc_success(cli(["seats"])), "seats command succeeds")
 check(proc_success(cli(["panels", "--json"])), "panels supports JSON output")
 check(proc_success(cli(["doctor", "--json"])), "doctor validates the local Kujo installation")
+check(proc_success(cli(["auth-check", "--permission", "runs.read", "--json"])), "authorization boundary reports local operator access")
 check(proc_success(cli(["validate", DOCKET, "--json"])), "validate checks a docket without opening a run")
 check(proc_success(cli(["list", "--unknown"] )) == false, "unknown options are rejected")
 check(proc_success(cli(["list", "--json", "--json"] )) == false, "duplicate options are rejected")
@@ -51,9 +57,21 @@ if proc_success(review) { run_id = split(trim(proc_stdout(review)), "\n")[0] }
 check(run_id != "", "review returns a run ID")
 check(proc_success(cli(["list", "--storage-dir", STORAGE])), "list command succeeds")
 check(proc_success(cli(["list", "--storage-dir", STORAGE, "--status", "completed", "--panel", "fast-two-model", "--limit", "1", "--json"])), "list filters and JSON output succeed")
+check(proc_success(cli(["list", "--storage-dir", STORAGE, "--cursor", "missing-run", "--json"])) == false, "list rejects an unknown cursor")
 check(proc_success(cli(["show", run_id, "--storage-dir", STORAGE])), "show command succeeds")
 check(proc_success(cli(["show", run_id, "--storage-dir", STORAGE, "--json"])), "show supports JSON output")
 check(proc_success(cli(["stats", "--storage-dir", STORAGE, "--json"])), "stats summarizes local runs")
+check(proc_success(cli(["contracts", run_id, "--storage-dir", STORAGE, "--json"])), "complete contract validation succeeds")
+telemetry_path := join_path(ROOT, "telemetry.jsonl")
+check(proc_success(cli(["telemetry-export", "--storage-dir", STORAGE, "--collector", "jsonl", "--destination", telemetry_path, "--json"])), "telemetry export command succeeds")
+dashboard_path := join_path(ROOT, "dashboard.html")
+check(proc_success(cli(["dashboard-export", "--storage-dir", STORAGE, "--output", dashboard_path, "--json"])) && file_exists(dashboard_path), "offline dashboard export command succeeds")
+check(proc_success(cli(["locks-recover", "--storage-dir", STORAGE, "--stale-after-ms", "1000", "--json"])), "stale-lock recovery command succeeds")
+check(proc_success(cli(["legal-hold", run_id, "--storage-dir", STORAGE, "--enable", "--reason", "CLI test hold"])), "legal-hold command applies external hold")
+check(proc_success(cli(["legal-hold", run_id, "--storage-dir", STORAGE, "--release", "--reason", "CLI test release"])), "legal-hold command releases external hold with history")
+check(proc_success(cli(["list", "--storage-dir", STORAGE, "--access-policy", join_path(HOME, "examples/access-policy.json"), "--identity", "audit-reader", "--json"])), "policy-authorized auditor can list runs")
+check(proc_success(cli(["auth-check", "--access-policy", join_path(HOME, "examples/access-policy.json"), "--identity", "audit-reader", "--permission", "runs.read", "--json"])), "policy identity can inspect its own requested permission")
+check(proc_success(cli(["keys", "--access-policy", join_path(HOME, "examples/access-policy.json"), "--identity", "audit-reader", "--private-key", join_path(ROOT, "denied.pem"), "--public-key", join_path(ROOT, "denied.pub")])) == false, "policy denies auditor key generation")
 check(proc_success(cli(["replay", run_id, "--storage-dir", STORAGE])), "replay command verifies and succeeds")
 check(proc_success(cli(["replay", run_id, "--storage-dir", STORAGE, "--require-signature"])) == false, "strict replay rejects unsigned evidence")
 check(proc_success(cli(["export", run_id, "--format", "json", "--storage-dir", STORAGE])), "JSON export succeeds")
@@ -71,6 +89,36 @@ if proc_success(signed) { signed_id = split(trim(proc_stdout(signed)), "\n")[0] 
 verified := cli(["verify", signed_id, "--storage-dir", STORAGE, "--public-key", public_key])
 check(proc_success(verified) && contains(proc_stdout(verified), "\"signature\": \"verified\"") == 1, "verify command trusts the generated public key")
 check(proc_success(cli(["verify", signed_id, "--storage-dir", STORAGE, "--public-key", public_key, "--require-signature"])), "strict verification accepts trusted signed evidence")
+provider_key_root := join_path(ROOT, "provider-key")
+ensure_dir(provider_key_root)
+provider_private := join_path(provider_key_root, "private.pem")
+provider_public := join_path(provider_key_root, "public.pem")
+provider_keys := cli(["keys", "--private-key", provider_private, "--public-key", provider_public, "--bits", "2048"])
+check(proc_success(provider_keys), "external provider fixture key is created")
+provider_config := join_path(ROOT, "provider.json")
+write_file(provider_config, to_json_pretty({"schemaVersion": "1.0.0", "provider": "cli-hsm-fixture", "command": join_path(HOME, "tests/fixtures/external_signer.kujo"), "keyReference": provider_key_root, "kujoBin": KUJO_BIN, "timeoutMs": 60000}) + "\n")
+externally_sealed := cli(["seal-provider", signed_id, "--storage-dir", STORAGE, "--provider-config", provider_config])
+check(proc_success(externally_sealed), "external signing-provider command succeeds")
+provider_key_result := parse_json(proc_stdout(provider_keys))
+trust_path := join_path(ROOT, "trust.json")
+write_file(trust_path, to_json_pretty({"schemaVersion": "1.0.0", "defaultDeny": true, "keys": [{"keyId": provider_key_result["keyId"], "status": "active", "algorithm": "RSA-PKCS1v15-SHA256", "publicKeyPath": provider_public, "signerRef": "cli-fixture", "validFrom": 0, "validUntil": current_timestamp() + 86400000, "rotatesTo": "", "revokedAt": 0, "revocationReason": "", "allowedTargets": ["verify", "bundle-import"]}]}) + "\n")
+check(proc_success(cli(["verify-policy", signed_id, "--storage-dir", STORAGE, "--trust-policy", trust_path, "--target", "verify"])), "trust-policy verification command succeeds")
+bundle_path := join_path(ROOT, "cli-bundle")
+check(proc_success(cli(["bundle-export", signed_id, "--storage-dir", STORAGE, "--output", bundle_path])), "signed bundle export command succeeds")
+archive_path := join_path(ROOT, "cli-bundle.zip")
+archive_proc := spawn_process([KUJO_BIN, "run", join_path(HOME, "scripts/archive_bundle.kujo"), bundle_path, archive_path], {"inherit_env": true, "timeout_ms": 60000, "max_output_bytes": 1048576})
+check(proc_success(archive_proc) && file_exists(archive_path), "Kujo release bundle archive succeeds")
+archive_extract := join_path(ROOT, "archive-extract")
+extracted := unzip(archive_path, archive_extract)
+mut bundle_metadata_found := false
+for path in extracted { if basename(path) == "bundle.json" { bundle_metadata_found = true } }
+check(len(extracted) > 5 && bundle_metadata_found, "Kujo release archive contains portable bundle evidence")
+import_storage := join_path(ROOT, "imported")
+check(proc_success(cli(["bundle-import", bundle_path, "--storage-dir", import_storage, "--trust-policy", trust_path, "--target", "bundle-import"])), "signed bundle import command succeeds")
+release_output := join_path(ROOT, "release-evidence")
+release_proc := spawn_process([KUJO_BIN, "run", join_path(HOME, "scripts/release_evidence.kujo")], {"inherit_env": true, "env": {"TRIBUNAL_HOME": HOME, "KUJO_BIN": KUJO_BIN, "TRIBUNAL_SIGNING_PROVIDER_CONFIG": provider_config, "TRIBUNAL_RELEASE_OUTPUT": release_output}, "timeout_ms": 120000, "max_output_bytes": 1048576})
+if proc_success(release_proc) == false { print("  Release detail: " + proc_stderr(release_proc) + proc_stdout(release_proc)) }
+check(proc_success(release_proc) && file_exists(join_path(release_output, "release-receipt.json")) && file_exists(join_path(release_output, "tribunal-v0.4.0-signed-evidence.zip")), "Kujo-only release evidence orchestration succeeds")
 
 write_file(join_path(join_path(STORAGE, run_id), "ruling.md"), "tampered\n", true)
 check(proc_success(cli(["replay", run_id, "--storage-dir", STORAGE])) == false, "replay rejects tampering")

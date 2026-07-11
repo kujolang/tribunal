@@ -1,0 +1,75 @@
+# Tribunal large-docket/context and inventory pagination benchmark.
+
+from src.common import ensure_dir, relative_files, remove_tree, utf8_byte_length, write_json
+from src.config import default_config
+from src.tribunal import review
+from src.storage import list_runs_page
+
+ROOT := join_path(env_or("TMPDIR", "/tmp"), "tribunal-scale-benchmark-" + to_string(current_timestamp()))
+STORAGE := join_path(ROOT, "runs")
+DOCKET := join_path(ROOT, "large-docket.md")
+ensure_dir(ROOT)
+
+target_docket_bytes := 262144
+prefix := "# Large strategic benchmark\n\n## Scope\n\nExercise a bounded large decision record.\n\n"
+body := repeat("evidence-block-0123456789abcdef\n", 8000)
+content := prefix + body
+write_file(DOCKET, content)
+
+config := default_config()
+tribunal := config["tribunal"]; tribunal["storage_dir"] := STORAGE; config["tribunal"] := tribunal
+limits := config["limits"]; limits["max_docket_bytes"] := 1048576; limits["max_context_bytes"] := 4194304; config["limits"] := limits
+
+started := current_timestamp()
+result := review(config, DOCKET, "strategic-five", "", "")
+hearing_ms := current_timestamp() - started
+if result["ok"] != true { print(to_json({"ok": false, "error": result["error"], "hearingMs": hearing_ms})); remove_tree(ROOT); exit(1) }
+
+run_root := result["runDir"]
+artifact_bytes := 0
+for name in relative_files(run_root, "") { artifact_bytes = artifact_bytes + file_size(join_path(run_root, name)) }
+context_bytes := file_size(join_path(run_root, "context.md"))
+
+# Populate a large manifest inventory without model calls to benchmark cursor access.
+inventory := join_path(ROOT, "inventory")
+ensure_dir(inventory)
+mut i := 0
+while i < 250 {
+    run_id := "2026-07-11-inventory-" + to_string(100000 + i)
+    root := join_path(inventory, run_id)
+    ensure_dir(root)
+    write_json(join_path(root, "manifest.json"), {"schemaVersion": "1.0.0", "runId": run_id, "status": "completed", "openedAt": "2026-07-11T00:00:00Z", "panelId": "strategic-five"})
+    i = i + 1
+}
+page_started := current_timestamp()
+first := list_runs_page(inventory, "completed", "strategic-five", 100, "")
+second := list_runs_page(inventory, "completed", "strategic-five", 100, first["nextCursor"])
+pagination_ms := current_timestamp() - page_started
+
+latency_budget_ms := 45000
+pagination_budget_ms := 3000
+peak_resident_memory_budget_bytes := 268435456
+working_set_input_budget_bytes := config["limits"]["max_docket_bytes"] + config["limits"]["max_context_bytes"] + config["limits"]["max_model_output_bytes"] * 5 + config["limits"]["max_process_output_bytes"]
+within_budget := hearing_ms <= latency_budget_ms && pagination_ms <= pagination_budget_ms && len(first["items"]) == 100 && len(second["items"]) == 100
+report := {
+    "schemaVersion": "1.0.0",
+    "ok": within_budget,
+    "panel": "strategic-five",
+    "docketBytes": utf8_byte_length(content),
+    "targetDocketBytes": target_docket_bytes,
+    "contextBytes": context_bytes,
+    "artifactBytes": artifact_bytes,
+    "hearingMs": hearing_ms,
+    "hearingLatencyBudgetMs": latency_budget_ms,
+    "inventoryRuns": 250,
+    "twoPageLatencyMs": pagination_ms,
+    "paginationLatencyBudgetMs": pagination_budget_ms,
+    "pageSize": 100,
+    "configuredWorkingSetInputBudgetBytes": working_set_input_budget_bytes,
+    "peakResidentMemoryBudgetBytes": peak_resident_memory_budget_bytes,
+    "memoryMeasurement": "Budget is a release limit; Kujo currently exposes no in-process peak RSS metric. Input and artifact bytes are measured directly."
+}
+print(to_json(report))
+remove_tree(ROOT)
+if report["ok"] != true { exit(1) }
+exit(0)

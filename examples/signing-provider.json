@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "1.0.0",
+  "provider": "external-kujo-hsm-adapter",
+  "command": "../tests/fixtures/external_signer.kujo",
+  "keyReference": "replace-with-kms-or-hsm-key-reference",
+  "kujoBin": "../../kujo/target/release/kujo",
+  "timeoutMs": 60000
+}

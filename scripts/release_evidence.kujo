@@ -1,0 +1,50 @@
+# Tribunal Kujo-only release evidence orchestration.
+
+from src.bundles import export_bundle
+from src.common import ensure_dir, iso_now, remove_tree, write_json
+from src.config import default_config
+from src.contracts import validate_run_contracts
+from src.signing_provider import load_signing_provider, seal_with_provider
+from src.tribunal import review
+from src.version import VERSION
+
+home := path_absolute(env_or("TRIBUNAL_HOME", "."))
+output_root := env_or("TRIBUNAL_RELEASE_OUTPUT", join_path(env_or("TMPDIR", "/tmp"), "tribunal-release-evidence"))
+if starts_with(output_root, "/") == false { output_root = join_path(os_getcwd(), output_root) }
+provider_path := env_or("TRIBUNAL_SIGNING_PROVIDER_CONFIG", "")
+if provider_path == "" { eprint("TRIBUNAL_SIGNING_PROVIDER_CONFIG is required."); exit(2) }
+if path_is_dir(output_root) || file_exists(output_root) { eprint("Release output already exists: " + output_root); exit(1) }
+ensure_dir(output_root)
+
+config := default_config()
+tribunal := config["tribunal"]
+tribunal["storage_dir"] := join_path(output_root, "runs")
+config["tribunal"] := tribunal
+docket := join_path(home, "examples/product-decision.md")
+result := review(config, docket, "strategic-five", "", "")
+if result["ok"] != true { remove_tree(output_root); eprint(result["error"]); exit(1) }
+
+provider := load_signing_provider(provider_path)
+if provider["ok"] != true { remove_tree(output_root); eprint(provider["error"]); exit(1) }
+sealed := seal_with_provider(tribunal["storage_dir"], result["runId"], provider["config"])
+if sealed["ok"] != true { remove_tree(output_root); eprint(sealed["error"]); exit(1) }
+
+contracts := validate_run_contracts(home, tribunal["storage_dir"], result["runId"])
+if contracts["ok"] != true { remove_tree(output_root); eprint("Release evidence contract validation failed."); exit(1) }
+
+bundle_path := join_path(output_root, "bundle")
+bundle := export_bundle(tribunal["storage_dir"], result["runId"], bundle_path)
+if bundle["ok"] != true { remove_tree(output_root); eprint(bundle["error"]); exit(1) }
+archive_path := join_path(output_root, "tribunal-v" + VERSION + "-signed-evidence.zip")
+archive := zip_create(archive_path)
+if zip_add_dir(archive, bundle_path) != true || zip_close(archive) != true { remove_tree(output_root); eprint("Release evidence archive failed."); exit(1) }
+
+receipt := {
+    "schemaVersion": "1.0.0", "version": VERSION, "runId": result["runId"], "createdAt": iso_now(),
+    "manifestSha256": sealed["signature"]["manifestSha256"], "keyId": sealed["signature"]["keyId"],
+    "signingProvider": sealed["signature"]["signingProvider"], "contractsValidated": contracts["validated"],
+    "bundlePath": bundle_path, "archivePath": archive_path, "archiveBytes": file_size(archive_path), "archiveSha256": sha256_file(archive_path)
+}
+write_json(join_path(output_root, "release-receipt.json"), receipt)
+print(to_json(receipt))
+exit(0)

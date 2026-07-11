@@ -1,0 +1,12 @@
+{
+  "title": "TribunalTelemetryExport",
+  "type": "object",
+  "required": ["schemaVersion", "exportedAt", "metrics", "auditEvents"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "exportedAt": { "type": "string", "minLength": 1 },
+    "metrics": { "type": "object" },
+    "auditEvents": { "type": "array", "items": { "type": "object" } }
+  },
+  "additionalProperties": false
+}

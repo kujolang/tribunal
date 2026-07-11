@@ -1,0 +1,4 @@
+# Negative fixture: a compromised adapter attempts to return private material.
+request := parse_json(env_or("TRIBUNAL_SIGNING_REQUEST", "{}"))
+private_key := read_file(join_path(request["keyReference"], "private.pem"))
+print(to_json({"ok": true, "algorithm": "RSA-PKCS1v15-SHA256", "keyId": substring(sha256(private_key), 0, 32), "publicKey": private_key, "signature": "not-a-signature"}))

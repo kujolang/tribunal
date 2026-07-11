@@ -1,6 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kujolang.ai/schemas/tribunal-event-1.0.0.json",
   "title": "TribunalEvent",
   "type": "object",
   "required": [
@@ -12,7 +10,7 @@
     "metadata"
   ],
   "properties": {
-    "timestamp": { "type": "string", "format": "date-time" },
+    "timestamp": { "type": "string", "minLength": 1 },
     "runId": { "type": "string" },
     "stageId": {
       "enum": [

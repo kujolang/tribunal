@@ -1,0 +1,164 @@
+# Tribunal enterprise trust, storage, governance, telemetry, and contract suite.
+
+from src.common import dict_get, ensure_dir, remove_tree, write_json
+from src.config import default_config
+from src.tribunal import review
+from src.integrity import begin_seal_transaction, generate_keys, recover_seal_transactions, verify
+from src.signing_provider import seal_with_provider
+from src.policy import authorize, load_access_policy, load_trust_policy, trusted_key
+from src.locking import acquire_lock, release_lock, recover_stale_locks
+from src.governance import delete_run, set_legal_hold
+from src.telemetry import export_telemetry
+from src.contracts import validate_run_contracts
+from src.bundles import export_bundle, import_bundle
+from src.artifact_store import publish_local, pull_local
+from src.storage import list_runs_page
+from src.dashboard import export_dashboard
+
+mut passed := 0
+mut failed := 0
+
+func check(condition, name) {
+    if condition == true { passed = passed + 1 }
+    else { failed = failed + 1; print("  FAIL: " + name) }
+}
+
+HOME := path_absolute(env_or("TRIBUNAL_HOME", "."))
+KUJO_BIN := path_absolute(env_or("KUJO_BIN", join_path(HOME, "../kujo/target/release/kujo")))
+ROOT := join_path(env_or("TMPDIR", "/tmp"), "tribunal-enterprise-tests-" + to_string(current_timestamp()))
+DOCKET := join_path(ROOT, "docket.md")
+
+func config_for(storage) {
+    config := default_config()
+    tribunal := config["tribunal"]
+    tribunal["storage_dir"] := storage
+    config["tribunal"] := tribunal
+    ai := config["kujo_ai"]
+    ai["kujo_bin"] := KUJO_BIN
+    config["kujo_ai"] := ai
+    return config
+}
+
+func make_signed(storage, key_root) {
+    result := review(config_for(storage), DOCKET, "executioner-only", "", "")
+    if result["ok"] != true { return result }
+    ensure_dir(key_root)
+    generated := generate_keys(join_path(key_root, "private.pem"), join_path(key_root, "public.pem"), 2048)
+    if generated["ok"] != true { return generated }
+    provider := {"schemaVersion": "1.0.0", "provider": "offline-hsm-fixture", "command": join_path(HOME, "tests/fixtures/external_signer.kujo"), "keyReference": key_root, "kujoBin": KUJO_BIN, "timeoutMs": 60000}
+    sealed := seal_with_provider(storage, result["runId"], provider)
+    if sealed["ok"] != true { return sealed }
+    result["keyId"] := sealed["signature"]["keyId"]
+    result["publicKey"] := join_path(key_root, "public.pem")
+    return result
+}
+
+ensure_dir(ROOT)
+write_file(DOCKET, "# Enterprise fixture\n\n## Scope\n\nExercise trust and durable operations.\n")
+release_workflow := read_file(join_path(HOME, ".github/workflows/release.yml"))
+check(contains(release_workflow, "scripts/release_evidence.kujo") == 1 && contains(release_workflow, "TRIBUNAL_SIGNING_PROVIDER_CONFIG") == 1 && contains(release_workflow, "actions/upload-artifact") == 1, "CI release publishes externally signed evidence bundles")
+
+access := {
+    "schemaVersion": "1.0.0", "defaultDeny": true,
+    "identities": {"reader": {"roles": ["read"], "disabled": false}, "disabled": {"roles": ["read"], "disabled": true}},
+    "roles": {"read": {"permissions": ["runs.read"]}}
+}
+check(authorize(access, "reader", "runs.read")["ok"] == true, "policy grants an explicit permission")
+check(authorize(access, "reader", "runs.delete")["ok"] == false, "policy is default-deny")
+check(authorize(access, "disabled", "runs.read")["ok"] == false, "disabled identity is rejected")
+access_path := join_path(ROOT, "access.json"); write_json(access_path, access)
+check(load_access_policy(access_path)["ok"] == true, "access policy loader validates nested identity and role structure")
+malformed_access := access; malformed_roles := malformed_access["roles"]; malformed_role := malformed_roles["read"]; malformed_role["permissions"] := "*"; malformed_roles["read"] := malformed_role; malformed_access["roles"] := malformed_roles; malformed_path := join_path(ROOT, "malformed-access.json"); write_json(malformed_path, malformed_access)
+check(load_access_policy(malformed_path)["ok"] == false, "malformed permission string cannot bypass policy schema")
+
+lock_storage := join_path(ROOT, "lock-runs")
+first_lock := acquire_lock(lock_storage, "run-lock", "worker-a", 60000)
+check(first_lock["ok"] == true, "atomic run lock is acquired")
+check(acquire_lock(lock_storage, "run-lock", "worker-b", 60000)["ok"] == false, "concurrent run lock is rejected")
+check(release_lock(lock_storage, "run-lock", "wrong")["ok"] == false, "lock ownership token is enforced")
+check(release_lock(lock_storage, "run-lock", first_lock["lock"]["token"])["released"] == true, "run lock is released")
+stale := acquire_lock(lock_storage, "stale-run", "crashed-worker", 60000)
+stale_owner := join_path(join_path(join_path(lock_storage, ".locks"), "stale-run.lock"), "owner.json")
+stale_value := parse_json(read_file(stale_owner)); stale_value["acquiredAtMs"] := 1; write_json(stale_owner, stale_value)
+check(len(recover_stale_locks(lock_storage, 1000)["recovered"]) == 1, "crash recovery removes stale locks")
+
+storage := join_path(ROOT, "source-runs")
+signed := make_signed(storage, join_path(ROOT, "provider-key"))
+check(signed["ok"] == true, "external signing-provider seals without Tribunal reading private material")
+if signed["ok"] == true {
+    run_id := signed["runId"]
+    envelope := parse_json(read_file(join_path(join_path(storage, run_id), "signature.json")))
+    check(envelope["schemaVersion"] == "1.2.0" && envelope["signingProvider"] == "offline-hsm-fixture", "external signer provenance is bound into v1.2 envelope")
+    checked := verify(storage, run_id, signed["publicKey"])
+    check(checked["ok"] == true && checked["signature"] == "verified", "external provider signature verifies")
+    leaky_provider := {"schemaVersion": "1.0.0", "provider": "compromised-fixture", "command": join_path(HOME, "tests/fixtures/leaky_signer.kujo"), "keyReference": join_path(ROOT, "provider-key"), "kujoBin": KUJO_BIN, "timeoutMs": 60000}
+    check(seal_with_provider(storage, run_id, leaky_provider)["ok"] == false && verify(storage, run_id, signed["publicKey"])["ok"] == true, "private-material response is rejected without replacing prior trusted signature")
+    transaction := begin_seal_transaction(storage, run_id)
+    write_file(join_path(join_path(storage, run_id), "artifact-manifest.json"), "{}\n", true)
+    write_file(join_path(join_path(storage, run_id), "signature.json"), "{}\n", true)
+    recovered_seals := recover_seal_transactions(storage)
+    check(transaction["ok"] == true && len(recovered_seals["recovered"]) == 1 && verify(storage, run_id, signed["publicKey"])["ok"] == true, "interrupted sealing transaction restores prior trusted evidence")
+    trust := {"schemaVersion": "1.0.0", "defaultDeny": true, "keys": [{"keyId": signed["keyId"], "status": "active", "algorithm": "RSA-PKCS1v15-SHA256", "publicKeyPath": signed["publicKey"], "signerRef": "fixture", "validFrom": 0, "validUntil": current_timestamp() + 86400000, "rotatesTo": "", "revokedAt": 0, "revocationReason": "", "allowedTargets": ["bundle-import", "store-pull", "verify"]}]}
+    trust_path := join_path(ROOT, "trust.json"); write_json(trust_path, trust)
+    loaded_trust := load_trust_policy(trust_path)
+    check(loaded_trust["ok"] == true, "trust policy loader validates lifecycle and key fingerprint inputs")
+    check(trusted_key(trust, signed["keyId"], "verify", current_timestamp())["ok"] == true, "active trusted key and target are accepted")
+    check(trusted_key(trust, signed["keyId"], "runledger", current_timestamp())["ok"] == false, "trusted key target restriction is enforced")
+    rotating := trust; rotating_keys := rotating["keys"]; rotating_key := rotating_keys[0]; rotating_key["status"] := "rotating"; rotating_key["rotatesTo"] := "11111111111111111111111111111111"; rotating_keys[0] := rotating_key; rotating["keys"] := rotating_keys
+    check(trusted_key(rotating, signed["keyId"], "verify", current_timestamp())["ok"] == true, "rotating predecessor remains trusted during overlap window")
+    revoked := trust; keys := revoked["keys"]; key := keys[0]; key["status"] := "revoked"; key["revokedAt"] := current_timestamp(); key["revocationReason"] := "test"; keys[0] := key; revoked["keys"] := keys
+    check(trusted_key(revoked, signed["keyId"], "verify", current_timestamp())["ok"] == false, "revoked signing key is rejected")
+
+    contracts := validate_run_contracts(HOME, storage, run_id)
+    check(contracts["ok"] == true && contracts["validated"] > 10, "complete JSON Schema engine validates emitted contracts")
+
+    telemetry_path := join_path(ROOT, "collector/telemetry.jsonl")
+    telemetry := export_telemetry(storage, "jsonl", telemetry_path)
+    check(telemetry["ok"] == true && telemetry["events"] > 0 && file_exists(telemetry_path), "structured metrics and audit events export externally")
+    check(file_exists(join_path(join_path(storage, run_id), "telemetry.jsonl")) == false, "telemetry export does not mutate sealed runs")
+    dashboard_path := join_path(ROOT, "dashboard/index.html")
+    dashboard := export_dashboard(storage, dashboard_path)
+    check(dashboard["ok"] == true && contains(read_file(dashboard_path), "Content-Security-Policy") == 1, "offline read-only dashboard exports with restrictive CSP")
+
+    bundle_path := join_path(ROOT, "bundle")
+    bundle := export_bundle(storage, run_id, bundle_path)
+    check(bundle["ok"] == true && file_exists(join_path(bundle_path, "bundle.json")), "signed evidence bundle exports")
+    imported_storage := join_path(ROOT, "imported-runs")
+    imported := import_bundle(bundle_path, imported_storage, trust, "bundle-import")
+    check(imported["ok"] == true && imported["verification"]["signature"] == "verified", "signed evidence bundle imports under trust policy")
+
+    store_root := join_path(ROOT, "artifact-store")
+    published := publish_local(storage, run_id, store_root, "")
+    check(published["ok"] == true && published["version"] == checked["manifestSha256"], "immutable store publishes first conditional version")
+    check(publish_local(storage, run_id, store_root, "")["ok"] == false, "immutable store rejects stale expected version")
+    pulled_storage := join_path(ROOT, "pulled-runs")
+    pulled := pull_local(store_root, run_id, published["version"], pulled_storage, trust, "store-pull")
+    check(pulled["ok"] == true, "versioned immutable store restores trusted evidence")
+
+    page := list_runs_page(storage, "completed", "executioner-only", 1, "")
+    check(len(page["items"]) == 1, "cursor page returns bounded items")
+}
+
+governance_storage := join_path(ROOT, "governance-runs")
+governed := review(config_for(governance_storage), DOCKET, "executioner-only", "", "")
+check(governed["ok"] == true && governed["record"]["governance"]["retentionDays"] == 365, "run persists retention metadata before sealing")
+if governed["ok"] == true {
+    blocked := delete_run(governance_storage, governed["runId"], "local-operator", "premature", false)
+    check(blocked["ok"] == false, "retention policy blocks premature deletion")
+    applied_hold := set_legal_hold(governance_storage, governed["runId"], "legal-officer", true, "litigation")
+    check(applied_hold["ok"] == true && delete_run(governance_storage, governed["runId"], "local-operator", "blocked by external hold", true)["ok"] == false, "post-seal external legal hold blocks deletion")
+    released_hold := set_legal_hold(governance_storage, governed["runId"], "legal-officer", false, "matter closed")
+    check(released_hold["ok"] == true && len(released_hold["governance"]["history"]) == 2, "legal-hold release preserves append-only governance history")
+    deleted := delete_run(governance_storage, governed["runId"], "local-operator", "approved test expiry", true)
+    check(deleted["ok"] == true && file_exists(join_path(join_path(governance_storage, ".deletions"), governed["runId"] + ".json")), "policy deletion removes whole run and writes external tombstone")
+}
+
+hold_config := config_for(join_path(ROOT, "hold-runs")); hold_governance := hold_config["governance"]; hold_governance["legal_hold"] := true; hold_config["governance"] := hold_governance
+held := review(hold_config, DOCKET, "executioner-only", "", "")
+check(held["ok"] == true && delete_run(hold_config["tribunal"]["storage_dir"], held["runId"], "local-operator", "must fail", true)["ok"] == false, "legal hold blocks forced deletion")
+
+remove_tree(ROOT)
+print("")
+print("Tribunal enterprise tests: " + to_string(passed) + " passed, " + to_string(failed) + " failed")
+if failed > 0 { exit(1) }
+exit(0)

@@ -88,25 +88,40 @@ export func list_runs(storage_dir) {
 }
 
 export func list_runs_filtered(storage_dir, status, panel_id, limit) {
-    if path_is_dir(storage_dir) == false { return [] }
-    if path_is_symlink(storage_dir) { return [] }
+    return list_runs_page(storage_dir, status, panel_id, limit, "")["items"]
+}
+
+export func list_runs_page(storage_dir, status, panel_id, limit, cursor) {
+    if path_is_dir(storage_dir) == false { return {"items": [], "nextCursor": "", "hasMore": false, "cursorFound": cursor == ""} }
+    if path_is_symlink(storage_dir) { return {"items": [], "nextCursor": "", "hasMore": false, "cursorFound": cursor == ""} }
     names := sort(list_dir(storage_dir))
     mut runs := []
+    mut after_cursor := cursor == ""
+    mut has_more := false
     mut i := len(names) - 1
     while i >= 0 {
         name := names[i]
-        if safe_run_id(name) {
+        if after_cursor == false {
+            if name == cursor { after_cursor = true }
+            i = i - 1
+            continue
+        }
+        if safe_run_id(name) && starts_with(name, ".") == false {
             manifest := load_manifest(storage_dir, name)
             if type(manifest) == "dict" {
                 status_match := status == "" || manifest["status"] == status
                 panel_match := panel_id == "" || manifest["panelId"] == panel_id
-                if status_match && panel_match { runs = push(runs, manifest) }
-                if limit > 0 && len(runs) >= limit { return runs }
+                if status_match && panel_match {
+                    if limit > 0 && len(runs) >= limit { has_more = true; break }
+                    runs = push(runs, manifest)
+                }
             }
         }
         i = i - 1
     }
-    return runs
+    next_cursor := ""
+    if has_more && len(runs) > 0 { next_cursor = runs[len(runs) - 1]["runId"] }
+    return {"items": runs, "nextCursor": next_cursor, "hasMore": has_more, "cursorFound": after_cursor}
 }
 
 export func artifacts(storage_dir, run_id) {

@@ -1,0 +1,96 @@
+# Tribunal deterministic property/fuzz corpus for untrusted boundaries.
+
+from src.common import ensure_dir, parse_args, remove_tree, safe_relative_path, utf8_byte_length
+from src.config import default_config, validate_config
+from src.tribunal import review, validate_model_output
+from src.integrity import generate_keys, seal, verify
+from src.storage import artifact_path, load_events
+from src.contracts import validate_run_contracts
+
+mut passed := 0
+mut failed := 0
+func check(condition, name) { if condition { passed = passed + 1 } else { failed = failed + 1; print("  FAIL: " + name) } }
+
+ROOT := join_path(env_or("TMPDIR", "/tmp"), "tribunal-property-tests-" + to_string(current_timestamp()))
+HOME := path_absolute(env_or("TRIBUNAL_HOME", "."))
+ensure_dir(ROOT)
+
+mut parser_safe := true
+mut i := 0
+while i < 500 {
+    parsed := parse_args(["value-" + to_string(i), "--json", "--limit", to_string(i + 1)], ["json"])
+    if len(parsed["errors"]) != 0 || parsed["positionals"][0] != "value-" + to_string(i) { parser_safe = false }
+    duplicate := parse_args(["--flag", "v", "--flag", "w"], [])
+    if len(duplicate["errors"]) != 1 { parser_safe = false }
+    i = i + 1
+}
+check(parser_safe, "500 generated CLI token sets preserve parse invariants")
+
+unsafe_paths := ["../x", "a/../x", "/absolute", "a//b", "./a", "a/.", "a\\b", "", "..", "."]
+mut paths_safe := true
+for value in unsafe_paths { if safe_relative_path(value) { paths_safe = false } }
+i = 0
+while i < 500 {
+    value := "testimony/seat-" + to_string(i) + ".md"
+    if safe_relative_path(value) == false { paths_safe = false }
+    i = i + 1
+}
+check(paths_safe, "path corpus rejects traversal and accepts 500 normalized artifacts")
+
+check(utf8_byte_length("é") == 2 && utf8_byte_length("犬") == 3 && utf8_byte_length("😀") == 4, "Unicode limits count UTF-8 bytes")
+
+mut config_safe := true
+for value in [0, 1, 1023, 67108865, -1] {
+    config := default_config(); limits := config["limits"]; limits["max_docket_bytes"] := value; config["limits"] := limits
+    if validate_config(config) == "" { config_safe = false }
+}
+for value in [1024, 4096, 1048576, 67108864] {
+    config := default_config(); limits := config["limits"]; limits["max_docket_bytes"] := value; config["limits"] := limits
+    if validate_config(config) != "" { config_safe = false }
+}
+check(config_safe, "config boundary corpus enforces inclusive safe ranges")
+credential_url_config := default_config(); credential_store := credential_url_config["artifact_store"]; credential_store["provider"] := "http-immutable"; credential_store["endpoint"] := "https://user:secret@example.test"; credential_url_config["artifact_store"] := credential_store
+check(validate_config(credential_url_config) != "", "remote endpoint configuration rejects embedded credentials")
+response_schema := {"type": "object", "required": ["confidence", "disposition"], "properties": {"confidence": {"type": "integer", "minimum": 0, "maximum": 10}, "disposition": {"enum": ["proceed", "reject"]}}, "additionalProperties": false}
+check(validate_model_output({"confidence": 7, "disposition": "proceed"}, response_schema) == "", "provider response accepts valid type and range")
+check(validate_model_output({"confidence": 99, "disposition": "unknown"}, response_schema) != "", "provider response rejects invalid range and enum")
+check(validate_model_output({"confidence": "high", "disposition": "proceed", "extra": true}, response_schema) != "", "provider response rejects invalid type and extra fields")
+
+storage := join_path(ROOT, "runs")
+config := default_config(); tribunal := config["tribunal"]; tribunal["storage_dir"] := storage; config["tribunal"] := tribunal
+docket := join_path(ROOT, "docket.md"); write_file(docket, "# Fuzz fixture\n\n## Scope\n\nValidate corrupt evidence handling.\n")
+private_key := join_path(ROOT, "private.pem"); public_key := join_path(ROOT, "public.pem")
+generated := generate_keys(private_key, public_key, 2048)
+result := review(config, docket, "executioner-only", private_key, public_key)
+check(generated["ok"] == true && result["ok"] == true, "signed fuzz fixture is created")
+if result["ok"] == true {
+    run_id := result["runId"]
+    signature_path := artifact_path(storage, run_id, "signature.json")
+    original := read_file(signature_path)
+    envelope := parse_json(original)
+    mut rejected := 0
+    for field in ["schemaVersion", "runId", "algorithm", "manifestSha256", "keyId", "signedAt", "payloadSha256", "signature"] {
+        mutated := envelope
+        mutated[field] := "tampered-" + field
+        write_file(signature_path, to_json_pretty(mutated) + "\n", true)
+        if verify(storage, run_id, public_key)["ok"] == false { rejected = rejected + 1 }
+    }
+    write_file(signature_path, original, true)
+    check(rejected == 8, "signature-envelope mutation corpus rejects every trusted field")
+    ruling_path := artifact_path(storage, run_id, "ruling.md")
+    ruling_original := read_file(ruling_path)
+    write_file(ruling_path, "tampered and must not be blessed\n", true)
+    check(seal(storage, run_id, private_key, public_key)["ok"] == false, "sealed-run immutability refuses to re-sign changed evidence")
+    write_file(ruling_path, ruling_original, true)
+    events_path := artifact_path(storage, run_id, "events.jsonl")
+    events_original := read_file(events_path)
+    write_file(events_path, events_original + "{not-json}\n", true)
+    check(len(load_events(storage, run_id)) == 0, "corrupt JSONL fails closed")
+    check(validate_run_contracts(HOME, storage, run_id)["ok"] == false, "contract validation reports corrupt JSONL instead of treating it as empty")
+}
+
+remove_tree(ROOT)
+print("")
+print("Tribunal property tests: " + to_string(passed) + " passed, " + to_string(failed) + " failed")
+if failed > 0 { exit(1) }
+exit(0)

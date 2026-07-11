@@ -1,0 +1,87 @@
+# Tribunal :: complete emitted-artifact JSON Schema validation
+
+from src.common import dict_get, read_json
+from src.storage import artifact_path, load_record
+
+func load_schema(home, name) {
+    path := join_path(join_path(home, "schemas"), name)
+    if file_exists(path) == false { return {"ok": false, "error": "Schema is missing: " + name} }
+    schema := null
+    try { schema = read_json(path) } except err { return {"ok": false, "error": "Schema is invalid JSON: " + name} }
+    return {"ok": true, "schema": schema}
+}
+
+func validate_value(home, schema_name, value, artifact) {
+    loaded := load_schema(home, schema_name)
+    if loaded["ok"] != true { return loaded }
+    checked := null
+    try { checked = json_schema_validate(value, loaded["schema"]) } except err { return {"ok": false, "error": "Schema engine rejected " + schema_name + ": " + to_string(err)} }
+    if checked["valid"] != true { return {"ok": false, "error": artifact + " failed " + schema_name, "details": checked["errors"]} }
+    return {"ok": true, "artifact": artifact, "schema": schema_name}
+}
+
+func validate_file(home, storage_dir, run_id, artifact, schema_name) {
+    path := artifact_path(storage_dir, run_id, artifact)
+    if path == "" || file_exists(path) == false { return {"ok": false, "error": "Artifact is missing: " + artifact} }
+    value := null
+    try { value = read_json(path) } except err { return {"ok": false, "error": "Artifact is invalid JSON: " + artifact} }
+    return validate_value(home, schema_name, value, artifact)
+}
+
+export func validate_run_contracts(home, storage_dir, run_id) {
+    mut results := []
+    mut errors := []
+    mappings := [
+        ["record.json", "tribunal-record.schema.json"],
+        ["receipt.json", "receipt.schema.json"],
+        ["artifact-manifest.json", "artifact-manifest.schema.json"]
+    ]
+    for mapping in mappings {
+        result := validate_file(home, storage_dir, run_id, mapping[0], mapping[1])
+        results = push(results, result)
+        if result["ok"] != true { errors = push(errors, result) }
+    }
+    record := load_record(storage_dir, run_id)
+    if type(record) == "dict" {
+        for mapping in [["ruling", "ruling.schema.json"], ["decisionPacket", "decision-packet.schema.json"]] {
+            value := dict_get(record, mapping[0], null)
+            if type(value) == "dict" {
+                result := validate_value(home, mapping[1], value, "record.json#/" + mapping[0])
+                results = push(results, result)
+                if result["ok"] != true { errors = push(errors, result) }
+            }
+        }
+    }
+    signature_path := artifact_path(storage_dir, run_id, "signature.json")
+    if signature_path != "" && file_exists(signature_path) {
+        result := validate_file(home, storage_dir, run_id, "signature.json", "signature.schema.json")
+        results = push(results, result)
+        if result["ok"] != true { errors = push(errors, result) }
+    }
+    events_path := artifact_path(storage_dir, run_id, "events.jsonl")
+    mut index := 0
+    if events_path == "" || file_exists(events_path) == false {
+        invalid := {"ok": false, "error": "Artifact is missing: events.jsonl"}; results = push(results, invalid); errors = push(errors, invalid)
+    } else {
+        for line in split(read_file(events_path), "\n") {
+            if trim(line) != "" {
+                event := null
+                try { event = parse_json(line) } except err { event = null }
+                if type(event) != "dict" {
+                    invalid := {"ok": false, "error": "events.jsonl#" + to_string(index) + " is invalid JSON"}; results = push(results, invalid); errors = push(errors, invalid)
+                } else {
+                    result := validate_value(home, "tribunal-event.schema.json", event, "events.jsonl#" + to_string(index))
+                    results = push(results, result)
+                    if result["ok"] != true { errors = push(errors, result) }
+                }
+                index = index + 1
+            }
+        }
+        if index == 0 { invalid := {"ok": false, "error": "events.jsonl contains no events"}; results = push(results, invalid); errors = push(errors, invalid) }
+    }
+    return {"ok": len(errors) == 0, "runId": run_id, "validated": len(results), "results": results, "errors": errors}
+}
+
+export func validate_external_receipt(home, receipt) {
+    return validate_value(home, "ingestion-receipt.schema.json", receipt, "ingestion-receipt")
+}

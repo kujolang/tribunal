@@ -1,0 +1,124 @@
+# Tribunal :: immutable artifact-store providers with conditional writes and versions
+
+from src.bundles import export_bundle, import_bundle
+from src.common import dict_get, ensure_dir, read_json, remove_tree, write_json
+from src.integrity import verify
+
+func request(url, options) {
+    response := {"ok": false, "status": 0, "body": "", "error": "request failed"}
+    try {
+        result := http_request(url, options)
+        match result {
+            case Ok(value): {
+                response["status"] := dict_get(value, "_status", dict_get(value, "status", 0))
+                response["body"] := dict_get(value, "_body", dict_get(value, "body", ""))
+                response["ok"] := response["status"] >= 200 && response["status"] < 300
+                response["error"] := ""
+            }
+            case Err(error): { response["error"] := to_string(error) }
+        }
+    } except err { response["error"] := to_string(err) }
+    return response
+}
+
+func local_index(root, run_id) { return join_path(join_path(root, "indexes"), run_id + ".json") }
+func local_version(root, run_id, version) { return join_path(join_path(join_path(root, "objects"), run_id), version) }
+
+func current_index(root, run_id) {
+    path := local_index(root, run_id)
+    if file_exists(path) == false { return null }
+    try { return read_json(path) } except err { return null }
+}
+
+export func publish_local(storage_dir, run_id, root, expected_version) {
+    if trim(root) == "" || (file_exists(root) && path_is_symlink(root)) { return {"ok": false, "error": "Artifact-store root is unsafe."} }
+    existing := current_index(root, run_id)
+    current := ""
+    if type(existing) == "dict" { current = dict_get(existing, "currentVersion", "") }
+    if expected_version != current { return {"ok": false, "error": "Conditional write failed: expected version '" + expected_version + "' but current is '" + current + "'."} }
+    signature_path := join_path(join_path(storage_dir, run_id), "signature.json")
+    if file_exists(signature_path) == false { return {"ok": false, "error": "Immutable publication requires a signed run."} }
+    integrity := verify(storage_dir, run_id, "")
+    if integrity["ok"] != true { return {"ok": false, "error": "Run integrity must pass before publication.", "verification": integrity} }
+    envelope := null
+    try { envelope = read_json(signature_path) } except err { return {"ok": false, "error": "Signature envelope is invalid JSON."} }
+    version := dict_get(envelope, "manifestSha256", "")
+    if version == "" { return {"ok": false, "error": "Signed run has no manifest version."} }
+    destination := local_version(root, run_id, version)
+    if path_is_dir(destination) { return {"ok": false, "error": "Immutable object version already exists."} }
+    ensure_dir(dirname(destination))
+    exported := export_bundle(storage_dir, run_id, destination)
+    if exported["ok"] != true { return exported }
+    versions := []
+    if type(existing) == "dict" { versions = dict_get(existing, "versions", []) }
+    versions = push(versions, {"version": version, "publishedAt": exported["bundle"]["exportedAt"], "keyId": exported["bundle"]["keyId"], "path": destination})
+    index := {"schemaVersion": "1.0.0", "runId": run_id, "currentVersion": version, "versions": versions}
+    ensure_dir(dirname(local_index(root, run_id)))
+    write_json(local_index(root, run_id), index)
+    return {"ok": true, "provider": "local-immutable", "version": version, "index": index}
+}
+
+export func pull_local(root, run_id, version, storage_dir, trust_policy, target) {
+    selected := version
+    if selected == "" {
+        index := current_index(root, run_id)
+        if type(index) != "dict" { return {"ok": false, "error": "Artifact-store index is missing."} }
+        selected = index["currentVersion"]
+    }
+    source := local_version(root, run_id, selected)
+    if path_is_dir(source) == false { return {"ok": false, "error": "Artifact-store version does not exist."} }
+    return import_bundle(source, storage_dir, trust_policy, target)
+}
+
+export func publish_http(storage_dir, run_id, endpoint, expected_version) {
+    temp := join_path(env_or("TMPDIR", "/tmp"), "tribunal-http-bundle-" + to_string(current_timestamp()) + "-" + to_string(random_int(1000, 9999)))
+    exported := export_bundle(storage_dir, run_id, temp)
+    if exported["ok"] != true { return exported }
+    metadata := exported["bundle"]
+    version := metadata["manifestSha256"]
+    for name in metadata["artifacts"] {
+        source := join_path(join_path(temp, "artifacts"), name)
+        uploaded := request(endpoint + "/runs/" + run_id + "/versions/" + version + "/artifacts/" + name, {
+            "method": "PUT",
+            "_headers": {"Content-Type": "application/octet-stream", "If-None-Match": "*", "Content-SHA256": sha256_file(source)},
+            "_body": read_file(source),
+            "timeout": 60
+        })
+        if uploaded["ok"] != true { remove_tree(temp); return {"ok": false, "error": "Remote artifact upload failed for " + name + ": " + uploaded["error"], "status": uploaded["status"]} }
+    }
+    condition_headers := {"Content-Type": "application/json", "Idempotency-Key": metadata["manifestSha256"]}
+    if expected_version == "" { condition_headers["If-None-Match"] := "*" } else { condition_headers["If-Match"] := expected_version }
+    finalized := request(endpoint + "/runs/" + run_id + "/versions", {
+        "method": "POST",
+        "_headers": condition_headers,
+        "_body": to_json(metadata),
+        "timeout": 60
+    })
+    remove_tree(temp)
+    if finalized["ok"] != true { return {"ok": false, "error": "Remote artifact-store version finalization failed: " + finalized["error"], "status": finalized["status"]} }
+    return {"ok": true, "provider": "http-immutable", "version": version, "status": finalized["status"]}
+}
+
+export func pull_http(endpoint, run_id, version, storage_dir, trust_policy, target) {
+    selected := version
+    suffix := "/runs/" + run_id + "/versions/" + selected
+    if selected == "" { suffix = "/runs/" + run_id + "/current" }
+    fetched := request(endpoint + suffix, {"method": "GET", "timeout": 60})
+    if fetched["ok"] != true { return {"ok": false, "error": "Remote artifact-store metadata fetch failed.", "status": fetched["status"]} }
+    metadata := null
+    try { metadata = parse_json(fetched["body"]) } except err { return {"ok": false, "error": "Remote artifact-store metadata is invalid JSON."} }
+    if selected == "" { selected = dict_get(metadata, "manifestSha256", "") }
+    temp := join_path(env_or("TMPDIR", "/tmp"), "tribunal-http-pull-" + to_string(current_timestamp()) + "-" + to_string(random_int(1000, 9999)))
+    ensure_dir(join_path(temp, "artifacts"))
+    write_json(join_path(temp, "bundle.json"), metadata)
+    for name in dict_get(metadata, "artifacts", []) {
+        downloaded := request(endpoint + "/runs/" + run_id + "/versions/" + selected + "/artifacts/" + name, {"method": "GET", "timeout": 60})
+        if downloaded["ok"] != true { remove_tree(temp); return {"ok": false, "error": "Remote artifact download failed for " + name + ".", "status": downloaded["status"]} }
+        destination := join_path(join_path(temp, "artifacts"), name)
+        ensure_dir(dirname(destination))
+        write_file(destination, downloaded["body"])
+    }
+    imported := import_bundle(temp, storage_dir, trust_policy, target)
+    remove_tree(temp)
+    return imported
+}

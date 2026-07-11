@@ -19,8 +19,9 @@ COMMON_SCHEMA := {
         "position": {"type": "string"},
         "arguments": {"type": "array", "items": {"type": "string"}},
         "risks": {"type": "array", "items": {"type": "string"}},
-        "recommendation": {"type": "string"}
-    }
+        "recommendation": {"type": "string", "minLength": 1}
+    },
+    "additionalProperties": false
 }
 
 export SEATS := {

@@ -5,6 +5,10 @@ from src.config import load_config
 from src.tribunal import review
 from src.storage import load_record, load_events, artifact_path
 from src.integrity import generate_keys, verify
+from src.contracts import validate_run_contracts
+from src.bundles import export_bundle
+from src.artifact_store import publish_local
+from src.telemetry import telemetry_payload
 
 mut failures := []
 
@@ -13,19 +17,34 @@ func require(condition, message) {
 }
 
 home := env_or("TRIBUNAL_HOME", ".")
-for name in ["tribunal-config.schema.json", "tribunal-record.schema.json", "tribunal-event.schema.json", "artifact-manifest.schema.json", "signature.schema.json", "ingestion-receipt.schema.json", "receipt.schema.json", "ruling.schema.json", "decision-packet.schema.json"] {
+schema_names := ["access-policy.schema.json", "artifact-manifest.schema.json", "artifact-store-index.schema.json", "bundle.schema.json", "decision-packet.schema.json", "governance.schema.json", "ingestion-receipt.schema.json", "legal-hold.schema.json", "receipt.schema.json", "ruling.schema.json", "signature.schema.json", "signing-provider.schema.json", "telemetry.schema.json", "tribunal-config.schema.json", "tribunal-event.schema.json", "tribunal-record.schema.json", "trust-policy.schema.json"]
+for name in schema_names {
     path := join_path(join_path(home, "schemas"), name)
     require(file_exists(path), "Missing schema: " + name)
     if file_exists(path) {
         parsed := null
         try { parsed = parse_json(read_file(path)) } except err { parsed = null }
         require(type(parsed) == "dict", "Invalid JSON schema: " + name)
-        if type(parsed) == "dict" { require(dict_get(parsed, "$schema", "") != "", "Schema declaration missing: " + name) }
+        if type(parsed) == "dict" {
+            require(dict_get(parsed, "title", "") != "", "Schema title missing: " + name)
+            engine_result := null
+            try { engine_result = json_schema_validate({}, parsed) } except err { engine_result = null }
+            require(type(engine_result) == "dict", "Kujo schema engine rejected schema: " + name)
+        }
     }
 }
 
 loaded := load_config(join_path(home, "examples/tribunal.config.json"))
 require(loaded["ok"] == true, "examples/tribunal.config.json failed Kujo validation")
+if loaded["ok"] == true {
+    config_schema := parse_json(read_file(join_path(join_path(home, "schemas"), "tribunal-config.schema.json")))
+    require(json_schema_validate(loaded["config"], config_schema)["valid"] == true, "example config failed JSON Schema validation")
+}
+for mapping in [["examples/access-policy.json", "access-policy.schema.json"], ["examples/trust-policy.json", "trust-policy.schema.json"], ["examples/signing-provider.json", "signing-provider.schema.json"]] {
+    value := parse_json(read_file(join_path(home, mapping[0])))
+    schema := parse_json(read_file(join_path(join_path(home, "schemas"), mapping[1])))
+    require(json_schema_validate(value, schema)["valid"] == true, mapping[0] + " failed JSON Schema validation")
+}
 
 root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-schema-gate-" + to_string(current_timestamp()))
 ensure_dir(root)
@@ -66,6 +85,23 @@ if loaded["ok"] == true && keys_result["ok"] == true {
         checked := verify(tribunal["storage_dir"], run_id, public_key)
         require(checked["ok"] == true && checked["signature"] == "verified", "signed artifact set did not verify")
         require(checked["artifactsChecked"] >= 18, "artifact manifest coverage is incomplete")
+        contracts := validate_run_contracts(home, tribunal["storage_dir"], run_id)
+        require(contracts["ok"] == true && contracts["validated"] > 10, "emitted artifacts failed complete JSON Schema validation")
+        bundle_path := join_path(root, "bundle")
+        bundle := export_bundle(tribunal["storage_dir"], run_id, bundle_path)
+        require(bundle["ok"] == true, "signed bundle export failed")
+        if bundle["ok"] == true {
+            bundle_schema := parse_json(read_file(join_path(join_path(home, "schemas"), "bundle.schema.json")))
+            require(json_schema_validate(bundle["bundle"], bundle_schema)["valid"] == true, "bundle metadata failed schema")
+        }
+        store := publish_local(tribunal["storage_dir"], run_id, join_path(root, "store"), "")
+        require(store["ok"] == true, "artifact-store publication failed")
+        if store["ok"] == true {
+            index_schema := parse_json(read_file(join_path(join_path(home, "schemas"), "artifact-store-index.schema.json")))
+            require(json_schema_validate(store["index"], index_schema)["valid"] == true, "artifact-store index failed schema")
+        }
+        telemetry_schema := parse_json(read_file(join_path(join_path(home, "schemas"), "telemetry.schema.json")))
+        require(json_schema_validate(telemetry_payload(tribunal["storage_dir"]), telemetry_schema)["valid"] == true, "telemetry export failed schema")
     }
 }
 
@@ -74,5 +110,5 @@ if len(failures) > 0 {
     for failure in failures { print("FAIL: " + failure) }
     exit(1)
 }
-print("Schema gate passed: 9 schemas; emitted record, events, receipt, ruling, decision packet, manifest, and RSA signature verified with Kujo tooling.")
+print("Schema gate passed: " + to_string(len(schema_names)) + " executable schemas; policies, config, evidence, bundle, store index, telemetry, and RSA signature fully validated with Kujo tooling.")
 exit(0)

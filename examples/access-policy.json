@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "1.0.0",
+  "defaultDeny": true,
+  "identities": {
+    "local-operator": {
+      "roles": ["administrator"],
+      "disabled": false
+    },
+    "audit-reader": {
+      "roles": ["auditor"],
+      "disabled": false
+    },
+    "automation-reviewer": {
+      "roles": ["reviewer"],
+      "disabled": false
+    },
+    "legal-officer": {
+      "roles": ["governance"],
+      "disabled": false
+    }
+  },
+  "roles": {
+    "administrator": {
+      "permissions": ["*"]
+    },
+    "auditor": {
+      "permissions": ["runs.list", "runs.read", "runs.verify", "contracts.validate", "telemetry.export", "dashboard.export"]
+    },
+    "reviewer": {
+      "permissions": ["runs.create", "runs.list", "runs.read", "runs.verify", "contracts.validate", "bundles.export", "store.publish"]
+    },
+    "governance": {
+      "permissions": ["runs.list", "runs.read", "governance.hold", "runs.delete"]
+    }
+  }
+}

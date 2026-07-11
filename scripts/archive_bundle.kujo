@@ -1,0 +1,12 @@
+# Archive an exported Tribunal bundle using Kujo compression tooling.
+
+values := args()
+if len(values) != 2 { eprint("Usage: archive_bundle.kujo <bundle-dir> <output.zip>"); exit(2) }
+source := values[0]
+output := values[1]
+if path_is_dir(source) == false || file_exists(output) { eprint("Bundle source is missing or output already exists."); exit(1) }
+archive := zip_create(output)
+if zip_add_dir(archive, source) != true { eprint("Unable to add bundle directory to archive."); exit(1) }
+if zip_close(archive) != true { eprint("Unable to finalize bundle archive."); exit(1) }
+print(to_json({"ok": true, "path": path_absolute(output), "bytes": file_size(output), "sha256": sha256_file(output)}))
+exit(0)

@@ -1,0 +1,31 @@
+{
+  "title": "TribunalTrustPolicy",
+  "type": "object",
+  "required": ["schemaVersion", "defaultDeny", "keys"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "defaultDeny": { "const": true },
+    "keys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["keyId", "status", "algorithm", "publicKeyPath", "validFrom", "validUntil", "allowedTargets"],
+        "properties": {
+          "keyId": { "type": "string", "pattern": "^[a-f0-9]{32}$" },
+          "status": { "enum": ["active", "rotating", "revoked", "expired"] },
+          "algorithm": { "const": "RSA-PKCS1v15-SHA256" },
+          "publicKeyPath": { "type": "string", "minLength": 1 },
+          "signerRef": { "type": "string" },
+          "validFrom": { "type": "integer", "minimum": 0 },
+          "validUntil": { "type": "integer", "minimum": 0 },
+          "rotatesTo": { "type": "string" },
+          "revokedAt": { "type": "integer", "minimum": 0 },
+          "revocationReason": { "type": "string" },
+          "allowedTargets": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

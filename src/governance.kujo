@@ -1,0 +1,88 @@
+# Tribunal :: retention, legal hold, and policy-driven whole-run deletion
+
+from src.common import dict_get, ensure_dir, iso_now, read_json, remove_tree, write_json
+from src.storage import artifact_path, run_dir
+from src.locking import acquire_lock, release_lock
+
+export func governance_metadata(config, actor) {
+    policy := config["governance"]
+    created_ms := current_timestamp()
+    return {
+        "schemaVersion": "1.0.0",
+        "retentionClass": policy["retention_class"],
+        "retentionDays": policy["retention_days"],
+        "retainUntilMs": created_ms + policy["retention_days"] * 86400000,
+        "legalHold": policy["legal_hold"],
+        "owner": policy["owner"],
+        "createdBy": actor,
+        "createdAt": iso_now()
+    }
+}
+
+export func deletion_eligibility(storage_dir, run_id, force_expired) {
+    path := artifact_path(storage_dir, run_id, "record.json")
+    if path == "" || file_exists(path) == false { return {"ok": false, "error": "Run record is missing."} }
+    record := null
+    try { record = read_json(path) } except err { return {"ok": false, "error": "Run record is invalid."} }
+    governance := dict_get(record, "governance", {})
+    if type(governance) != "dict" || len(keys(governance)) == 0 { return {"ok": false, "error": "Run has no retention metadata."} }
+    if dict_get(governance, "legalHold", false) == true { return {"ok": false, "error": "Run is under legal hold."} }
+    hold_path := join_path(join_path(storage_dir, ".governance"), run_id + ".json")
+    if file_exists(hold_path) {
+        hold := null
+        try { hold = read_json(hold_path) } except err { return {"ok": false, "error": "External governance record is unreadable."} }
+        if dict_get(hold, "legalHold", false) == true { return {"ok": false, "error": "Run is under externally applied legal hold."} }
+    }
+    if force_expired != true && current_timestamp() < dict_get(governance, "retainUntilMs", 0) { return {"ok": false, "error": "Run retention period has not expired."} }
+    return {"ok": true, "record": record, "governance": governance}
+}
+
+export func set_legal_hold(storage_dir, run_id, actor, enabled, reason) {
+    if trim(reason) == "" { return {"ok": false, "error": "A legal-hold reason is required."} }
+    if path_is_dir(run_dir(storage_dir, run_id)) == false { return {"ok": false, "error": "Run does not exist."} }
+    root := join_path(storage_dir, ".governance")
+    ensure_dir(root)
+    path := join_path(root, run_id + ".json")
+    history := []
+    if file_exists(path) {
+        try { history = dict_get(read_json(path), "history", []) } except err { return {"ok": false, "error": "External governance record is unreadable."} }
+    }
+    action := {"actor": actor, "legalHold": enabled, "reason": reason, "changedAt": iso_now()}
+    history = push(history, action)
+    record := {"schemaVersion": "1.0.0", "runId": run_id, "legalHold": enabled, "updatedAt": action["changedAt"], "updatedBy": actor, "reason": reason, "history": history}
+    write_json(path, record)
+    return {"ok": true, "governance": record, "path": path}
+}
+
+export func delete_run(storage_dir, run_id, actor, reason, force_expired) {
+    if trim(reason) == "" { return {"ok": false, "error": "A deletion reason is required."} }
+    eligible := deletion_eligibility(storage_dir, run_id, force_expired)
+    if eligible["ok"] != true { return eligible }
+    locked := acquire_lock(storage_dir, run_id, "delete:" + actor, 300000)
+    if locked["ok"] != true { return locked }
+    record := eligible["record"]
+    manifest_path := artifact_path(storage_dir, run_id, "artifact-manifest.json")
+    signature_path := artifact_path(storage_dir, run_id, "signature.json")
+    tombstone := {
+        "schemaVersion": "1.0.0",
+        "runId": run_id,
+        "actor": actor,
+        "reason": reason,
+        "deletedAt": iso_now(),
+        "recordSha256": sha256(read_file(artifact_path(storage_dir, run_id, "record.json"))),
+        "manifestSha256": "",
+        "keyId": "",
+        "governance": eligible["governance"]
+    }
+    if file_exists(manifest_path) { tombstone["manifestSha256"] := sha256(read_file(manifest_path)) }
+    if file_exists(signature_path) {
+        try { tombstone["keyId"] := dict_get(read_json(signature_path), "keyId", "") } except err { tombstone["keyId"] := "" }
+    }
+    root := run_dir(storage_dir, run_id)
+    remove_tree(root)
+    release_lock(storage_dir, run_id, locked["lock"]["token"])
+    deletion_root := join_path(storage_dir, ".deletions")
+    ensure_dir(deletion_root)
+    write_json(join_path(deletion_root, run_id + ".json"), tombstone)
+    return {"ok": true, "tombstone": tombstone}
+}

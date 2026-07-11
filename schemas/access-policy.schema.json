@@ -1,0 +1,12 @@
+{
+  "title": "TribunalAccessPolicy",
+  "type": "object",
+  "required": ["schemaVersion", "defaultDeny", "identities", "roles"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "defaultDeny": { "const": true },
+    "identities": { "type": "object" },
+    "roles": { "type": "object" }
+  },
+  "additionalProperties": false
+}
