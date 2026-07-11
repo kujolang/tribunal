@@ -1,0 +1,50 @@
+# Tribunal :: one-command integrity, contract, and trust audit
+
+from src.common import dict_get, iso_now, read_json
+from src.contracts import validate_run_contracts
+from src.integrity import verify
+from src.policy import trusted_key
+from src.storage import artifact_path
+
+export func audit_run(home, storage_dir, run_id, public_key, require_signature, trust_policy, target) {
+    mut trust := {"mode": "none", "ok": true, "keyId": "", "target": target, "error": ""}
+    selected_public_key := public_key
+    signature_path := artifact_path(storage_dir, run_id, "signature.json")
+    if type(trust_policy) == "dict" {
+        trust["mode"] := "policy"
+        if signature_path == "" || file_exists(signature_path) == false || path_is_symlink(signature_path) || file_size(signature_path) > 4194304 {
+            trust["ok"] := false
+            trust["error"] := "Signature envelope is missing or unsafe."
+        } else {
+            envelope := null
+            try { envelope = read_json(signature_path) } except err { envelope = null }
+            key_id := dict_get(envelope, "keyId", "")
+            trust["keyId"] := key_id
+            decision := trusted_key(trust_policy, key_id, target, current_timestamp())
+            if decision["ok"] == true {
+                selected_public_key = decision["key"]["publicKeyPath"]
+            } else {
+                trust["ok"] := false
+                trust["error"] := decision["error"]
+            }
+        }
+    } else if public_key != "" {
+        trust["mode"] := "public-key"
+    }
+    integrity := verify(storage_dir, run_id, selected_public_key)
+    contracts := validate_run_contracts(home, storage_dir, run_id)
+    if require_signature && integrity["signature"] != "verified" {
+        integrity["ok"] := false
+        integrity["errors"] := push(integrity["errors"], "A verified signature is required by the audit policy.")
+    }
+    ok := integrity["ok"] == true && contracts["ok"] == true && trust["ok"] == true
+    return {
+        "schemaVersion": "1.0.0",
+        "runId": run_id,
+        "auditedAt": iso_now(),
+        "ok": ok,
+        "integrity": integrity,
+        "contracts": {"ok": contracts["ok"], "validated": contracts["validated"], "errors": contracts["errors"]},
+        "trust": trust
+    }
+}

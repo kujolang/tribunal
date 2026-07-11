@@ -1,16 +1,35 @@
 # Tribunal :: Kujo-native SHA-256 artifact integrity and RSA signatures
 
-from src.common import dict_get, ensure_dir, iso_now, write_json, write_text, read_json, remove_tree, safe_relative_path, read_file_digest
+from src.common import dict_get, ensure_dir, iso_now, path_within, write_json, write_text, read_json, remove_tree, safe_relative_path, safe_run_id, read_file_digest
 from src.storage import artifacts, artifact_path
 
 MANIFEST_NAME := "artifact-manifest.json"
 SIGNATURE_NAME := "signature.json"
 MAX_ARTIFACT_BYTES := 67108864
 MAX_INTEGRITY_DOCUMENT_BYTES := 4194304
+MAX_MANIFEST_ARTIFACTS := 10000
+MAX_KEY_BYTES := 1048576
+
+MANIFEST_SCHEMA := {
+    "type": "object",
+    "required": ["schemaVersion", "runId", "generatedAt", "algorithm", "exclusions", "artifacts"],
+    "properties": {
+        "schemaVersion": {"const": "1.0.0"},
+        "runId": {"type": "string", "minLength": 1, "maxLength": 128},
+        "generatedAt": {"type": "string", "minLength": 1},
+        "algorithm": {"const": "sha256"},
+        "exclusions": {"type": "array", "items": {"type": "string"}},
+        "artifacts": {"type": "array", "maxItems": 10000, "items": {"type": "object", "required": ["path", "bytes", "sha256"], "properties": {"path": {"type": "string", "minLength": 1}, "bytes": {"type": "integer", "minimum": 0, "maximum": 67108864}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}, "additionalProperties": false}}
+    },
+    "additionalProperties": false
+}
 
 func transaction_dir(storage_dir, run_id) { return join_path(join_path(storage_dir, ".seal-transactions"), run_id) }
 
 export func begin_seal_transaction(storage_dir, run_id) {
+    if safe_run_id(run_id) == false { return {"ok": false, "error": "Seal transaction run ID is unsafe."} }
+    transaction_root := join_path(storage_dir, ".seal-transactions")
+    if file_exists(transaction_root) && path_is_symlink(transaction_root) { return {"ok": false, "error": "Seal transaction root is unsafe."} }
     root := transaction_dir(storage_dir, run_id)
     if path_is_dir(root) { return {"ok": false, "error": "A seal transaction is already active."} }
     ensure_dir(root)
@@ -25,6 +44,7 @@ export func begin_seal_transaction(storage_dir, run_id) {
 }
 
 export func rollback_seal_transaction(storage_dir, run_id) {
+    if safe_run_id(run_id) == false { return {"ok": false, "error": "Seal transaction run ID is unsafe."} }
     root := transaction_dir(storage_dir, run_id)
     marker_path := join_path(root, "transaction.json")
     if file_exists(marker_path) == false { return {"ok": true, "recovered": false} }
@@ -47,7 +67,9 @@ export func recover_seal_transactions(storage_dir) {
     root := join_path(storage_dir, ".seal-transactions")
     mut recovered := []
     if path_is_dir(root) == false { return {"ok": true, "recovered": recovered} }
+    if path_is_symlink(root) { return {"ok": false, "error": "Seal transaction root is unsafe.", "recovered": recovered} }
     for run_id in list_dir(root) {
+        if safe_run_id(run_id) == false || path_is_symlink(join_path(root, run_id)) { continue }
         result := rollback_seal_transaction(storage_dir, run_id)
         if result["recovered"] { recovered = push(recovered, run_id) }
     }
@@ -75,7 +97,8 @@ func signature_payload(run_id, manifest_hash, key_id, signed_at) {
 
 export func generate_keys(private_path, public_path, bits) {
     if private_path == "" || public_path == "" { return {"ok": false, "error": "Both private and public key paths are required."} }
-    if file_exists(private_path) || file_exists(public_path) { return {"ok": false, "error": "Refusing to overwrite an existing key file."} }
+    if path_within(private_path, public_path) && path_within(public_path, private_path) { return {"ok": false, "error": "Private and public key paths must differ."} }
+    if file_exists(private_path) || path_is_dir(private_path) || file_exists(public_path) || path_is_dir(public_path) { return {"ok": false, "error": "Refusing to overwrite an existing key path."} }
     if bits != 2048 && bits != 4096 { return {"ok": false, "error": "RSA key size must be 2048 or 4096 bits."} }
     pair := rsa_generate_keypair(bits)
     if type(pair) != "dict" || has_key(pair, "private") == 0 || has_key(pair, "public") == 0 {
@@ -121,6 +144,7 @@ export func seal(storage_dir, run_id, private_path, public_path) {
     if manifest_path == "" { return {"ok": false, "error": "Unsafe or missing run ID."} }
     if (private_path == "" && public_path != "") || (private_path != "" && public_path == "") { return {"ok": false, "error": "Signed sealing requires both --private-key and --public-key."} }
     if private_path != "" && (file_exists(private_path) == false || file_exists(public_path) == false) { return {"ok": false, "error": "Signing key file is missing."} }
+    if private_path != "" && (path_is_symlink(private_path) || path_is_symlink(public_path) || file_size(private_path) > MAX_KEY_BYTES || file_size(public_path) > MAX_KEY_BYTES) { return {"ok": false, "error": "Signing key file is unsafe or exceeds the 1 MiB safety limit."} }
     if file_exists(manifest_path) {
         existing := verify(storage_dir, run_id, "")
         if existing["ok"] != true { return {"ok": false, "error": "Sealed run is immutable; existing evidence must verify before adding or rotating a signature.", "verification": existing} }
@@ -128,6 +152,7 @@ export func seal(storage_dir, run_id, private_path, public_path) {
         return sign_existing_manifest(storage_dir, run_id, private_path, public_path)
     }
     names := artifacts(storage_dir, run_id)
+    if len(names) > MAX_MANIFEST_ARTIFACTS { return {"ok": false, "error": "Run contains too many artifacts to seal safely."} }
     mut entries := []
     for name in names {
         if excluded(name) == false {
@@ -183,6 +208,11 @@ export func verify(storage_dir, run_id, public_path) {
     manifest := null
     try { manifest = parse_json(manifest_text) } except err {
         response["errors"] := ["Integrity manifest is invalid JSON."]
+        return response
+    }
+    checked_manifest := json_schema_validate(manifest, MANIFEST_SCHEMA)
+    if checked_manifest["valid"] != true {
+        response["errors"] := ["Integrity manifest failed structural validation: " + to_json(checked_manifest["errors"])]
         return response
     }
     if dict_get(manifest, "schemaVersion", "") != "1.0.0" || dict_get(manifest, "runId", "") != run_id || dict_get(manifest, "algorithm", "") != "sha256" {

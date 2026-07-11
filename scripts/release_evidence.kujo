@@ -1,12 +1,13 @@
 # Tribunal Kujo-only release evidence orchestration.
 
 from src.bundles import export_bundle
-from src.common import ensure_dir, iso_now, remove_tree, write_json
+from src.common import ensure_dir, iso_now, remove_tree, write_json, write_text
 from src.config import default_config
 from src.contracts import validate_run_contracts
 from src.signing_provider import load_signing_provider, seal_with_provider
 from src.tribunal import review
 from src.version import VERSION
+from src.audit import audit_run
 
 home := path_absolute(env_or("TRIBUNAL_HOME", "."))
 output_root := env_or("TRIBUNAL_RELEASE_OUTPUT", join_path(env_or("TMPDIR", "/tmp"), "tribunal-release-evidence"))
@@ -29,6 +30,13 @@ if provider["ok"] != true { remove_tree(output_root); eprint(provider["error"]);
 sealed := seal_with_provider(tribunal["storage_dir"], result["runId"], provider["config"])
 if sealed["ok"] != true { remove_tree(output_root); eprint(sealed["error"]); exit(1) }
 
+release_public_key := join_path(output_root, "signer-public-key.pem")
+write_text(release_public_key, sealed["publicKey"])
+audit := audit_run(home, tribunal["storage_dir"], result["runId"], release_public_key, true, null, "release")
+if audit["ok"] != true { eprint("Release evidence audit failed: " + to_json(audit)); remove_tree(output_root); exit(1) }
+audit_path := join_path(output_root, "audit-report.json")
+write_json(audit_path, audit)
+
 contracts := validate_run_contracts(home, tribunal["storage_dir"], result["runId"])
 if contracts["ok"] != true { remove_tree(output_root); eprint("Release evidence contract validation failed."); exit(1) }
 
@@ -43,6 +51,7 @@ receipt := {
     "schemaVersion": "1.0.0", "version": VERSION, "runId": result["runId"], "createdAt": iso_now(),
     "manifestSha256": sealed["signature"]["manifestSha256"], "keyId": sealed["signature"]["keyId"],
     "signingProvider": sealed["signature"]["signingProvider"], "contractsValidated": contracts["validated"],
+    "auditReportSha256": sha256_file(audit_path),
     "bundlePath": bundle_path, "archivePath": archive_path, "archiveBytes": file_size(archive_path), "archiveSha256": sha256_file(archive_path)
 }
 write_json(join_path(output_root, "release-receipt.json"), receipt)

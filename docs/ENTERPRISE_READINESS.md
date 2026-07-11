@@ -2,7 +2,9 @@
 
 ## Current posture
 
-Tribunal v0.4.0 provides the application-level contracts required for enterprise decision evidence: default-deny authorization, external managed signing, trusted-key lifecycle, immutable versioned stores, concurrency/recovery, retention/legal hold/deletion, external telemetry, executable schemas, fuzz/property gates, cursor pagination, release budgets, CI publication, and a safe offline dashboard.
+Tribunal v0.5.0 provides a strong production-oriented application core for enterprise decision evidence: default-deny authorization, external managed signing, trusted-key lifecycle, immutable versioned stores, concurrency/recovery, retention/legal hold/deletion, external telemetry, executable schemas, adversarial property gates, cursor pagination, release budgets, CI publication, a safe offline dashboard, and a combined audit command.
+
+That is not a universal deployment certification. Identity proofing, policy provenance/distribution, real HSM/store adapters, tenant mapping, encryption, network controls, platform support, recovery objectives, and capacity evidence remain deployment responsibilities.
 
 Deployment-specific HSM/KMS and HTTP store adapters remain deliberately outside the core. They must be certified against the published Kujo contracts with the target organization's identity, network, custody, retention, and audit controls.
 
@@ -19,6 +21,7 @@ Deployment-specific HSM/KMS and HTTP store adapters remain deliberately outside 
 | Concurrency | atomic per-run locks and seal rollback journals | multi-host coordination if sharing non-local filesystems |
 | Governance | sealed retention, external holds, whole-run tombstones | legal policy, approvals, retention schedule |
 | Audit | redacted JSONL/HTTP telemetry | collector durability, SIEM access and alerting |
+| Verification | one-command integrity/contracts/trust audit | policy provenance, review cadence, incident response |
 | Experience | offline CSP dashboard | authenticated hosting if an organization chooses to publish it |
 
 ## Threat and authorization boundary
@@ -30,8 +33,8 @@ The detailed threat model is [THREAT_MODEL.md](THREAT_MODEL.md). No network API 
 A releasable commit must pass:
 
 - every Kujo source check;
-- 91 core, 44 CLI, 37 enterprise, and 13 property assertions;
-- 17 executable JSON Schemas;
+- 92 core, 48 CLI, 44 enterprise, and 18 property assertions;
+- 18 executable JSON Schemas;
 - Concord with no high/critical drift;
 - strict Spec validation;
 - ten Eval checks;

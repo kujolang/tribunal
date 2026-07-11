@@ -1,7 +1,7 @@
 # Tribunal :: immutable artifact-store providers with conditional writes and versions
 
-from src.bundles import export_bundle, import_bundle
-from src.common import dict_get, ensure_dir, read_json, remove_tree, write_json
+from src.bundles import export_bundle, import_bundle, validate_bundle_metadata
+from src.common import dict_get, ensure_dir, lower_hex, read_json, redact, remove_tree, safe_run_id, utf8_byte_length, write_json
 from src.integrity import verify
 
 func request(url, options) {
@@ -15,24 +15,54 @@ func request(url, options) {
                 response["ok"] := response["status"] >= 200 && response["status"] < 300
                 response["error"] := ""
             }
-            case Err(error): { response["error"] := to_string(error) }
+            case Err(error): { response["error"] := redact(to_string(error)) }
         }
-    } except err { response["error"] := to_string(err) }
+    } except err { response["error"] := redact(to_string(err)) }
     return response
 }
 
 func local_index(root, run_id) { return join_path(join_path(root, "indexes"), run_id + ".json") }
 func local_version(root, run_id, version) { return join_path(join_path(join_path(root, "objects"), run_id), version) }
 
+INDEX_SCHEMA := {
+    "type": "object",
+    "required": ["schemaVersion", "runId", "currentVersion", "versions"],
+    "properties": {
+        "schemaVersion": {"const": "1.0.0"},
+        "runId": {"type": "string", "minLength": 1, "maxLength": 128},
+        "currentVersion": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "versions": {"type": "array", "minItems": 1, "maxItems": 10000, "items": {"type": "object", "required": ["version", "publishedAt", "keyId", "path"], "properties": {"version": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "publishedAt": {"type": "string", "minLength": 1}, "keyId": {"type": "string", "pattern": "^[a-f0-9]{32}$"}, "path": {"type": "string", "minLength": 1}}, "additionalProperties": false}}
+    },
+    "additionalProperties": false
+}
+
 func current_index(root, run_id) {
     path := local_index(root, run_id)
-    if file_exists(path) == false { return null }
-    try { return read_json(path) } except err { return null }
+    if file_exists(path) == false { return {"ok": true, "exists": false, "index": null} }
+    if path_is_symlink(path) || file_size(path) > 4194304 { return {"ok": false, "error": "Artifact-store index is unsafe or oversized."} }
+    index := null
+    try { index = read_json(path) } except err { return {"ok": false, "error": "Artifact-store index is invalid JSON."} }
+    checked := json_schema_validate(index, INDEX_SCHEMA)
+    if checked["valid"] != true || index["runId"] != run_id { return {"ok": false, "error": "Artifact-store index failed validation."} }
+    mut current_found := false
+    mut seen := {}
+    for entry in index["versions"] {
+        version := entry["version"]
+        if has_key(seen, version) == 1 { return {"ok": false, "error": "Artifact-store index contains a duplicate version."} }
+        seen[version] := true
+        if version == index["currentVersion"] { current_found = true }
+    }
+    if current_found == false { return {"ok": false, "error": "Artifact-store current version is absent from its version history."} }
+    return {"ok": true, "exists": true, "index": index}
 }
 
 export func publish_local(storage_dir, run_id, root, expected_version) {
+    if safe_run_id(run_id) == false { return {"ok": false, "error": "Run ID is unsafe."} }
+    if expected_version != "" && lower_hex(expected_version, 64) == false { return {"ok": false, "error": "Expected version must be a lowercase SHA-256 digest."} }
     if trim(root) == "" || (file_exists(root) && path_is_symlink(root)) { return {"ok": false, "error": "Artifact-store root is unsafe."} }
-    existing := current_index(root, run_id)
+    loaded_index := current_index(root, run_id)
+    if loaded_index["ok"] != true { return loaded_index }
+    existing := loaded_index["index"]
     current := ""
     if type(existing) == "dict" { current = dict_get(existing, "currentVersion", "") }
     if expected_version != current { return {"ok": false, "error": "Conditional write failed: expected version '" + expected_version + "' but current is '" + current + "'."} }
@@ -59,18 +89,25 @@ export func publish_local(storage_dir, run_id, root, expected_version) {
 }
 
 export func pull_local(root, run_id, version, storage_dir, trust_policy, target) {
+    if safe_run_id(run_id) == false { return {"ok": false, "error": "Run ID is unsafe."} }
+    if version != "" && lower_hex(version, 64) == false { return {"ok": false, "error": "Version must be a lowercase SHA-256 digest."} }
     selected := version
     if selected == "" {
-        index := current_index(root, run_id)
+        loaded_index := current_index(root, run_id)
+        if loaded_index["ok"] != true { return loaded_index }
+        index := loaded_index["index"]
         if type(index) != "dict" { return {"ok": false, "error": "Artifact-store index is missing."} }
         selected = index["currentVersion"]
     }
+    if lower_hex(selected, 64) == false { return {"ok": false, "error": "Artifact-store index selected an unsafe version."} }
     source := local_version(root, run_id, selected)
     if path_is_dir(source) == false { return {"ok": false, "error": "Artifact-store version does not exist."} }
     return import_bundle(source, storage_dir, trust_policy, target)
 }
 
 export func publish_http(storage_dir, run_id, endpoint, expected_version) {
+    if safe_run_id(run_id) == false { return {"ok": false, "error": "Run ID is unsafe."} }
+    if expected_version != "" && lower_hex(expected_version, 64) == false { return {"ok": false, "error": "Expected version must be a lowercase SHA-256 digest."} }
     temp := join_path(env_or("TMPDIR", "/tmp"), "tribunal-http-bundle-" + to_string(current_timestamp()) + "-" + to_string(random_int(1000, 9999)))
     exported := export_bundle(storage_dir, run_id, temp)
     if exported["ok"] != true { return exported }
@@ -100,6 +137,8 @@ export func publish_http(storage_dir, run_id, endpoint, expected_version) {
 }
 
 export func pull_http(endpoint, run_id, version, storage_dir, trust_policy, target) {
+    if safe_run_id(run_id) == false { return {"ok": false, "error": "Run ID is unsafe."} }
+    if version != "" && lower_hex(version, 64) == false { return {"ok": false, "error": "Version must be a lowercase SHA-256 digest."} }
     selected := version
     suffix := "/runs/" + run_id + "/versions/" + selected
     if selected == "" { suffix = "/runs/" + run_id + "/current" }
@@ -107,13 +146,18 @@ export func pull_http(endpoint, run_id, version, storage_dir, trust_policy, targ
     if fetched["ok"] != true { return {"ok": false, "error": "Remote artifact-store metadata fetch failed.", "status": fetched["status"]} }
     metadata := null
     try { metadata = parse_json(fetched["body"]) } except err { return {"ok": false, "error": "Remote artifact-store metadata is invalid JSON."} }
+    validated := validate_bundle_metadata(metadata)
+    if validated["ok"] != true { return validated }
+    if metadata["runId"] != run_id { return {"ok": false, "error": "Remote artifact-store metadata returned a different run ID."} }
     if selected == "" { selected = dict_get(metadata, "manifestSha256", "") }
+    if lower_hex(selected, 64) == false || selected != metadata["manifestSha256"] { return {"ok": false, "error": "Remote artifact-store version is inconsistent."} }
     temp := join_path(env_or("TMPDIR", "/tmp"), "tribunal-http-pull-" + to_string(current_timestamp()) + "-" + to_string(random_int(1000, 9999)))
     ensure_dir(join_path(temp, "artifacts"))
     write_json(join_path(temp, "bundle.json"), metadata)
     for name in dict_get(metadata, "artifacts", []) {
         downloaded := request(endpoint + "/runs/" + run_id + "/versions/" + selected + "/artifacts/" + name, {"method": "GET", "timeout": 60})
         if downloaded["ok"] != true { remove_tree(temp); return {"ok": false, "error": "Remote artifact download failed for " + name + ".", "status": downloaded["status"]} }
+        if utf8_byte_length(downloaded["body"]) > 67108864 { remove_tree(temp); return {"ok": false, "error": "Remote artifact exceeds the per-file safety limit: " + name} }
         destination := join_path(join_path(temp, "artifacts"), name)
         ensure_dir(dirname(destination))
         write_file(destination, downloaded["body"])

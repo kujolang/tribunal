@@ -11,11 +11,11 @@ while [ -h "$SOURCE" ]; do
   esac
 done
 PROJECT_DIR="$(cd -P "$(dirname "$SOURCE")/.." >/dev/null 2>&1 && pwd)"
-KUJO="${KUJO:-kujo}"
+KUJO="${KUJO:-${KUJO_BIN:-kujo}}"
 
 if ! command -v "$KUJO" >/dev/null 2>&1 && [ ! -x "$KUJO" ]; then
   echo "tribunal: cannot find the Kujo runtime ('$KUJO')." >&2
-  echo "Set KUJO to the Kujo binary path." >&2
+  echo "Set KUJO or KUJO_BIN to the Kujo binary path." >&2
   exit 127
 fi
 

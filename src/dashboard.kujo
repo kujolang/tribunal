@@ -1,7 +1,7 @@
 # Tribunal :: offline read-only dashboard export (no network service boundary)
 
 from src.analytics import collect_stats
-from src.common import dict_get, ensure_dir, parent_dir, write_text
+from src.common import dict_get, ensure_dir, parent_dir, path_within, write_text
 from src.storage import list_runs_page
 
 func escape(value) {
@@ -14,6 +14,9 @@ func escape(value) {
 }
 
 export func export_dashboard(storage_dir, output) {
+    if trim(output) == "" { return {"ok": false, "error": "Dashboard output is required."} }
+    if path_within(storage_dir, output) { return {"ok": false, "error": "Dashboard output must be outside Tribunal run storage."} }
+    if file_exists(output) || path_is_dir(output) { return {"ok": false, "error": "Dashboard output already exists; refusing to overwrite it."} }
     stats := collect_stats(storage_dir)
     page := list_runs_page(storage_dir, "", "", 500, "")
     rows := ""

@@ -11,11 +11,12 @@
   ],
   "properties": {
     "schemaVersion": { "const": "1.0.0" },
-    "runId": { "type": "string", "minLength": 1 },
+    "runId": { "type": "string", "minLength": 1, "maxLength": 128 },
     "generatedAt": { "type": "string", "minLength": 1 },
     "algorithm": { "const": "sha256" },
     "exclusions": {
       "type": "array",
+      "maxItems": 10000,
       "items": { "enum": ["artifact-manifest.json", "signature.json"] },
       "minItems": 2,
       "maxItems": 2
@@ -27,8 +28,8 @@
         "type": "object",
         "required": ["path", "bytes", "sha256"],
         "properties": {
-          "path": { "type": "string", "minLength": 1 },
-          "bytes": { "type": "integer", "minimum": 0 },
+          "path": { "type": "string", "minLength": 1, "maxLength": 1024 },
+          "bytes": { "type": "integer", "minimum": 0, "maximum": 67108864 },
           "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
         },
         "additionalProperties": false

@@ -1,24 +1,68 @@
 # Tribunal :: signed evidence bundle export and import
 
-from src.common import dict_get, ensure_dir, iso_now, read_json, relative_files, remove_tree, safe_relative_path, write_json
+from src.common import dict_get, ensure_dir, iso_now, path_within, read_json, relative_files, remove_tree, safe_relative_path, safe_run_id, write_json
 from src.integrity import verify
 from src.policy import trusted_key
 from src.storage import artifact_path, run_dir
 
-func copy_relative(source_root, destination_root, names) {
-    for name in names {
+MAX_BUNDLE_ARTIFACTS := 10000
+MAX_BUNDLE_ARTIFACT_BYTES := 67108864
+MAX_BUNDLE_BYTES := 1073741824
+MAX_BUNDLE_METADATA_BYTES := 4194304
+
+BUNDLE_SCHEMA := {
+    "type": "object",
+    "required": ["schemaVersion", "runId", "exportedAt", "manifestSha256", "keyId", "artifactCount", "artifacts"],
+    "properties": {
+        "schemaVersion": {"const": "1.0.0"},
+        "runId": {"type": "string", "minLength": 1, "maxLength": 128},
+        "exportedAt": {"type": "string", "minLength": 1},
+        "manifestSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "keyId": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
+        "artifactCount": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "artifacts": {"type": "array", "minItems": 1, "maxItems": 10000, "items": {"type": "string"}}
+    },
+    "additionalProperties": false
+}
+
+export func validate_bundle_metadata(metadata) {
+    checked := json_schema_validate(metadata, BUNDLE_SCHEMA)
+    if checked["valid"] != true { return {"ok": false, "error": "Bundle metadata failed validation.", "details": checked["errors"]} }
+    if safe_run_id(metadata["runId"]) == false { return {"ok": false, "error": "Bundle run ID is unsafe."} }
+    if metadata["artifactCount"] != len(metadata["artifacts"]) { return {"ok": false, "error": "Bundle artifact count does not match its inventory."} }
+    mut seen := {}
+    for name in metadata["artifacts"] {
         if safe_relative_path(name) == false { return {"ok": false, "error": "Unsafe bundle artifact path: " + name} }
-        source := join_path(source_root, name)
-        if path_is_symlink(source) { return {"ok": false, "error": "Bundle source contains a symbolic link: " + name} }
-        target := join_path(destination_root, name)
-        ensure_dir(dirname(target))
-        copy_file(source, target)
+        if has_key(seen, name) == 1 { return {"ok": false, "error": "Duplicate bundle artifact path: " + name} }
+        seen[name] := true
     }
     return {"ok": true}
 }
 
+func copy_relative(source_root, destination_root, names) {
+    if type(names) != "array" || len(names) == 0 || len(names) > MAX_BUNDLE_ARTIFACTS { return {"ok": false, "error": "Bundle artifact inventory is outside safety limits."} }
+    mut total_bytes := 0
+    mut seen := {}
+    for name in names {
+        if safe_relative_path(name) == false { return {"ok": false, "error": "Unsafe bundle artifact path: " + name} }
+        if has_key(seen, name) == 1 { return {"ok": false, "error": "Duplicate bundle artifact path: " + name} }
+        seen[name] := true
+        source := join_path(source_root, name)
+        if file_exists(source) == false || path_is_dir(source) || path_is_symlink(source) { return {"ok": false, "error": "Bundle artifact is missing or unsafe: " + name} }
+        size := file_size(source)
+        if size < 0 || size > MAX_BUNDLE_ARTIFACT_BYTES { return {"ok": false, "error": "Bundle artifact exceeds the per-file safety limit: " + name} }
+        total_bytes = total_bytes + size
+        if total_bytes > MAX_BUNDLE_BYTES { return {"ok": false, "error": "Bundle exceeds the aggregate safety limit."} }
+        target := join_path(destination_root, name)
+        ensure_dir(dirname(target))
+        copy_file(source, target)
+    }
+    return {"ok": true, "bytes": total_bytes, "artifacts": len(names)}
+}
+
 export func export_bundle(storage_dir, run_id, destination) {
     if trim(destination) == "" { return {"ok": false, "error": "Bundle destination is required."} }
+    if path_within(storage_dir, destination) { return {"ok": false, "error": "Bundle destination must be outside Tribunal run storage."} }
     run_root := run_dir(storage_dir, run_id)
     if run_root == "" || path_is_dir(run_root) == false { return {"ok": false, "error": "Run does not exist."} }
     signature := artifact_path(storage_dir, run_id, "signature.json")
@@ -30,6 +74,7 @@ export func export_bundle(storage_dir, run_id, destination) {
     artifacts_root := join_path(destination, "artifacts")
     ensure_dir(artifacts_root)
     names := relative_files(run_root, "")
+    if len(names) == 0 || len(names) > MAX_BUNDLE_ARTIFACTS { remove_tree(destination); return {"ok": false, "error": "Run artifact inventory is outside bundle safety limits."} }
     copied := copy_relative(run_root, artifacts_root, names)
     if copied["ok"] != true { remove_tree(destination); return copied }
     envelope := read_json(signature)
@@ -47,12 +92,15 @@ export func export_bundle(storage_dir, run_id, destination) {
 }
 
 export func import_bundle(bundle_path, storage_dir, trust_policy, target) {
-    if trim(bundle_path) == "" || path_is_symlink(bundle_path) { return {"ok": false, "error": "Bundle path is unsafe."} }
+    if trim(bundle_path) == "" || path_is_dir(bundle_path) == false { return {"ok": false, "error": "Bundle path is missing or unsafe."} }
+    if path_is_symlink(bundle_path) { return {"ok": false, "error": "Bundle path is unsafe."} }
     metadata_path := join_path(bundle_path, "bundle.json")
     artifacts_root := join_path(bundle_path, "artifacts")
-    if file_exists(metadata_path) == false || path_is_dir(artifacts_root) == false { return {"ok": false, "error": "Bundle structure is incomplete."} }
+    if file_exists(metadata_path) == false || path_is_symlink(metadata_path) || file_size(metadata_path) > MAX_BUNDLE_METADATA_BYTES || path_is_dir(artifacts_root) == false || path_is_symlink(artifacts_root) { return {"ok": false, "error": "Bundle structure is incomplete or unsafe."} }
     metadata := null
     try { metadata = read_json(metadata_path) } except err { return {"ok": false, "error": "Bundle metadata is invalid."} }
+    checked_metadata := validate_bundle_metadata(metadata)
+    if checked_metadata["ok"] != true { return checked_metadata }
     run_id := dict_get(metadata, "runId", "")
     destination := run_dir(storage_dir, run_id)
     if destination == "" || path_is_dir(destination) { return {"ok": false, "error": "Bundle run ID is unsafe or already exists."} }

@@ -1,6 +1,6 @@
 # Tribunal :: JSON configuration with Kujo-first invariants
 
-from src.common import dict_get, truthy, array_includes
+from src.common import dict_get, truthy, array_includes, path_within
 from src.catalog import panel
 
 export func default_config() {
@@ -71,6 +71,8 @@ export func load_config(path) {
         if file_exists(path) == false {
             return {"ok": false, "error": "Config file does not exist: " + path}
         }
+        if path_is_symlink(path) { return {"ok": false, "error": "Config file must not be a symbolic link."} }
+        if file_size(path) > 1048576 { return {"ok": false, "error": "Config file exceeds the 1 MiB safety limit."} }
         parsed := null
         try { parsed = parse_json(read_file(path)) } except err {
             return {"ok": false, "error": "Config is not valid JSON: " + to_string(err)}
@@ -105,6 +107,13 @@ func unknown_key(value, allowed) {
 
 func valid_positive_int(value, minimum, maximum) {
     return type(value) == "int" && value >= minimum && value <= maximum
+}
+
+func secure_http_url(value) {
+    if starts_with(value, "https://") && len(value) > 8 && substring(value, 8, 9) != "/" && contains(value, " ") == false { return true }
+    return value == "http://localhost" || starts_with(value, "http://localhost:") || starts_with(value, "http://localhost/") ||
+        value == "http://127.0.0.1" || starts_with(value, "http://127.0.0.1:") || starts_with(value, "http://127.0.0.1/") ||
+        value == "http://[::1]" || starts_with(value, "http://[::1]:") || starts_with(value, "http://[::1]/")
 }
 
 export func validate_config(config) {
@@ -165,12 +174,15 @@ export func validate_config(config) {
     if array_includes(["local-immutable", "http-immutable"], dict_get(artifact_store, "provider", "")) == false { return "artifact_store.provider is invalid." }
     if type(dict_get(artifact_store, "root", null)) != "string" || type(dict_get(artifact_store, "endpoint", null)) != "string" { return "Artifact-store root and endpoint must be strings." }
     if artifact_store["provider"] == "local-immutable" && trim(artifact_store["root"]) == "" { return "artifact_store.root is required for local-immutable." }
-    if artifact_store["provider"] == "http-immutable" && (starts_with(artifact_store["endpoint"], "https://") == false && starts_with(artifact_store["endpoint"], "http://") == false) { return "artifact_store.endpoint must be an HTTP(S) URL for http-immutable." }
+    if artifact_store["provider"] == "http-immutable" && secure_http_url(artifact_store["endpoint"]) == false { return "artifact_store.endpoint must use HTTPS (plain HTTP is allowed only for loopback development)." }
     if contains(artifact_store["endpoint"], "@") { return "Artifact-store endpoint must not embed credentials." }
+    if artifact_store["provider"] == "http-immutable" && (contains(artifact_store["endpoint"], "?") || contains(artifact_store["endpoint"], "#")) { return "artifact_store.endpoint must be a base URL without query or fragment." }
+    if artifact_store["provider"] == "local-immutable" && path_within(tribunal["storage_dir"], artifact_store["root"]) { return "artifact_store.root must be outside tribunal.storage_dir." }
     if array_includes(["jsonl", "http"], dict_get(telemetry, "collector", "")) == false { return "telemetry.collector is invalid." }
     if type(dict_get(telemetry, "destination", null)) != "string" || trim(dict_get(telemetry, "destination", "")) == "" { return "telemetry.destination is required." }
-    if telemetry["collector"] == "http" && (starts_with(telemetry["destination"], "https://") == false && starts_with(telemetry["destination"], "http://") == false) { return "telemetry.destination must be an HTTP(S) URL for HTTP collection." }
+    if telemetry["collector"] == "http" && secure_http_url(telemetry["destination"]) == false { return "telemetry.destination must use HTTPS (plain HTTP is allowed only for loopback development)." }
     if telemetry["collector"] == "http" && contains(telemetry["destination"], "@") { return "Telemetry destination must not embed credentials." }
+    if telemetry["collector"] == "jsonl" && path_within(tribunal["storage_dir"], telemetry["destination"]) { return "telemetry.destination must be outside tribunal.storage_dir." }
     return ""
 }
 

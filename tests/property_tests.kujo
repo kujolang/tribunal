@@ -1,6 +1,6 @@
 # Tribunal deterministic property/fuzz corpus for untrusted boundaries.
 
-from src.common import ensure_dir, parse_args, remove_tree, safe_relative_path, utf8_byte_length
+from src.common import ensure_dir, parse_args, path_within, remove_tree, safe_relative_path, safe_run_id, utf8_byte_length
 from src.config import default_config, validate_config
 from src.tribunal import review, validate_model_output
 from src.integrity import generate_keys, seal, verify
@@ -26,7 +26,7 @@ while i < 500 {
 }
 check(parser_safe, "500 generated CLI token sets preserve parse invariants")
 
-unsafe_paths := ["../x", "a/../x", "/absolute", "a//b", "./a", "a/.", "a\\b", "", "..", "."]
+unsafe_paths := ["../x", "a/../x", "/absolute", "a//b", "./a", "a/.", "a\\b", "a?query", "a#fragment", "a%2fescape", "space name", "", "..", "."]
 mut paths_safe := true
 for value in unsafe_paths { if safe_relative_path(value) { paths_safe = false } }
 i = 0
@@ -36,6 +36,8 @@ while i < 500 {
     i = i + 1
 }
 check(paths_safe, "path corpus rejects traversal and accepts 500 normalized artifacts")
+check(safe_run_id("2026-07-11-valid-run_1.0") && safe_run_id(".locks") == false && safe_run_id("run?query") == false && safe_run_id("run/child") == false, "run IDs exclude hidden operational roots and URL/path metacharacters")
+check(path_within("./runs", "./runs/example/record.json") && path_within("./runs", "./outside/report.json") == false, "path containment distinguishes run storage from external outputs")
 
 check(utf8_byte_length("é") == 2 && utf8_byte_length("犬") == 3 && utf8_byte_length("😀") == 4, "Unicode limits count UTF-8 bytes")
 
@@ -51,6 +53,12 @@ for value in [1024, 4096, 1048576, 67108864] {
 check(config_safe, "config boundary corpus enforces inclusive safe ranges")
 credential_url_config := default_config(); credential_store := credential_url_config["artifact_store"]; credential_store["provider"] := "http-immutable"; credential_store["endpoint"] := "https://user:secret@example.test"; credential_url_config["artifact_store"] := credential_store
 check(validate_config(credential_url_config) != "", "remote endpoint configuration rejects embedded credentials")
+insecure_url_config := default_config(); insecure_store := insecure_url_config["artifact_store"]; insecure_store["provider"] := "http-immutable"; insecure_store["endpoint"] := "http://artifact-store.example.test"; insecure_url_config["artifact_store"] := insecure_store
+check(validate_config(insecure_url_config) != "", "remote endpoint configuration requires TLS outside loopback development")
+loopback_url_config := default_config(); loopback_store := loopback_url_config["artifact_store"]; loopback_store["provider"] := "http-immutable"; loopback_store["endpoint"] := "http://127.0.0.1:8080"; loopback_url_config["artifact_store"] := loopback_store
+check(validate_config(loopback_url_config) == "", "loopback HTTP remains available for local adapter development")
+inside_output_config := default_config(); inside_telemetry := inside_output_config["telemetry"]; inside_telemetry["destination"] := "./tribunal-runs/run/telemetry.jsonl"; inside_output_config["telemetry"] := inside_telemetry
+check(validate_config(inside_output_config) != "", "external telemetry cannot be configured inside sealed run storage")
 response_schema := {"type": "object", "required": ["confidence", "disposition"], "properties": {"confidence": {"type": "integer", "minimum": 0, "maximum": 10}, "disposition": {"enum": ["proceed", "reject"]}}, "additionalProperties": false}
 check(validate_model_output({"confidence": 7, "disposition": "proceed"}, response_schema) == "", "provider response accepts valid type and range")
 check(validate_model_output({"confidence": 99, "disposition": "unknown"}, response_schema) != "", "provider response rejects invalid range and enum")

@@ -21,6 +21,7 @@ PROVIDER_SCHEMA := {
 export func load_signing_provider(path) {
     if path == "" || file_exists(path) == false { return {"ok": false, "error": "Signing-provider config is missing."} }
     if path_is_symlink(path) { return {"ok": false, "error": "Signing-provider config must not be a symbolic link."} }
+    if file_size(path) > 1048576 { return {"ok": false, "error": "Signing-provider config exceeds the 1 MiB safety limit."} }
     config := null
     try { config = read_json(path) } except err { return {"ok": false, "error": "Signing-provider config is invalid JSON."} }
     checked := json_schema_validate(config, PROVIDER_SCHEMA)
@@ -28,7 +29,7 @@ export func load_signing_provider(path) {
     base := parent_dir(path_absolute(path))
     if starts_with(config["command"], "/") == false { config["command"] := join_path(base, config["command"]) }
     if starts_with(config["kujoBin"], "/") == false { config["kujoBin"] := join_path(base, config["kujoBin"]) }
-    if file_exists(config["command"]) == false || path_is_symlink(config["command"]) { return {"ok": false, "error": "Signing-provider command is missing or unsafe."} }
+    if file_exists(config["command"]) == false || path_is_symlink(config["command"]) || file_size(config["command"]) > 16777216 { return {"ok": false, "error": "Signing-provider command is missing, oversized, or unsafe."} }
     if file_exists(config["kujoBin"]) == false || path_is_symlink(config["kujoBin"]) { return {"ok": false, "error": "Signing-provider Kujo runtime is missing or unsafe."} }
     return {"ok": true, "config": config}
 }

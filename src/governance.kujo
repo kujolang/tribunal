@@ -38,33 +38,39 @@ export func deletion_eligibility(storage_dir, run_id, force_expired) {
 }
 
 export func set_legal_hold(storage_dir, run_id, actor, enabled, reason) {
-    if trim(reason) == "" { return {"ok": false, "error": "A legal-hold reason is required."} }
+    if trim(actor) == "" || trim(reason) == "" || len(reason) > 4096 { return {"ok": false, "error": "A legal-hold actor and reason of at most 4096 characters are required."} }
     if path_is_dir(run_dir(storage_dir, run_id)) == false { return {"ok": false, "error": "Run does not exist."} }
+    locked := acquire_lock(storage_dir, run_id, "legal-hold:" + actor, 300000)
+    if locked["ok"] != true { return locked }
     root := join_path(storage_dir, ".governance")
+    if file_exists(root) && path_is_symlink(root) { release_lock(storage_dir, run_id, locked["lock"]["token"]); return {"ok": false, "error": "External governance root is unsafe."} }
     ensure_dir(root)
     path := join_path(root, run_id + ".json")
     history := []
     if file_exists(path) {
-        try { history = dict_get(read_json(path), "history", []) } except err { return {"ok": false, "error": "External governance record is unreadable."} }
+        try { history = dict_get(read_json(path), "history", []) } except err { release_lock(storage_dir, run_id, locked["lock"]["token"]); return {"ok": false, "error": "External governance record is unreadable."} }
     }
     action := {"actor": actor, "legalHold": enabled, "reason": reason, "changedAt": iso_now()}
     history = push(history, action)
     record := {"schemaVersion": "1.0.0", "runId": run_id, "legalHold": enabled, "updatedAt": action["changedAt"], "updatedBy": actor, "reason": reason, "history": history}
-    write_json(path, record)
+    try { write_json(path, record) } except err { release_lock(storage_dir, run_id, locked["lock"]["token"]); return {"ok": false, "error": "Unable to persist external governance record."} }
+    release_lock(storage_dir, run_id, locked["lock"]["token"])
     return {"ok": true, "governance": record, "path": path}
 }
 
 export func delete_run(storage_dir, run_id, actor, reason, force_expired) {
-    if trim(reason) == "" { return {"ok": false, "error": "A deletion reason is required."} }
+    if trim(actor) == "" || trim(reason) == "" || len(reason) > 4096 { return {"ok": false, "error": "A deletion actor and reason of at most 4096 characters are required."} }
     eligible := deletion_eligibility(storage_dir, run_id, force_expired)
     if eligible["ok"] != true { return eligible }
     locked := acquire_lock(storage_dir, run_id, "delete:" + actor, 300000)
     if locked["ok"] != true { return locked }
-    record := eligible["record"]
+    eligible = deletion_eligibility(storage_dir, run_id, force_expired)
+    if eligible["ok"] != true { release_lock(storage_dir, run_id, locked["lock"]["token"]); return eligible }
     manifest_path := artifact_path(storage_dir, run_id, "artifact-manifest.json")
     signature_path := artifact_path(storage_dir, run_id, "signature.json")
     tombstone := {
         "schemaVersion": "1.0.0",
+        "status": "deleting",
         "runId": run_id,
         "actor": actor,
         "reason": reason,
@@ -78,11 +84,16 @@ export func delete_run(storage_dir, run_id, actor, reason, force_expired) {
     if file_exists(signature_path) {
         try { tombstone["keyId"] := dict_get(read_json(signature_path), "keyId", "") } except err { tombstone["keyId"] := "" }
     }
+    deletion_root := join_path(storage_dir, ".deletions")
+    if file_exists(deletion_root) && path_is_symlink(deletion_root) { release_lock(storage_dir, run_id, locked["lock"]["token"]); return {"ok": false, "error": "Deletion registry is unsafe."} }
+    ensure_dir(deletion_root)
+    tombstone_path := join_path(deletion_root, run_id + ".json")
+    if file_exists(tombstone_path) { release_lock(storage_dir, run_id, locked["lock"]["token"]); return {"ok": false, "error": "Deletion tombstone already exists; operator reconciliation is required."} }
+    try { write_json(tombstone_path, tombstone) } except err { release_lock(storage_dir, run_id, locked["lock"]["token"]); return {"ok": false, "error": "Unable to persist pre-deletion tombstone."} }
     root := run_dir(storage_dir, run_id)
     remove_tree(root)
+    tombstone["status"] := "deleted"
+    write_json(tombstone_path, tombstone)
     release_lock(storage_dir, run_id, locked["lock"]["token"])
-    deletion_root := join_path(storage_dir, ".deletions")
-    ensure_dir(deletion_root)
-    write_json(join_path(deletion_root, run_id + ".json"), tombstone)
     return {"ok": true, "tombstone": tombstone}
 }

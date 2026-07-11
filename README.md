@@ -6,6 +6,21 @@ The result is inspectable evidence, not a disposable chat transcript. Every run 
 
 The previous TypeScript implementation is preserved on the pushed `typescript` branch. `main` has no Node, npm, TypeScript, JavaScript, or provider-SDK runtime dependency.
 
+Tribunal is also a practical showcase for [Kujo](https://github.com/kujolang/kujo): orchestration, JSON Schema, cryptography, process isolation, HTTP, compression, filesystem safety, testing, and release evidence are implemented with Kujo language/runtime capabilities.
+
+## Production-readiness statement
+
+Tribunal v0.5.0 is production-oriented and useful as a local or operator-controlled decision-evidence engine. It is not automatically “universally enterprise-ready”: a real deployment must still certify its identity binding, HSM/KMS adapter, immutable store, network controls, retention policy, backup/recovery, capacity, and supported platforms.
+
+| Use case | Posture |
+| --- | --- |
+| Offline mock review and sealed local evidence | ready and fully regression-tested |
+| Single-operator local production use | ready with documented filesystem, key, backup, and verification controls |
+| Shared service or regulated deployment | application contracts are ready; deployment adapters and organizational controls require certification |
+| Public hosted service | intentionally not provided; transport authentication and tenancy must be designed first |
+
+See [Enterprise readiness](docs/ENTERPRISE_READINESS.md), [Threat model](docs/THREAT_MODEL.md), and the [next review](docs/NEXT_SESSION_REVIEW.md) before making a production claim.
+
 ## Why Tribunal
 
 Use Tribunal when a decision deserves more than one model response:
@@ -23,13 +38,14 @@ Three panels cover focused through strategic review: `executioner-only`, `fast-t
 ```bash
 export KUJO_BIN=../kujo/target/release/kujo
 
+./bin/tribunal version
 ./bin/tribunal doctor
 ./bin/tribunal validate examples/product-decision.md
 ./bin/tribunal review examples/product-decision.md --panel fast-two-model
 ./bin/tribunal list --status completed --limit 5
 ```
 
-Mock mode is deterministic, offline, credential-free, and the default. The launcher only resolves this repository and executes `kujo run tribunal.kujo`.
+Install or build Kujo first, then place `kujo` on `PATH` or set `KUJO_BIN`/`KUJO` to its executable. Mock mode is deterministic, offline, credential-free, and the default. The launcher only resolves this repository and executes `kujo run tribunal.kujo`.
 
 ## Command surface
 
@@ -50,6 +66,7 @@ tribunal seats [--json]
 tribunal doctor [--json]
 tribunal stats [--json]
 tribunal contracts <run-id> [--json]
+tribunal audit <run-id> [--public-key <pem>|--trust-policy <json> --target <name>] [--require-signature --json]
 tribunal seal-provider <run-id> --provider-config <json>
 tribunal verify-policy <run-id> --trust-policy <json> --target <name>
 tribunal bundle-export <run-id> --output <directory>
@@ -123,6 +140,18 @@ Never commit private keys. For managed custody, `seal-provider` invokes an exter
 
 Signed runs can be ingested idempotently into Kujo RunLedger or CaseFile. The source run remains immutable; downstream receipts are kept outside its sealed evidence directory.
 
+For the normal production verification boundary, use the combined audit command:
+
+```bash
+./bin/tribunal audit <run-id> \
+  --trust-policy ./trust-policy.json \
+  --target audit \
+  --require-signature \
+  --json
+```
+
+It fails closed unless artifact integrity, executable evidence contracts, current trust policy, and the required signature all pass.
+
 Optional PackWrite context enrichment is deterministic and redacted:
 
 ```bash
@@ -132,7 +161,7 @@ Optional PackWrite context enrichment is deterministic and redacted:
 
 ## Enterprise controls
 
-Tribunal v0.4.0 adds:
+Tribunal v0.5.0 includes:
 
 - default-deny service/user identity and role authorization;
 - external HSM/KMS signing-provider contracts and v1.2 signer provenance;
@@ -144,7 +173,9 @@ Tribunal v0.4.0 adds:
 - executable Kujo JSON Schema validation for every emitted contract;
 - provider output type/range/enum validation and deterministic property corpora;
 - cursor pagination, large-hearing/inventory budgets, and tag release publication;
-- an authorized offline read-only HTML dashboard without introducing a network API.
+- an authorized offline read-only HTML dashboard without introducing a network API;
+- a combined audit report, exclusive run creation, non-stealing lock acquisition, bounded imports, pre-deletion tombstones, and secure external-output boundaries;
+- HTTPS-by-default remote endpoints, with plain HTTP permitted only for loopback adapter development.
 
 See [Security](SECURITY.md), [Operations](docs/OPERATIONS.md), and [Enterprise readiness](docs/ENTERPRISE_READINESS.md) before production adoption. Machine-readable contracts live in [`schemas/`](schemas/).
 
@@ -168,7 +199,11 @@ done
 "$KUJO_BIN" run scripts/scale_perf_gate.kujo
 ```
 
-The offline gates exercise 39 Kujo source files, 186 assertions across four suites, 17 executable schemas, signing/tamper/recovery, authorization, governance, bundles/stores, telemetry/dashboard export, PackWrite, RunLedger, CaseFile, the AI SDK fixture, Spec, Concord, ten Eval checks, and two performance gates. See [Contributing](CONTRIBUTING.md).
+The offline gates exercise 40 Kujo source files, 202 assertions across four suites, 18 executable schemas, signing/tamper/recovery, authorization, governance, bounded bundles/stores, audit reports, telemetry/dashboard isolation, PackWrite, RunLedger, CaseFile, the AI SDK fixture, Spec, Concord, ten Eval checks, and two performance gates. See [Contributing](CONTRIBUTING.md).
+
+## Repository layout
+
+Application logic lives under [`src/`](src/). The only root Kujo files are the thin runtime entrypoint [`tribunal.kujo`](tribunal.kujo) and the Spec contract [`tribunal.spec.yml`](tribunal.spec.yml). `kujo.toml`, `VERSION`, the license, security policy, contribution guide, changelog, and README remain at the root because they are conventional project/release metadata. Runtime bridges are under `src/bridges/`, executable gates under `scripts/`, schemas under `schemas/`, fixtures under `tests/`, and user examples under `examples/`.
 
 ## Project map
 
@@ -182,8 +217,9 @@ The offline gates exercise 39 Kujo source files, 186 assertions across four suit
 - [Release evidence](docs/RELEASE_EVIDENCE.md)
 - [Read-only UI evaluation](docs/UI_EVALUATION.md)
 - [Integrations](docs/integrations.md)
-- [Completed next-session review](docs/NEXT_SESSION_REVIEW.md)
-- [Next-session handoff](docs/NEXT_SESSION_HANDOFF.md)
+- [Completed v0.4 enterprise review](docs/COMPLETED_V0.4_REVIEW.md)
+- [Current next-session review](docs/NEXT_SESSION_REVIEW.md)
+- [v0.4 deployment handoff](docs/NEXT_SESSION_HANDOFF.md)
 - [Changelog](CHANGELOG.md)
 
 ## Boundaries

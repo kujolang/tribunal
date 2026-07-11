@@ -1,5 +1,7 @@
 # Next-session handoff
 
+> Historical v0.4.0 handoff. The current prioritized checklist is [NEXT_SESSION_REVIEW.md](NEXT_SESSION_REVIEW.md).
+
 Tribunal v0.4.0 completes the application roadmap. The next session should validate deployment adapters rather than add unbounded core surface.
 
 ## P0 — certify real adapters

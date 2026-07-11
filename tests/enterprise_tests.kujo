@@ -14,6 +14,7 @@ from src.bundles import export_bundle, import_bundle
 from src.artifact_store import publish_local, pull_local
 from src.storage import list_runs_page
 from src.dashboard import export_dashboard
+from src.audit import audit_run
 
 mut passed := 0
 mut failed := 0
@@ -77,6 +78,11 @@ check(first_lock["ok"] == true, "atomic run lock is acquired")
 check(acquire_lock(lock_storage, "run-lock", "worker-b", 60000)["ok"] == false, "concurrent run lock is rejected")
 check(release_lock(lock_storage, "run-lock", "wrong")["ok"] == false, "lock ownership token is enforced")
 check(release_lock(lock_storage, "run-lock", first_lock["lock"]["token"])["released"] == true, "run lock is released")
+nonsteal := acquire_lock(lock_storage, "nonsteal-run", "live-worker", 1000)
+nonsteal_owner := join_path(join_path(join_path(lock_storage, ".locks"), "nonsteal-run.lock"), "owner.json")
+nonsteal_value := parse_json(read_file(nonsteal_owner)); nonsteal_value["acquiredAtMs"] := 1; write_json(nonsteal_owner, nonsteal_value)
+contender := acquire_lock(lock_storage, "nonsteal-run", "contender", 1000)
+check(contender["ok"] == false && contender["stale"] == true && release_lock(lock_storage, "nonsteal-run", nonsteal["lock"]["token"])["released"] == true, "lock acquisition never steals a stale-looking live lock without explicit recovery")
 stale := acquire_lock(lock_storage, "stale-run", "crashed-worker", 60000)
 stale_owner := join_path(join_path(join_path(lock_storage, ".locks"), "stale-run.lock"), "owner.json")
 stale_value := parse_json(read_file(stale_owner)); stale_value["acquiredAtMs"] := 1; write_json(stale_owner, stale_value)
@@ -111,14 +117,19 @@ if signed["ok"] == true {
 
     contracts := validate_run_contracts(HOME, storage, run_id)
     check(contracts["ok"] == true && contracts["validated"] > 10, "complete JSON Schema engine validates emitted contracts")
+    audit := audit_run(HOME, storage, run_id, signed["publicKey"], true, null, "audit")
+    check(audit["ok"] == true && audit["integrity"]["signature"] == "verified" && audit["contracts"]["ok"] == true, "one-command audit combines integrity, signature, and contract evidence")
 
     telemetry_path := join_path(ROOT, "collector/telemetry.jsonl")
     telemetry := export_telemetry(storage, "jsonl", telemetry_path)
     check(telemetry["ok"] == true && telemetry["events"] > 0 && file_exists(telemetry_path), "structured metrics and audit events export externally")
+    check(export_telemetry(storage, "http", "http://collector.example.test/events")["ok"] == false, "telemetry CLI overrides cannot downgrade remote transport security")
     check(file_exists(join_path(join_path(storage, run_id), "telemetry.jsonl")) == false, "telemetry export does not mutate sealed runs")
     dashboard_path := join_path(ROOT, "dashboard/index.html")
     dashboard := export_dashboard(storage, dashboard_path)
     check(dashboard["ok"] == true && contains(read_file(dashboard_path), "Content-Security-Policy") == 1, "offline read-only dashboard exports with restrictive CSP")
+    check(export_dashboard(storage, dashboard_path)["ok"] == false, "dashboard export refuses to overwrite an existing report")
+    check(export_dashboard(storage, join_path(join_path(storage, run_id), "dashboard.html"))["ok"] == false && export_telemetry(storage, "jsonl", join_path(join_path(storage, run_id), "telemetry.jsonl"))["ok"] == false, "external projections refuse to mutate sealed run storage")
 
     bundle_path := join_path(ROOT, "bundle")
     bundle := export_bundle(storage, run_id, bundle_path)
@@ -126,6 +137,9 @@ if signed["ok"] == true {
     imported_storage := join_path(ROOT, "imported-runs")
     imported := import_bundle(bundle_path, imported_storage, trust, "bundle-import")
     check(imported["ok"] == true && imported["verification"]["signature"] == "verified", "signed evidence bundle imports under trust policy")
+    metadata_path := join_path(bundle_path, "bundle.json"); original_metadata := read_file(metadata_path); malformed_metadata := parse_json(original_metadata); malformed_metadata["artifactCount"] := malformed_metadata["artifactCount"] + 1; write_json(metadata_path, malformed_metadata)
+    check(import_bundle(bundle_path, join_path(ROOT, "malformed-import"), trust, "bundle-import")["ok"] == false, "bundle import rejects inconsistent artifact inventory before copying")
+    write_file(metadata_path, original_metadata, true)
 
     store_root := join_path(ROOT, "artifact-store")
     published := publish_local(storage, run_id, store_root, "")
@@ -134,6 +148,9 @@ if signed["ok"] == true {
     pulled_storage := join_path(ROOT, "pulled-runs")
     pulled := pull_local(store_root, run_id, published["version"], pulled_storage, trust, "store-pull")
     check(pulled["ok"] == true, "versioned immutable store restores trusted evidence")
+    index_path := join_path(join_path(store_root, "indexes"), run_id + ".json"); index_original := read_file(index_path); corrupt_index := parse_json(index_original); corrupt_index["currentVersion"] := "../../unsafe"; write_json(index_path, corrupt_index)
+    check(pull_local(store_root, run_id, "", join_path(ROOT, "corrupt-index-pull"), trust, "store-pull")["ok"] == false, "local store rejects a corrupt index before resolving object paths")
+    write_file(index_path, index_original, true)
 
     page := list_runs_page(storage, "completed", "executioner-only", 1, "")
     check(len(page["items"]) == 1, "cursor page returns bounded items")
@@ -150,7 +167,8 @@ if governed["ok"] == true {
     released_hold := set_legal_hold(governance_storage, governed["runId"], "legal-officer", false, "matter closed")
     check(released_hold["ok"] == true && len(released_hold["governance"]["history"]) == 2, "legal-hold release preserves append-only governance history")
     deleted := delete_run(governance_storage, governed["runId"], "local-operator", "approved test expiry", true)
-    check(deleted["ok"] == true && file_exists(join_path(join_path(governance_storage, ".deletions"), governed["runId"] + ".json")), "policy deletion removes whole run and writes external tombstone")
+    tombstone_path := join_path(join_path(governance_storage, ".deletions"), governed["runId"] + ".json")
+    check(deleted["ok"] == true && file_exists(tombstone_path) && parse_json(read_file(tombstone_path))["status"] == "deleted", "policy deletion precommits and finalizes an external tombstone")
 }
 
 hold_config := config_for(join_path(ROOT, "hold-runs")); hold_governance := hold_config["governance"]; hold_governance["legal_hold"] := true; hold_config["governance"] := hold_governance

@@ -22,6 +22,7 @@ tribunal.kujo
   -> src/bundles.kujo        signed evidence export/import
   -> src/artifact_store.kujo conditional immutable object versions
   -> src/contracts.kujo      executable JSON Schema validation
+  -> src/audit.kujo          combined integrity/contract/trust report
   -> src/telemetry.kujo      external metrics/audit projection
   -> src/dashboard.kujo      offline read-only HTML projection
 ```
@@ -34,7 +35,7 @@ Blind prompts are built only from the immutable `context.md` content and the cur
 
 ## Persistence and integrity
 
-`src/storage.kujo` constrains run IDs, atomically replaces snapshot files, creates prompt/testimony directories, and appends one JSON event per line. `record.json` is the complete hearing.
+`src/storage.kujo` constrains run IDs, exclusively creates run directories, atomically replaces snapshot files, creates prompt/testimony directories, and appends one JSON event per line. Hidden operational namespaces and URL/path metacharacters cannot be addressed as run IDs. `record.json` is the complete hearing.
 
 After persistence, `src/integrity.kujo` recursively enumerates every artifact except `artifact-manifest.json` and `signature.json`, rejects unsafe paths and symbolic links, enforces size limits, then records byte length and SHA-256. Replay requires an exact file set and matching digests.
 
@@ -42,9 +43,11 @@ Signing uses Kujo runtime `rsa_generate_keypair`, `rsa_sign`, and `rsa_verify`. 
 
 External signing emits v1.2 envelopes with provider and signer-reference provenance. The external Kujo adapter owns key access and receives only an opaque key reference plus federated workload identity. A separate trust policy resolves independently distributed public keys and enforces lifecycle/target rules.
 
-Seal replacement is journaled outside run directories. A crash leaves a recoverable transaction that restores the prior manifest/signature. Per-run atomic directory locks prevent concurrent writers; stale locks can be recovered after the configured operational threshold.
+Seal replacement is journaled outside run directories. A crash leaves a recoverable transaction that restores the prior manifest/signature. Per-run atomic directory locks prevent concurrent writers. Acquisition never steals a stale-looking lock; only an explicit operator recovery command can remove one after a confirmed crash.
 
 Bundles copy exact signed artifacts into external portable directories. Local and HTTP artifact-store providers use manifest SHA-256 as the immutable version and require conditional expected-version writes. Pull/import always re-verifies against a trust policy before accepting a run.
+
+Bundle and store imports validate metadata before copying, reject duplicates and unsafe paths, and enforce per-file, aggregate-byte, and artifact-count limits. Non-loopback remote endpoints require HTTPS. `src/audit.kujo` combines complete integrity, executable contracts, signature verification, and optional lifecycle trust policy into one report.
 
 RunLedger and CaseFile output is written outside the sealed run so downstream operations cannot invalidate source evidence.
 

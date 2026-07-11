@@ -65,6 +65,6 @@ Unknown fields and invalid types are rejected. Limits have guarded ranges: docke
 
 `authorization.mode=local` is intentionally single-operator and accepts only `local-operator`. Set `mode=policy`, select an identity, and provide a default-deny policy for service or multi-user automation. CLI `--identity` and `--access-policy` provide explicit overrides.
 
-Governance metadata is sealed into every new run. Post-seal legal-hold changes are stored in the external `.governance/` registry so evidence remains immutable. Artifact stores support `local-immutable` roots or authenticated deployment-owned `http-immutable` endpoints. Telemetry supports append-only JSONL or HTTP collectors and never writes inside a run.
+Governance metadata is sealed into every new run. Post-seal legal-hold changes are stored in the external `.governance/` registry so evidence remains immutable. Artifact stores support `local-immutable` roots or authenticated deployment-owned `http-immutable` endpoints. Remote artifact-store and telemetry endpoints require HTTPS except for explicit loopback development. Local store, telemetry, and all other external output paths must be outside `tribunal.storage_dir`.
 
 See `examples/access-policy.json`, `examples/trust-policy.json`, and `examples/signing-provider.json` for the policy/provider contracts. These files contain no credentials or private key material.

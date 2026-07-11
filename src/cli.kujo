@@ -1,6 +1,6 @@
 # Tribunal :: Kujo-native CLI
 
-from src.common import parse_args, flag, has_flag, positional, slice_from, dict_get, array_includes
+from src.common import parse_args, flag, has_flag, positional, slice_from, dict_get, array_includes, path_within
 from src.config import load_config, apply_overrides, validate_config
 from src.catalog import PANELS, SEATS
 from src.tribunal import review, validate_docket
@@ -20,6 +20,7 @@ from src.governance import delete_run, set_legal_hold
 from src.telemetry import export_telemetry
 from src.locking import recover_stale_locks
 from src.dashboard import export_dashboard
+from src.audit import audit_run
 
 func print_lines(lines) {
     for line in lines { print(line) }
@@ -46,6 +47,7 @@ func help() {
         "  tribunal doctor [--json]",
         "  tribunal stats [--json]",
         "  tribunal contracts <run-id> [--json]",
+        "  tribunal audit <run-id> [--public-key <pem>|--trust-policy <json> --target <name>] [--require-signature]",
         "  tribunal seal-provider <run-id> --provider-config <json>",
         "  tribunal verify-policy <run-id> --trust-policy <json> --target <name>",
         "  tribunal bundle-export <run-id> --output <directory>",
@@ -104,6 +106,7 @@ func allowed_options(parsed, command) {
         "doctor": ["json"],
         "stats": ["json"],
         "contracts": ["json"],
+        "audit": ["public-key", "trust-policy", "target", "require-signature", "json"],
         "seal-provider": ["provider-config"],
         "verify-policy": ["trust-policy", "target"],
         "bundle-export": ["output"],
@@ -155,7 +158,7 @@ func command_permission(command) {
         "list": "runs.list", "show": "runs.read", "replay": "runs.read", "export": "runs.read",
         "panels": "catalog.read", "seats": "catalog.read", "stats": "runs.read", "doctor": "system.diagnose",
         "keys": "keys.generate", "seal": "runs.sign", "seal-provider": "runs.sign", "verify": "runs.verify", "verify-policy": "runs.verify",
-        "ingest": "runs.ingest", "contracts": "contracts.validate", "bundle-export": "bundles.export", "bundle-import": "bundles.import",
+        "ingest": "runs.ingest", "contracts": "contracts.validate", "audit": "runs.audit", "bundle-export": "bundles.export", "bundle-import": "bundles.import",
         "store-publish": "store.publish", "store-pull": "store.pull", "telemetry-export": "telemetry.export",
         "locks-recover": "locks.recover", "delete": "runs.delete", "auth-check": "authorization.inspect", "version": "system.version",
         "dashboard-export": "dashboard.export", "legal-hold": "governance.hold"
@@ -257,10 +260,13 @@ func cmd_replay(parsed, config) {
     return 0
 }
 
-func cmd_keys(parsed) {
+func cmd_keys(parsed, config) {
     bits := 4096
     try { bits = to_int(flag(parsed, "bits", "4096")) } except err { bits = 0 }
-    created := generate_keys(flag(parsed, "private-key", ""), flag(parsed, "public-key", ""), bits)
+    private_path := flag(parsed, "private-key", "")
+    public_path := flag(parsed, "public-key", "")
+    if path_within(config["tribunal"]["storage_dir"], private_path) || path_within(config["tribunal"]["storage_dir"], public_path) { return command_error("Key outputs must be outside Tribunal run storage.", 2) }
+    created := generate_keys(private_path, public_path, bits)
     if created["ok"] != true { return command_error(created["error"], 2) }
     print(to_json_pretty(created))
     return 0
@@ -296,18 +302,22 @@ func cmd_ingest(parsed, config) {
     home := path_absolute(env_or("TRIBUNAL_HOME", "."))
     result := null
     if target == "runledger" {
+        ledger_path := flag(parsed, "ledger", "./.runledger")
+        if path_within(config["tribunal"]["storage_dir"], ledger_path) { return command_error("RunLedger output must be outside Tribunal run storage.", 2) }
         result = ingest_runledger(config["tribunal"]["storage_dir"], run_id, {
             "public_key": public_key,
             "kujo_bin": config["kujo_ai"]["kujo_bin"],
             "runledger_path": flag(parsed, "runledger-path", join_path(home, "../runledger/runledger.kujo")),
-            "ledger": flag(parsed, "ledger", "./.runledger")
+            "ledger": ledger_path
         })
     } else if target == "casefile" {
+        casefile_output := flag(parsed, "casefile-output", "./.casefile")
+        if path_within(config["tribunal"]["storage_dir"], casefile_output) { return command_error("CaseFile output must be outside Tribunal run storage.", 2) }
         result = ingest_casefile(config["tribunal"]["storage_dir"], run_id, {
             "public_key": public_key,
             "kujo_bin": config["kujo_ai"]["kujo_bin"],
             "casefile_path": flag(parsed, "casefile-path", join_path(home, "../casefile/casefile.kujo")),
-            "output_dir": flag(parsed, "casefile-output", "./.casefile")
+            "output_dir": casefile_output
         })
     } else {
         return command_error("Ingestion target must be runledger or casefile.", 2)
@@ -381,6 +391,26 @@ func cmd_contracts(parsed, config) {
     result := validate_run_contracts(path_absolute(env_or("TRIBUNAL_HOME", ".")), config["tribunal"]["storage_dir"], required_run(parsed))
     print(to_json_pretty(result))
     if result["ok"] { return 0 }
+    return 3
+}
+
+func cmd_audit(parsed, config) {
+    trust_policy := null
+    if has_flag(parsed, "public-key") && has_flag(parsed, "trust-policy") { return command_error("audit accepts either --public-key or --trust-policy, not both.", 2) }
+    if has_flag(parsed, "trust-policy") {
+        loaded := load_trust_policy(flag(parsed, "trust-policy", ""))
+        if loaded["ok"] != true { return command_error(loaded["error"], 2) }
+        trust_policy = loaded["policy"]
+    }
+    target := flag(parsed, "target", "audit")
+    report := audit_run(path_absolute(env_or("TRIBUNAL_HOME", ".")), config["tribunal"]["storage_dir"], required_run(parsed), flag(parsed, "public-key", ""), has_flag(parsed, "require-signature"), trust_policy, target)
+    if has_flag(parsed, "json") { print(to_json_pretty(report)) }
+    else {
+        status := "fail"
+        if report["ok"] { status = "pass" }
+        print(status + "\t" + report["runId"] + "\tintegrity=" + to_string(report["integrity"]["ok"]) + "\tcontracts=" + to_string(report["contracts"]["ok"]) + "\ttrust=" + to_string(report["trust"]["ok"]))
+    }
+    if report["ok"] { return 0 }
     return 3
 }
 
@@ -501,7 +531,8 @@ func cmd_dashboard_export(parsed, config) {
     if output == "" { return command_error("dashboard-export requires --output.", 2) }
     result := export_dashboard(config["tribunal"]["storage_dir"], output)
     print(to_json_pretty(result))
-    return 0
+    if result["ok"] { return 0 }
+    return 1
 }
 
 func cmd_legal_hold(parsed, config) {
@@ -518,15 +549,15 @@ export func main(argv) {
     parsed := parse_args(slice_from(argv, 1), ["help", "mock", "live", "offline-fixture", "json", "require-signature", "force-expired", "enable", "release"])
     if command == "help" || command == "--help" || has_flag(parsed, "help") { help(); return 0 }
     if command == "--version" { command = "version" }
-    known := ["version", "panels", "seats", "keys", "review", "kill", "validate", "list", "show", "replay", "seal", "verify", "ingest", "export", "doctor", "stats", "contracts", "seal-provider", "verify-policy", "bundle-export", "bundle-import", "store-publish", "store-pull", "telemetry-export", "locks-recover", "delete", "auth-check", "dashboard-export", "legal-hold"]
+    known := ["version", "panels", "seats", "keys", "review", "kill", "validate", "list", "show", "replay", "seal", "verify", "ingest", "export", "doctor", "stats", "contracts", "audit", "seal-provider", "verify-policy", "bundle-export", "bundle-import", "store-publish", "store-pull", "telemetry-export", "locks-recover", "delete", "auth-check", "dashboard-export", "legal-hold"]
     if array_includes(known, command) == false { return command_error("Unknown command '" + command + "'. Run tribunal help.", 2) }
     cli_error := validate_cli(command, parsed)
     if cli_error != "" { return command_error(cli_error, 2) }
-    if command != "review" && command != "kill" && array_includes(["validate", "show", "replay", "seal", "verify", "ingest", "export", "contracts", "seal-provider", "verify-policy", "bundle-export", "bundle-import", "store-publish", "store-pull", "delete", "legal-hold"], command) == false {
+    if command != "review" && command != "kill" && array_includes(["validate", "show", "replay", "seal", "verify", "ingest", "export", "contracts", "audit", "seal-provider", "verify-policy", "bundle-export", "bundle-import", "store-publish", "store-pull", "delete", "legal-hold"], command) == false {
         usage_error := require_positionals(parsed, 0, command + " does not accept positional arguments.")
         if usage_error != "" { return command_error(usage_error, 2) }
     }
-    if array_includes(["validate", "show", "replay", "seal", "verify", "ingest", "export", "contracts", "seal-provider", "verify-policy", "bundle-export", "bundle-import", "store-publish", "store-pull", "delete", "legal-hold"], command) {
+    if array_includes(["validate", "show", "replay", "seal", "verify", "ingest", "export", "contracts", "audit", "seal-provider", "verify-policy", "bundle-export", "bundle-import", "store-publish", "store-pull", "delete", "legal-hold"], command) {
         usage_error := require_positionals(parsed, 1, command + " requires exactly one positional argument.")
         if usage_error != "" { return command_error(usage_error, 2) }
     }
@@ -540,7 +571,7 @@ export func main(argv) {
     }
     if command == "panels" { return cmd_panels(parsed) }
     if command == "seats" { return cmd_seats(parsed) }
-    if command == "keys" { return cmd_keys(parsed) }
+    if command == "keys" { return cmd_keys(parsed, config) }
     if command == "review" || command == "kill" { return cmd_review(command, parsed, config) }
     if command == "validate" { return cmd_validate(parsed, config) }
     if command == "list" { return cmd_list(parsed, config) }
@@ -553,6 +584,7 @@ export func main(argv) {
     if command == "doctor" { return cmd_doctor(parsed, config) }
     if command == "stats" { return cmd_stats(parsed, config) }
     if command == "contracts" { return cmd_contracts(parsed, config) }
+    if command == "audit" { return cmd_audit(parsed, config) }
     if command == "seal-provider" { return cmd_seal_provider(parsed, config) }
     if command == "verify-policy" { return cmd_verify_policy(parsed, config) }
     if command == "bundle-export" { return cmd_bundle_export(parsed, config) }

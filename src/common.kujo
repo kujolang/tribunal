@@ -96,14 +96,63 @@ export func read_json(path) {
 }
 
 export func safe_run_id(id) {
-    if type(id) != "string" || id == "" || id == "." || id == ".." { return false }
-    return truthy(contains(id, "/")) == false && truthy(contains(id, "\\")) == false
+    if type(id) != "string" || id == "" || len(id) > 128 || starts_with(id, ".") { return false }
+    allowed := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
+    mut i := 0
+    while i < len(id) {
+        if truthy(contains(allowed, substring(id, i, i + 1))) == false { return false }
+        i = i + 1
+    }
+    return true
 }
 
 export func safe_relative_path(path) {
-    if type(path) != "string" || path == "" || starts_with(path, "/") || truthy(contains(path, "\\")) { return false }
+    if type(path) != "string" || path == "" || len(path) > 1024 || starts_with(path, "/") || truthy(contains(path, "\\")) { return false }
+    allowed := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
     for part in split(path, "/") {
-        if part == "" || part == "." || part == ".." { return false }
+        if part == "" || part == "." || part == ".." || len(part) > 128 { return false }
+        mut i := 0
+        while i < len(part) {
+            if truthy(contains(allowed, substring(part, i, i + 1))) == false { return false }
+            i = i + 1
+        }
+    }
+    return true
+}
+
+func normalized_absolute(path) {
+    raw := path
+    if starts_with(raw, "/") == false { raw = os_getcwd() + "/" + raw }
+    mut parts := []
+    for part in split(raw, "/") {
+        if part == "" || part == "." { continue }
+        if part == ".." {
+            if len(parts) > 0 {
+                mut shorter := []
+                mut i := 0
+                while i < len(parts) - 1 { shorter = push(shorter, parts[i]); i = i + 1 }
+                parts = shorter
+            }
+        } else {
+            parts = push(parts, part)
+        }
+    }
+    return "/" + join(parts, "/")
+}
+
+export func path_within(root, candidate) {
+    if type(root) != "string" || trim(root) == "" || type(candidate) != "string" || trim(candidate) == "" { return false }
+    resolved_root := normalized_absolute(root)
+    resolved_candidate := normalized_absolute(candidate)
+    return resolved_candidate == resolved_root || starts_with(resolved_candidate, resolved_root + "/")
+}
+
+export func lower_hex(value, expected_length) {
+    if type(value) != "string" || len(value) != expected_length { return false }
+    mut i := 0
+    while i < len(value) {
+        if truthy(contains("0123456789abcdef", substring(value, i, i + 1))) == false { return false }
+        i = i + 1
     }
     return true
 }
@@ -265,6 +314,10 @@ export func relative_files(root, relative) {
 }
 
 export func remove_tree(path) {
+    if (file_exists(path) || path_is_dir(path)) && path_is_symlink(path) {
+        delete_file(path)
+        return
+    }
     if path_is_dir(path) == false { return }
     for name in list_dir(path) {
         child := join_path(path, name)

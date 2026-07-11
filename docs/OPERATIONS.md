@@ -2,7 +2,7 @@
 
 ## Preflight and identity
 
-Run `tribunal doctor --json` under the production service identity and exact configuration. Use `tribunal auth-check --permission <permission>` to prove the selected identity/policy decision before automation. `local` mode is single-operator only; multi-user and service execution must use `policy` mode with `defaultDeny: true`.
+Run `tribunal doctor --json` under the production service identity and exact configuration. Use `tribunal auth-check --permission <permission>` to prove the selected identity/policy decision before automation. Use `tribunal audit <run-id> --trust-policy <path> --target audit --require-signature --json` as the normal production evidence gate. `local` mode is single-operator only; multi-user and service execution must use `policy` mode with `defaultDeny: true`.
 
 Validate dockets before opening hearings. Require `verify-policy` with a separately distributed trust policy before replay, import, publication, or ingestion.
 
@@ -18,7 +18,7 @@ Every hearing holds an atomic lock under `<storage>/.locks/`. Seal replacements 
 tribunal locks-recover --stale-after-ms 300000 --json
 ```
 
-This removes stale writer locks and rolls interrupted sealing back to the prior manifest/signature. Never recover locks merely because a live hearing is slow.
+This removes stale writer locks and rolls interrupted sealing back to the prior manifest/signature. Normal acquisition never steals a stale-looking lock. Never run recovery merely because a live hearing is slow; confirm process death and preserve recovery evidence first.
 
 ## Immutable storage and disaster recovery
 
@@ -67,4 +67,4 @@ The dashboard is static, script-free, CSP-restricted, and capped at 500 rows. Tr
 
 Tag releases run all Kujo checks, four test suites, 17 schema contracts, Concord, Spec, Eval, and both benchmarks on a self-hosted Kujo runner. CI uses an external signing-provider config and publishes a signed evidence bundle. See [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md).
 
-Tribunal v0.4.0 verifies signature schemas v1.0, v1.1, and v1.2. Rollback does not authorize modifying newer runs.
+Tribunal v0.5.0 verifies signature schemas v1.0, v1.1, and v1.2. Rollback does not authorize modifying newer runs.

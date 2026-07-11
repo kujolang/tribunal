@@ -12,3 +12,4 @@ eval_results/
 .env
 .env.*
 !.env.example
+.loop-engineering/

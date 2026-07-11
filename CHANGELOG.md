@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.5.0 - 2026-07-11
+
+- Added `tribunal audit` to combine artifact integrity, signature/trust, and complete contract validation in one machine-readable report.
+- Hardened run IDs and artifact paths against hidden operational namespace access, URL metacharacters, control characters, traversal, and oversized segments.
+- Made run-directory creation exclusive and lock acquisition non-stealing; stale locks now require the explicit recovery command.
+- Added structural and aggregate bounds for integrity manifests, bundles, policies, signing-provider configs, keys, and remote artifact-store metadata.
+- Required HTTPS for non-loopback artifact-store and telemetry endpoints and prevented keys, integrations, dashboards, telemetry, bundles, and archives from writing into sealed evidence storage.
+- Added pre-deletion tombstones, legal-hold serialization, safer symlink handling, output overwrite protection, and expanded adversarial regression coverage.
+- Clarified the honest production-readiness boundary, cleaned the repository map, and published a new prioritized next-session review.
+
 ## 0.4.0 - 2026-07-11
 
 - Added default-deny identity/role authorization and trusted-key lifecycle policies with rotation, revocation, validity, and allowed-target enforcement.

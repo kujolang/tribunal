@@ -24,10 +24,10 @@
       "permissions": ["*"]
     },
     "auditor": {
-      "permissions": ["runs.list", "runs.read", "runs.verify", "contracts.validate", "telemetry.export", "dashboard.export"]
+      "permissions": ["runs.list", "runs.read", "runs.verify", "runs.audit", "contracts.validate", "telemetry.export", "dashboard.export"]
     },
     "reviewer": {
-      "permissions": ["runs.create", "runs.list", "runs.read", "runs.verify", "contracts.validate", "bundles.export", "store.publish"]
+      "permissions": ["runs.create", "runs.list", "runs.read", "runs.verify", "runs.audit", "contracts.validate", "bundles.export", "store.publish"]
     },
     "governance": {
       "permissions": ["runs.list", "runs.read", "governance.hold", "runs.delete"]

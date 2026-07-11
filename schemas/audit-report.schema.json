@@ -1,0 +1,35 @@
+{
+  "title": "TribunalAuditReport",
+  "type": "object",
+  "required": ["schemaVersion", "runId", "auditedAt", "ok", "integrity", "contracts", "trust"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "runId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "auditedAt": { "type": "string", "minLength": 1 },
+    "ok": { "type": "boolean" },
+    "integrity": { "type": "object" },
+    "contracts": {
+      "type": "object",
+      "required": ["ok", "validated", "errors"],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "validated": { "type": "integer", "minimum": 0 },
+        "errors": { "type": "array", "items": { "type": "object" } }
+      },
+      "additionalProperties": false
+    },
+    "trust": {
+      "type": "object",
+      "required": ["mode", "ok", "keyId", "target", "error"],
+      "properties": {
+        "mode": { "enum": ["none", "public-key", "policy"] },
+        "ok": { "type": "boolean" },
+        "keyId": { "type": "string" },
+        "target": { "type": "string" },
+        "error": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

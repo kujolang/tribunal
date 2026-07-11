@@ -9,6 +9,7 @@ from src.contracts import validate_run_contracts
 from src.bundles import export_bundle
 from src.artifact_store import publish_local
 from src.telemetry import telemetry_payload
+from src.audit import audit_run
 
 mut failures := []
 
@@ -17,7 +18,7 @@ func require(condition, message) {
 }
 
 home := env_or("TRIBUNAL_HOME", ".")
-schema_names := ["access-policy.schema.json", "artifact-manifest.schema.json", "artifact-store-index.schema.json", "bundle.schema.json", "decision-packet.schema.json", "governance.schema.json", "ingestion-receipt.schema.json", "legal-hold.schema.json", "receipt.schema.json", "ruling.schema.json", "signature.schema.json", "signing-provider.schema.json", "telemetry.schema.json", "tribunal-config.schema.json", "tribunal-event.schema.json", "tribunal-record.schema.json", "trust-policy.schema.json"]
+schema_names := ["access-policy.schema.json", "artifact-manifest.schema.json", "artifact-store-index.schema.json", "audit-report.schema.json", "bundle.schema.json", "decision-packet.schema.json", "governance.schema.json", "ingestion-receipt.schema.json", "legal-hold.schema.json", "receipt.schema.json", "ruling.schema.json", "signature.schema.json", "signing-provider.schema.json", "telemetry.schema.json", "tribunal-config.schema.json", "tribunal-event.schema.json", "tribunal-record.schema.json", "trust-policy.schema.json"]
 for name in schema_names {
     path := join_path(join_path(home, "schemas"), name)
     require(file_exists(path), "Missing schema: " + name)
@@ -87,6 +88,9 @@ if loaded["ok"] == true && keys_result["ok"] == true {
         require(checked["artifactsChecked"] >= 18, "artifact manifest coverage is incomplete")
         contracts := validate_run_contracts(home, tribunal["storage_dir"], run_id)
         require(contracts["ok"] == true && contracts["validated"] > 10, "emitted artifacts failed complete JSON Schema validation")
+        audit := audit_run(home, tribunal["storage_dir"], run_id, public_key, true, null, "audit")
+        audit_schema := parse_json(read_file(join_path(join_path(home, "schemas"), "audit-report.schema.json")))
+        require(audit["ok"] == true && json_schema_validate(audit, audit_schema)["valid"] == true, "audit report failed schema")
         bundle_path := join_path(root, "bundle")
         bundle := export_bundle(tribunal["storage_dir"], run_id, bundle_path)
         require(bundle["ok"] == true, "signed bundle export failed")
@@ -110,5 +114,5 @@ if len(failures) > 0 {
     for failure in failures { print("FAIL: " + failure) }
     exit(1)
 }
-print("Schema gate passed: " + to_string(len(schema_names)) + " executable schemas; policies, config, evidence, bundle, store index, telemetry, and RSA signature fully validated with Kujo tooling.")
+print("Schema gate passed: " + to_string(len(schema_names)) + " executable schemas; policies, config, evidence, audit, bundle, store index, telemetry, and RSA signature fully validated with Kujo tooling.")
 exit(0)

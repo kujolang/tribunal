@@ -26,7 +26,9 @@ export func generate_run_id(storage_dir, title) {
 export func create_run(storage_dir, run_id) {
     root := run_dir(storage_dir, run_id)
     if root == "" { return "" }
-    ensure_dir(root)
+    ensure_dir(storage_dir)
+    if file_exists(root) || path_is_dir(root) { return "" }
+    try { create_dir(root) } except err { return "" }
     ensure_dir(join_path(root, "prompts"))
     ensure_dir(join_path(root, "testimony"))
     return root

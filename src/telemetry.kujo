@@ -1,7 +1,7 @@
 # Tribunal :: external metrics and audit export without sealed-run mutation
 
 from src.analytics import collect_stats
-from src.common import dict_get, ensure_dir, iso_now, parent_dir, redact, write_json
+from src.common import dict_get, ensure_dir, iso_now, parent_dir, path_within, redact, write_json
 from src.storage import list_runs, load_events
 
 func audit_event(event) {
@@ -15,6 +15,13 @@ func audit_event(event) {
     }
 }
 
+func secure_http_destination(value) {
+    if starts_with(value, "https://") && len(value) > 8 && substring(value, 8, 9) != "/" && contains(value, " ") == false { return true }
+    return value == "http://localhost" || starts_with(value, "http://localhost:") || starts_with(value, "http://localhost/") ||
+        value == "http://127.0.0.1" || starts_with(value, "http://127.0.0.1:") || starts_with(value, "http://127.0.0.1/") ||
+        value == "http://[::1]" || starts_with(value, "http://[::1]:") || starts_with(value, "http://[::1]/")
+}
+
 export func telemetry_payload(storage_dir) {
     mut audit := []
     for manifest in list_runs(storage_dir) {
@@ -24,6 +31,7 @@ export func telemetry_payload(storage_dir) {
 }
 
 export func export_telemetry(storage_dir, collector, destination) {
+    if collector == "jsonl" && path_within(storage_dir, destination) { return {"ok": false, "error": "Telemetry destination must be outside Tribunal run storage."} }
     payload := telemetry_payload(storage_dir)
     if collector == "jsonl" {
         ensure_dir(parent_dir(destination))
@@ -33,6 +41,7 @@ export func export_telemetry(storage_dir, collector, destination) {
         return receipt
     }
     if collector == "http" {
+        if secure_http_destination(destination) == false || contains(destination, "@") { return {"ok": false, "error": "HTTP telemetry requires HTTPS without embedded credentials (plain HTTP is allowed only for loopback development)."} }
         status := 0
         error := ""
         try {

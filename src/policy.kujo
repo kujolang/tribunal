@@ -48,6 +48,7 @@ TRUST_SCHEMA := {
 func load_typed(path, schema, label) {
     if path == "" || file_exists(path) == false { return {"ok": false, "error": label + " policy does not exist: " + path} }
     if path_is_symlink(path) { return {"ok": false, "error": label + " policy must not be a symbolic link."} }
+    if file_size(path) > 4194304 { return {"ok": false, "error": label + " policy exceeds the 4 MiB safety limit."} }
     value := null
     try { value = read_json(path) } except err { return {"ok": false, "error": label + " policy is invalid JSON."} }
     checked := json_schema_validate(value, schema)
@@ -136,6 +137,7 @@ export func trusted_key(policy, key_id, target, at_ms) {
             if target_allowed(entry["allowedTargets"], target) == false { return {"ok": false, "error": "Signing key is not allowed for target '" + target + "'."} }
             public_path := entry["publicKeyPath"]
             if file_exists(public_path) == false || path_is_symlink(public_path) { return {"ok": false, "error": "Trusted public key file is missing or unsafe."} }
+            if file_size(public_path) > 1048576 { return {"ok": false, "error": "Trusted public key exceeds the 1 MiB safety limit."} }
             if substring(sha256(read_file(public_path)), 0, 32) != key_id { return {"ok": false, "error": "Trusted public key fingerprint does not match policy key ID."} }
             return {"ok": true, "key": entry}
         }
