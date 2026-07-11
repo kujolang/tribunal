@@ -1,118 +1,99 @@
 # Tribunal
 
-Tribunal is a local-first, Kujo-native CLI for structured adversarial decision review. Its CLI, hearing lifecycle, persistence, mock model, integrity verification, signing, and integration adapters are implemented in the Kujo programming language. The previous TypeScript implementation is preserved on the pushed `typescript` branch.
+Tribunal is a local-first decision review engine written entirely in the Kujo programming language. It turns a consequential proposal into a durable, adversarial hearing: independent specialist testimony, cross-examination, an explicit fatal-flaw pass, a ruling, and an execution-ready decision packet.
 
-Tribunal owns decision flow and panel orchestration. Every live model call crosses the Kujo model boundary into Kujo AI SDK; Tribunal contains no provider SDK or direct provider endpoint code.
+The result is inspectable evidence, not a disposable chat transcript. Every run is structured, replayable, SHA-256 sealed, optionally RSA-signed, and ready for Kujo ecosystem handoff.
+
+The previous TypeScript implementation is preserved on the pushed `typescript` branch. `main` has no Node, npm, TypeScript, JavaScript, or provider-SDK runtime dependency.
+
+## Why Tribunal
+
+Use Tribunal when a decision deserves more than one model response:
+
+- architecture and build-versus-buy decisions;
+- production launches, migrations, and incident follow-ups;
+- security, privacy, and operational risk reviews;
+- product bets and roadmap tradeoffs;
+- agent-generated plans that need explicit evidence and stop conditions.
+
+Three panels cover focused through strategic review: `executioner-only`, `fast-two-model`, and `strategic-five`. The five seats—Judge, Executioner, Builder, Operator, and Market Lens—have distinct authority, non-goals, output contracts, and provider-neutral model preferences.
 
 ## Quick start
 
 ```bash
 export KUJO_BIN=../kujo/target/release/kujo
-export KUJO="$KUJO_BIN"
 
-./bin/tribunal panels
+./bin/tribunal doctor
+./bin/tribunal validate examples/product-decision.md
 ./bin/tribunal review examples/product-decision.md --panel fast-two-model
+./bin/tribunal list --status completed --limit 5
 ```
 
-The launcher only locates the repository and invokes `kujo run tribunal.kujo`. The equivalent direct form is:
+Mock mode is deterministic, offline, credential-free, and the default. The launcher only resolves this repository and executes `kujo run tribunal.kujo`.
 
-```bash
-TRIBUNAL_HOME="$PWD" "$KUJO_BIN" run tribunal.kujo review \
-  examples/product-decision.md --panel strategic-five
-```
-
-Commands:
+## Command surface
 
 ```text
-tribunal review <file> --panel <panel-name>
-tribunal kill <file>
-tribunal list
-tribunal show <run-id>
-tribunal replay <run-id>
-tribunal keys --private-key <pem> --public-key <pem>
+tribunal review <file> --panel <panel-name> [--mock|--live]
+tribunal kill <file> [--mock|--live]
+tribunal validate <file> [--json]
+tribunal list [--status <status> --panel <panel> --limit <n> --json]
+tribunal show <run-id> [--json]
+tribunal replay <run-id> [--public-key <pem> --require-signature]
+tribunal keys --private-key <pem> --public-key <pem> [--bits 2048|4096]
 tribunal seal <run-id> --private-key <pem> --public-key <pem>
-tribunal verify <run-id> [--public-key <pem>]
+tribunal verify <run-id> [--public-key <pem> --require-signature]
 tribunal ingest <run-id> --target runledger|casefile --public-key <pem>
 tribunal export <run-id> --format json|jsonl
-tribunal panels
-tribunal seats
+tribunal panels [--json]
+tribunal seats [--json]
+tribunal doctor [--json]
+tribunal stats [--json]
 tribunal version
 ```
 
-## Hearing lifecycle
+Exit codes are stable: `0` success, `1` runtime failure, `2` usage/configuration error, and `3` integrity failure. Unknown, duplicate, missing-value, and conflicting options are rejected.
 
-Every completed review records nine explicit stages:
+## Hearing and evidence
 
-1. open docket
-2. validate scope
-3. build context pack
-4. blind first pass
-5. cross-examination
-6. Executioner kill pass
-7. Judge ruling
-8. decision packet
-9. persist record
+Every completed hearing records nine stages: docket opening, scope validation, context construction, blind first pass, cross-examination, Executioner kill pass, Judge ruling, decision packet, and durable persistence.
 
-Blind prompts contain only the immutable docket/context and the current seat contract. The complete testimony record is introduced only after every blind response is captured.
+Blind prompts contain only the immutable docket/context and current seat contract. Peer testimony is introduced only after all blind responses are captured.
 
-## Panels and seats
-
-- `executioner-only`: focused fatal-flaw review with a procedural final ruling.
-- `fast-two-model`: Executioner and Judge.
-- `strategic-five`: Executioner, Builder, Operator, Market Lens, and Judge.
-
-Every seat defines authority, non-goals, stage responsibilities, structured output requirements, provider-neutral Kujo model preferences, and escalation triggers.
-
-## Run records
-
-Runs are written under `tribunal-runs/<run-id>/` by default:
+Runs are stored under `tribunal-runs/<run-id>/` by default:
 
 ```text
-docket.md
-manifest.json
-context.md
-prompts/
-testimony/
-cross-examination.md
-kill-pass.md
-ruling.md
-decision-packet.md
-record.json
-events.jsonl
-receipt.json
-artifact-manifest.json
-signature.json  # signed runs only
+docket.md                 context.md
+manifest.json             events.jsonl
+prompts/                  testimony/
+cross-examination.md      kill-pass.md
+ruling.md                 decision-packet.md
+record.json               receipt.json
+artifact-manifest.json    signature.json (signed runs only)
 ```
 
-`record.json` is the complete structured hearing. `events.jsonl` is append-oriented stage/model evidence. `artifact-manifest.json` hashes every non-integrity artifact and rejects missing, changed, or unexpected files during verification and replay.
+`record.json` is the complete machine-readable hearing; the Markdown artifacts are human/agent-readable; `events.jsonl` is append-oriented evidence. Replay rejects missing, changed, unexpected, oversized, unsafe, or symlinked artifacts.
 
-## Mock and live Kujo AI SDK modes
+## Live Kujo AI SDK
 
-Mock mode is deterministic, offline, and credential-free:
-
-```bash
-./bin/tribunal review examples/product-decision.md --mock
-```
-
-Live mode invokes the adjacent Kujo AI SDK through the Kujo bridge:
+Tribunal owns the hearing. The adjacent Kujo AI SDK owns provider resolution, network calls, retries, and normalized metadata. Tribunal contains no direct provider endpoint or SDK code.
 
 ```bash
 export OPENAI_API_KEY="..."
 ./bin/tribunal review examples/product-decision.md --live \
+  --provider openai \
   --ai-sdk-path ../ai-sdk \
   --kujo-bin ../kujo/target/release/kujo
 ```
 
-Tribunal forwards each provider-neutral preference object to SDK-owned `resolve_model_preference(...)` and persists the selected model, preference class, and resolution provenance. Credentials remain owned by Kujo AI SDK environment conventions and are never accepted in Tribunal records or config.
+Only the selected provider credential and a small operational environment allowlist reach the SDK subprocess. Credentials are never accepted in Tribunal config or persisted contracts. `--offline-fixture` exercises the real SDK bridge without network.
 
-`--offline-fixture` exercises the real SDK bridge without network. The SDK fixture proves routing and normalized metadata contracts; because its canned text is not a Tribunal structured response, it is tested at the model-boundary level rather than used for a complete hearing.
+## Integrity and trusted handoff
 
-## Integrity, signing, and ingestion
-
-Every completed or stopped run receives a SHA-256 artifact manifest. Signing uses Kujo's native RSA-PKCS#1 v1.5 SHA-256 primitives:
+Every completed or stopped run receives a byte-accurate SHA-256 manifest. Optional signatures bind the manifest digest, run ID, algorithm, key fingerprint, and signing time in a versioned RSA-PKCS#1 v1.5 SHA-256 envelope.
 
 ```bash
-./bin/tribunal keys \
+./bin/tribunal keys --bits 4096 \
   --private-key ./tribunal-private.pem \
   --public-key ./tribunal-public.pem
 
@@ -120,88 +101,57 @@ Every completed or stopped run receives a SHA-256 artifact manifest. Signing use
   --private-key ./tribunal-private.pem \
   --public-key ./tribunal-public.pem
 
-./bin/tribunal verify <run-id> --public-key ./tribunal-public.pem
+./bin/tribunal verify <run-id> \
+  --public-key ./tribunal-public.pem \
+  --require-signature
 ```
 
-Never commit private keys. A signature is accepted for ingestion only when the entire artifact set is intact and the supplied, separately trusted public key verifies it.
+Never commit private keys. Tribunal does not replace organizational key custody, rotation, revocation, or trust policy.
 
-```bash
-./bin/tribunal ingest <run-id> \
-  --target runledger \
-  --public-key ./tribunal-public.pem \
-  --ledger ./.runledger \
-  --runledger-path ../runledger/runledger.kujo
+Signed runs can be ingested idempotently into Kujo RunLedger or CaseFile. The source run remains immutable; downstream receipts are kept outside its sealed evidence directory.
 
-./bin/tribunal ingest <run-id> \
-  --target casefile \
-  --public-key ./tribunal-public.pem \
-  --casefile-output ./.casefile \
-  --casefile-path ../casefile/casefile.kujo
-```
-
-RunLedger receives model identity, usage, verdict, signed-manifest evidence, and next actions. CaseFile receives a manual case with a preserved `tribunal-evidence/` bundle. Downstream output remains outside the sealed source run.
-
-## Optional PackWrite context
+Optional PackWrite context enrichment is deterministic and redacted:
 
 ```bash
 ./bin/tribunal review examples/product-decision.md \
-  --context-provider packwrite \
-  --packwrite-path ../packwrite
+  --context-provider packwrite --packwrite-path ../packwrite
 ```
 
-PackWrite's deterministic redacted repository context is appended before blind testimony and does not invoke a model.
+## Enterprise controls
 
-## Stop the line
+Tribunal v0.3.0 adds strict config/CLI contracts, bounded docket/context/model/process sizes, model timeouts, secret detection, subprocess environment isolation, safe artifact paths, symlink rejection, signed-envelope metadata binding, idempotent ingestion, local diagnostics, filtered JSON inventory, and aggregate local statistics.
 
-Fatal docket, panel, model, secret-safety, integrity, or persistence failures stop the hearing. Tribunal attempts to leave a stopped manifest, JSONL evidence, partial record, receipt, and verifiable artifact manifest.
+See [Security](SECURITY.md), [Operations](docs/OPERATIONS.md), and [Enterprise readiness](docs/ENTERPRISE_READINESS.md) before production adoption. Machine-readable contracts live in [`schemas/`](schemas/).
 
-## Configuration
-
-See [docs/configuration.md](docs/configuration.md). Configuration is JSON and uses Kujo-style snake_case fields. It has no credential field.
-
-## Development and validation
+## Kujo-native development
 
 ```bash
 export TRIBUNAL_HOME="$PWD"
 export KUJO_BIN=../kujo/target/release/kujo
 
-"$KUJO_BIN" check tribunal.kujo
-"$KUJO_BIN" check tests/tribunal_tests.kujo
+for file in $(find . -name '*.kujo' -not -path './.git/*'); do
+  "$KUJO_BIN" check "$file"
+done
 "$KUJO_BIN" run tests/tribunal_tests.kujo
 "$KUJO_BIN" run tests/cli_integration.kujo
 "$KUJO_BIN" run scripts/schema_gate.kujo
 "$KUJO_BIN" run scripts/drift_gate.kujo
 "$KUJO_BIN" run scripts/spec_gate.kujo
+"$KUJO_BIN" run scripts/benchmark.kujo
 ```
 
-Run the repository Eval suite from the adjacent Eval project so its own `src/` modules remain authoritative:
+The offline gates exercise 23 Kujo source files, 91 core assertions, 25 CLI assertions, nine schemas, signing/tamper detection, PackWrite, RunLedger, CaseFile, the AI SDK fixture, Spec, Concord, and Eval. See [Contributing](CONTRIBUTING.md).
 
-```bash
-(cd ../eval && "$KUJO_BIN" run main.kujo lint ../tribunal/tests/tribunal_eval.json)
-(cd ../eval && "$KUJO_BIN" run main.kujo run ../tribunal/tests/tribunal_eval.json \
-  --output-dir /tmp/tribunal-eval-results --json)
-```
-
-The tests run without credentials or network and exercise all CLI commands, the Kujo mock engine, real Kujo AI SDK offline bridge, PackWrite, RunLedger, CaseFile, signing, tamper detection, stopped runs, and required artifacts.
-
-## Architecture and integrations
+## Project map
 
 - [Architecture](docs/architecture.md)
 - [Configuration](docs/configuration.md)
-- [Kujo ecosystem integrations](docs/integrations.md)
-- [Paperclip skill stub](docs/paperclip-skill.md)
-- [BZBY analytics path](docs/bzby.md)
-- Machine-readable contracts: [`schemas/`](schemas/)
+- [Operations](docs/OPERATIONS.md)
+- [Enterprise readiness](docs/ENTERPRISE_READINESS.md)
+- [Integrations](docs/integrations.md)
+- [Next-session review](docs/NEXT_SESSION_REVIEW.md)
+- [Changelog](CHANGELOG.md)
 
-## Current limitations
+## Boundaries
 
-- JSON is the only configuration format.
-- Live providers are limited to presets currently exposed by Kujo AI SDK.
-- Replay verifies and inspects recorded evidence; it intentionally does not rerun models.
-- RSA keys are local PEM files. Custody, permissions, rotation, revocation, and organizational trust policy remain caller responsibilities.
-- ChangeBucket, Muzzle, Strata, Paperclip, and BZBY remain documented seams rather than embedded dependencies.
-- A web UI is intentionally out of scope.
-
-## Next
-
-The next slice is a Kujo-native signing-provider abstraction for managed key services, CI publication of signed bundles, and a downstream analytics index that links Tribunal, RunLedger, CaseFile, and change evidence without mutating sealed runs.
+JSON is currently the only config format. Replay verifies recorded evidence and intentionally does not rerun models. Managed signing services, revocation, multi-tenant authorization, remote retention, and a web UI are not built in; the production implications are tracked in the readiness and next-session documents.
