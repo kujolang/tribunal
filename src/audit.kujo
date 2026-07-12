@@ -1,6 +1,6 @@
 # Tribunal :: one-command integrity, contract, and trust audit
 
-from src.common import dict_get, iso_now, read_json
+from src.common import dict_get, read_json
 from src.contracts import validate_run_contracts
 from src.integrity import verify
 from src.policy import trusted_key
@@ -41,7 +41,7 @@ export func audit_run(home, storage_dir, run_id, public_key, require_signature, 
     return {
         "schemaVersion": "1.0.0",
         "runId": run_id,
-        "auditedAt": iso_now(),
+        "auditedAt": now_utc(),
         "ok": ok,
         "integrity": integrity,
         "contracts": {"ok": contracts["ok"], "validated": contracts["validated"], "errors": contracts["errors"]},

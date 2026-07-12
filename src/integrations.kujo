@@ -1,6 +1,6 @@
 # Tribunal :: trusted RunLedger and CaseFile ingestion via Kujo tooling
 
-from src.common import dict_get, iso_now, last_json_line, ensure_dir, write_json, read_json, parent_dir, safe_process_env, redact
+from src.common import dict_get, last_json_line, ensure_dir, write_json, read_json, parent_dir, safe_process_env, redact
 from src.storage import load_record, artifact_path
 from src.integrity import verify
 
@@ -39,30 +39,6 @@ func existing_receipt(path, verification) {
         return receipt
     }
     return null
-}
-
-func proc_success(proc) {
-    if type(proc) == "dict" {
-        if has_key(proc, "success") == 1 { return proc["success"] == true }
-        return false
-    }
-    try { return proc.success == true } except err { return false }
-}
-
-func proc_stdout(proc) {
-    if type(proc) == "dict" {
-        if has_key(proc, "stdout") == 1 { return to_string(proc["stdout"]) }
-        return ""
-    }
-    try { return to_string(proc.stdout) } except err { return "" }
-}
-
-func proc_stderr(proc) {
-    if type(proc) == "dict" {
-        if has_key(proc, "stderr") == 1 { return to_string(proc["stderr"]) }
-        return ""
-    }
-    try { return to_string(proc.stderr) } except err { return "" }
 }
 
 func aggregate_usage(record) {
@@ -119,25 +95,25 @@ export func ingest_runledger(storage_dir, run_id, options) {
     runledger_cwd := parent_dir(script)
     kujo_bin := options["kujo_bin"]
     started := run_kujo(kujo_bin, script, ["start", "--provider", provider, "--model", model, "--task", "Tribunal: " + dict_get(docket, "title", run_id), "--prompt", prompt, "--repo", repo, "--ledger", ledger], runledger_cwd, {})
-    if proc_success(started) == false { return {"ok": false, "error": "RunLedger start failed: " + redact(proc_stderr(started) + proc_stdout(started))} }
-    target_id := started_id(proc_stdout(started))
+    if started.success == false { return {"ok": false, "error": "RunLedger start failed: " + redact(started.stderr + started.stdout)} }
+    target_id := started_id(started.stdout)
     if target_id == "" { return {"ok": false, "error": "RunLedger returned no run ID."} }
     usage := aggregate_usage(record)
     if usage["input"] > 0 || usage["output"] > 0 {
         used := run_kujo(kujo_bin, script, ["usage", target_id, "--input", to_string(usage["input"]), "--output", to_string(usage["output"]), "--ledger", ledger], runledger_cwd, {})
-        if proc_success(used) == false { return {"ok": false, "error": "RunLedger usage failed: " + redact(proc_stderr(used) + proc_stdout(used))} }
+        if used.success == false { return {"ok": false, "error": "RunLedger usage failed: " + redact(used.stderr + used.stdout)} }
     }
     noted := run_kujo(kujo_bin, script, ["note", target_id, "Verified Tribunal run " + run_id + "; manifest " + verification["manifestSha256"] + "; key " + verification["keyId"] + ".", "--ledger", ledger], runledger_cwd, {})
-    if proc_success(noted) == false { return {"ok": false, "error": "RunLedger note failed: " + redact(proc_stderr(noted) + proc_stdout(noted))} }
+    if noted.success == false { return {"ok": false, "error": "RunLedger note failed: " + redact(noted.stderr + noted.stdout)} }
     packet := dict_get(record, "decisionPacket", {})
     for followup in dict_get(packet, "requiredNextActions", []) {
         followed := run_kujo(kujo_bin, script, ["followup", target_id, followup, "--ledger", ledger], runledger_cwd, {})
-        if proc_success(followed) == false { return {"ok": false, "error": "RunLedger followup failed: " + redact(proc_stderr(followed) + proc_stdout(followed))} }
+        if followed.success == false { return {"ok": false, "error": "RunLedger followup failed: " + redact(followed.stderr + followed.stdout)} }
     }
     verdict := dict_get(ruling, "finalVerdict", dict_get(record, "stopReason", "Tribunal run ingested."))
     finished := run_kujo(kujo_bin, script, ["finish", target_id, "--status", runledger_status(record), "--verdict", verdict, "--repo", repo, "--ledger", ledger], runledger_cwd, {})
-    if proc_success(finished) == false { return {"ok": false, "error": "RunLedger finish failed: " + redact(proc_stderr(finished) + proc_stdout(finished))} }
-    receipt := {"schemaVersion": "1.0.0", "target": "runledger", "tribunalRunId": run_id, "manifestSha256": verification["manifestSha256"], "keyId": verification["keyId"], "ingestedAt": iso_now(), "targetId": target_id, "targetPath": join_path(join_path(ledger, "runs"), target_id + ".json")}
+    if finished.success == false { return {"ok": false, "error": "RunLedger finish failed: " + redact(finished.stderr + finished.stdout)} }
+    receipt := {"schemaVersion": "1.0.0", "target": "runledger", "tribunalRunId": run_id, "manifestSha256": verification["manifestSha256"], "keyId": verification["keyId"], "ingestedAt": now_utc(), "targetId": target_id, "targetPath": join_path(join_path(ledger, "runs"), target_id + ".json")}
     ensure_dir(receipt_dir)
     write_json(receipt_path, receipt)
     return {"ok": true, "receipt": receipt}
@@ -160,8 +136,8 @@ export func ingest_casefile(storage_dir, run_id, options) {
     notes := "Verified signed Tribunal run " + run_id + ". Manifest SHA-256: " + verification["manifestSha256"] + ". Trusted key: " + verification["keyId"] + ". Disposition: " + disposition + "."
     output_parent := parent_dir(output_root)
     proc := run_kujo(options["kujo_bin"], options["casefile_path"], ["capture", "--manual", "--name", "tribunal-" + run_id, "--notes", notes, "--format", "json", "--output-dir", basename(output_root)], output_parent, {})
-    if proc_success(proc) == false { return {"ok": false, "error": "CaseFile capture failed: " + redact(proc_stderr(proc) + proc_stdout(proc))} }
-    line := last_json_line(proc_stdout(proc))
+    if proc.success == false { return {"ok": false, "error": "CaseFile capture failed: " + redact(proc.stderr + proc.stdout)} }
+    line := last_json_line(proc.stdout)
     if line == "" { return {"ok": false, "error": "CaseFile returned no JSON."} }
     parsed := parse_json(line)
     case_data := dict_get(parsed, "case", {})
@@ -178,7 +154,7 @@ export func ingest_casefile(storage_dir, run_id, options) {
     for name in ["artifact-manifest.json", "signature.json", "decision-packet.md", "ruling.md", "receipt.json"] {
         copy_file(artifact_path(storage_dir, run_id, name), join_path(evidence, name))
     }
-    receipt := {"schemaVersion": "1.0.0", "target": "casefile", "tribunalRunId": run_id, "manifestSha256": verification["manifestSha256"], "keyId": verification["keyId"], "ingestedAt": iso_now(), "targetId": target_id, "targetPath": target_path}
+    receipt := {"schemaVersion": "1.0.0", "target": "casefile", "tribunalRunId": run_id, "manifestSha256": verification["manifestSha256"], "keyId": verification["keyId"], "ingestedAt": now_utc(), "targetId": target_id, "targetPath": target_path}
     write_json(join_path(target_path, "tribunal-ingestion.json"), receipt)
     ensure_dir(receipt_dir)
     write_json(receipt_path, receipt)

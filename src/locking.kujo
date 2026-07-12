@@ -1,6 +1,6 @@
 # Tribunal :: atomic per-run lock directories and crash recovery
 
-from src.common import dict_get, ensure_dir, iso_now, read_json, safe_run_id, write_json
+from src.common import dict_get, ensure_dir, read_json, safe_run_id, write_json
 
 func locks_root(storage_dir) { return join_path(storage_dir, ".locks") }
 func lock_dir(storage_dir, run_id) { return join_path(locks_root(storage_dir), run_id + ".lock") }
@@ -29,7 +29,7 @@ export func acquire_lock(storage_dir, run_id, owner, stale_after_ms) {
     }
     try { create_dir(path) } except err { return {"ok": false, "error": "Unable to acquire atomic run lock: " + to_string(err)} }
     token := sha256(run_id + ":" + owner + ":" + to_string(current_timestamp()) + ":" + to_string(random_int(1000, 9999)))
-    lock := {"schemaVersion": "1.0.0", "runId": run_id, "owner": owner, "token": token, "acquiredAt": iso_now(), "acquiredAtMs": current_timestamp()}
+    lock := {"schemaVersion": "1.0.0", "runId": run_id, "owner": owner, "token": token, "acquiredAt": now_utc(), "acquiredAtMs": current_timestamp()}
     try { write_json(owner_path(storage_dir, run_id), lock) } except err { remove_lock(storage_dir, run_id); return {"ok": false, "error": "Unable to persist lock ownership."} }
     return {"ok": true, "lock": lock}
 }

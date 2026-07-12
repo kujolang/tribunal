@@ -1,6 +1,6 @@
 # Tribunal :: signed document provenance with externally anchored rollback resistance.
 
-from src.common import array_includes, dict_get, iso_now, read_json, write_json
+from src.common import array_includes, dict_get, read_json, write_json
 
 KINDS := ["access-policy", "trust-policy", "governance-registry", "deletion-tombstone", "artifact-store-index"]
 
@@ -66,7 +66,7 @@ export func sign_provenance(document_path, document_kind, sequence, previous_pat
         if dict_get(prior, "sequence", 0) != sequence - 1 || dict_get(prior, "documentKind", "") != document_kind { return {"ok": false, "error": "Previous provenance sequence or kind is inconsistent."} }
         previous_digest = sha256(read_file(previous_path))
     } else if trim(previous_path) != "" { return {"ok": false, "error": "Sequence one cannot reference prior provenance."} }
-    record := {"schemaVersion": "1.0.0", "documentKind": document_kind, "documentSha256": sha256(read_file(document_path)), "sequence": sequence, "previousProvenanceSha256": previous_digest, "keyId": substring(sha256(public_key), 0, 32), "signedAt": iso_now(), "payloadSha256": "", "signature": ""}
+    record := {"schemaVersion": "1.0.0", "documentKind": document_kind, "documentSha256": sha256(read_file(document_path)), "sequence": sequence, "previousProvenanceSha256": previous_digest, "keyId": substring(sha256(public_key), 0, 32), "signedAt": now_utc(), "payloadSha256": "", "signature": ""}
     payload_text := to_json(provenance_payload(record))
     record["payloadSha256"] := sha256(payload_text)
     signature := null
@@ -74,7 +74,7 @@ export func sign_provenance(document_path, document_kind, sequence, previous_pat
     if type(signature) != "string" { return {"ok": false, "error": "Unable to sign document provenance."} }
     record["signature"] := signature
     write_json(output_path, record)
-    anchor := {"schemaVersion": "1.0.0", "documentKind": document_kind, "minimumSequence": sequence, "provenanceSha256": sha256(read_file(output_path)), "documentSha256": record["documentSha256"], "keyId": record["keyId"], "anchoredAt": iso_now()}
+    anchor := {"schemaVersion": "1.0.0", "documentKind": document_kind, "minimumSequence": sequence, "provenanceSha256": sha256(read_file(output_path)), "documentSha256": record["documentSha256"], "keyId": record["keyId"], "anchoredAt": now_utc()}
     write_json(anchor_path, anchor)
     checked := verify_provenance(document_path, output_path, public_path, anchor_path)
     if checked["ok"] != true { return checked }

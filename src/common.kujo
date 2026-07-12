@@ -11,14 +11,6 @@ export func dict_get(value, key, fallback) {
     return fallback
 }
 
-export func iso_now() {
-    return format_date(now(), "YYYY-MM-DDTHH:mm:ssZ")
-}
-
-export func today_utc() {
-    return format_date(now(), "YYYY-MM-DD")
-}
-
 export func slug(text) {
     lowered := to_lower(to_string(text))
     allowed := "abcdefghijklmnopqrstuvwxyz0123456789"
@@ -80,10 +72,7 @@ export func ensure_dir(path) {
 
 export func write_text(path, content) {
     ensure_dir(parent_dir(path))
-    tmp := path + ".tmp-" + to_string(current_timestamp()) + "-" + to_string(random_int(1000, 9999))
-    if file_exists(tmp) { delete_file(tmp) }
-    write_file(tmp, content)
-    rename_file(tmp, path)
+    write_file_atomic(path, content, true)
     return path
 }
 
