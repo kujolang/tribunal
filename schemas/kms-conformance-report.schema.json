@@ -9,6 +9,7 @@
     "protocol": { "const": "vault-transit-jwt-v1" },
     "runId": { "type": "string", "minLength": 1, "maxLength": 128 },
     "certified": { "type": "boolean" },
+    "scope": { "type": "string", "minLength": 1 },
     "checks": {
       "type": "object",
       "required": ["workloadIdentity", "auditEvidence", "denial", "boundedRetry", "rotation", "noPrivateMaterial", "integrityIndependent"],

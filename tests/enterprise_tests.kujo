@@ -66,6 +66,8 @@ check(json_schema_validate(registry, parse_json(read_file(join_path(HOME, "schem
 check(algorithm_gate("RSA-PKCS1v15-SHA256", "verify", "1.0.0", false)["ok"] == true && algorithm_gate("RSA-PKCS1v15-SHA256", "verify", "1.2.0", false)["ok"] == true, "legacy signature envelopes remain backward-compatible")
 readiness := migration_readiness()
 check(algorithm_gate("RSA-PSS-SHA256", "sign", "2.0.0", true)["ok"] == false && algorithm_gate("Ed25519", "verify", "2.0.0", true)["ok"] == false && len(readiness["runtimeBlocked"]) == 2, "future algorithms fail closed until Kujo runtime support exists")
+check(json_schema_validate(parse_json(read_file(join_path(HOME, "docs/certification/vault-transit-reference.json"))), parse_json(read_file(join_path(HOME, "schemas/kms-conformance-report.schema.json"))))["valid"] == true, "Vault Transit reference certification satisfies its evidence contract")
+check(json_schema_validate(parse_json(read_file(join_path(HOME, "docs/certification/http-store-reference.json"))), parse_json(read_file(join_path(HOME, "schemas/http-store-conformance-report.schema.json"))))["valid"] == true, "authenticated HTTP-store reference certification satisfies its evidence contract")
 
 provenance_keys := join_path(ROOT, "provenance-keys"); ensure_dir(provenance_keys)
 provenance_key := generate_keys(join_path(provenance_keys, "private.pem"), join_path(provenance_keys, "public.pem"), 2048)

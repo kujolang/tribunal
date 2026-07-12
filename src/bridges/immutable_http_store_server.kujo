@@ -1,0 +1,142 @@
+# Tribunal :: authenticated immutable HTTP-store reference service.
+# This deployment-neutral Kujo service exists for integration certification and
+# small controlled installations; production operators must add TLS in front.
+
+from src.common import dict_get, ensure_dir, read_json, remove_tree, safe_relative_path, safe_run_id, write_json
+
+func header_value(headers, wanted) {
+    for name in keys(headers) { if to_lower(name) == to_lower(wanted) { return to_string(headers[name]) } }
+    return ""
+}
+
+root := path_absolute(env_or("TRIBUNAL_STORE_ROOT", ""))
+tenant := env_or("TRIBUNAL_STORE_TENANT", "")
+token_path := env_or("TRIBUNAL_STORE_TOKEN_FILE", "")
+fault := env_or("TRIBUNAL_STORE_FAULT", "")
+mirror_backup := env_or("TRIBUNAL_STORE_BACKUP_ROOT", "")
+mirror_secondary := env_or("TRIBUNAL_STORE_SECONDARY_ROOT", "")
+port := to_int(env_or("TRIBUNAL_STORE_PORT", "18300"))
+if root == "" || safe_run_id(tenant) == false || file_exists(token_path) == false || path_is_symlink(token_path) { print("Invalid immutable HTTP-store configuration."); exit(2) }
+token := trim(read_file(token_path))
+if token == "" { print("Invalid immutable HTTP-store token."); exit(2) }
+ensure_dir(root)
+
+func auth(req) {
+    headers := dict_get(req, "headers", {})
+    if header_value(headers, "Authorization") != "Bearer " + token { return {"ok": false, "status": 401} }
+    if header_value(headers, "X-Tribunal-Tenant") != tenant { return {"ok": false, "status": 403} }
+    if trim(header_value(headers, "X-Tribunal-Region")) == "" { return {"ok": false, "status": 400} }
+    if fault == "unavailable" { return {"ok": false, "status": 503} }
+    return {"ok": true}
+}
+
+func base() { return join_path(join_path(root, "tenants"), tenant) }
+func staging(run_id, version) { return join_path(join_path(join_path(base(), "staging"), run_id), version) }
+func object_root(run_id, version) { return join_path(join_path(join_path(base(), "objects"), run_id), version) }
+func index_path(run_id) { return join_path(join_path(base(), "indexes"), run_id + ".json") }
+
+func safe_request(run_id, version) { return safe_run_id(run_id) && len(version) == 64 }
+
+func put_artifact(req, nested) {
+    allowed := auth(req); if allowed["ok"] != true { return http_response(allowed["status"], "denied") }
+    run_id := req["params"]["run"]
+    version := req["params"]["version"]
+    name := req["params"]["name"]
+    if nested { name = req["params"]["group"] + "/" + name }
+    if safe_request(run_id, version) == false || safe_relative_path(name) == false { return http_response(400, "unsafe") }
+    if fault == "partial" && name == "record.json" { return http_response(503, "injected partial upload") }
+    headers := dict_get(req, "headers", {})
+    body := to_string(dict_get(req, "body", ""))
+    if header_value(headers, "If-None-Match") != "*" || header_value(headers, "Content-SHA256") != sha256(body) { return http_response(400, "digest or condition failed") }
+    path := join_path(staging(run_id, version), name)
+    if file_exists(path) { return http_response(412, "already staged") }
+    ensure_dir(dirname(path)); write_file(path, body)
+    return http_response(201, "stored")
+}
+
+func copy_version(source, destination, names) {
+    ensure_dir(join_path(destination, "artifacts"))
+    for name in names {
+        if safe_relative_path(name) == false { return false }
+        source_path := join_path(source, name)
+        if file_exists(source_path) == false || path_is_symlink(source_path) { return false }
+        target := join_path(join_path(destination, "artifacts"), name)
+        ensure_dir(dirname(target)); copy_file(source_path, target)
+    }
+    return true
+}
+
+func mirror_version(source_object, run_id, version, metadata, mirror_root) {
+    if trim(mirror_root) == "" { return }
+    destination := join_path(join_path(join_path(join_path(join_path(mirror_root, "tenants"), tenant), "objects"), run_id), version)
+    if path_is_dir(destination) == false {
+        copy_version(join_path(source_object, "artifacts"), destination, metadata["artifacts"])
+        write_json(join_path(destination, "bundle.json"), metadata)
+    }
+    mirror_index := join_path(join_path(join_path(join_path(mirror_root, "tenants"), tenant), "indexes"), run_id + ".json")
+    ensure_dir(dirname(mirror_index)); write_json(mirror_index, metadata)
+}
+
+func finalize(req) {
+    allowed := auth(req); if allowed["ok"] != true { return http_response(allowed["status"], "denied") }
+    run_id := req["params"]["run"]
+    metadata := null
+    try { metadata = parse_json(to_string(dict_get(req, "body", ""))) } except err { return http_response(400, "invalid metadata") }
+    version := dict_get(metadata, "manifestSha256", "")
+    if safe_request(run_id, version) == false || dict_get(metadata, "runId", "") != run_id || type(dict_get(metadata, "artifacts", null)) != "array" { return http_response(400, "invalid metadata") }
+    headers := dict_get(req, "headers", {})
+    index := index_path(run_id)
+    if header_value(headers, "If-None-Match") == "*" && file_exists(index) { return http_response(412, "conditional write failed") }
+    if header_value(headers, "If-Match") != "" {
+        if file_exists(index) == false || dict_get(read_json(index), "manifestSha256", "") != header_value(headers, "If-Match") { return http_response(412, "conditional write failed") }
+    }
+    stage := staging(run_id, version)
+    destination := object_root(run_id, version)
+    if path_is_dir(destination) { return http_response(409, "immutable version exists") }
+    if copy_version(stage, destination, metadata["artifacts"]) == false { remove_tree(destination); return http_response(400, "partial upload") }
+    write_json(join_path(destination, "bundle.json"), metadata)
+    ensure_dir(dirname(index)); write_json(index, metadata)
+    remove_tree(stage)
+    mirror_version(destination, run_id, version, metadata, mirror_backup)
+    mirror_version(destination, run_id, version, metadata, mirror_secondary)
+    return http_response(201, to_json(metadata))
+}
+
+func get_metadata(req, current) {
+    allowed := auth(req); if allowed["ok"] != true { return http_response(allowed["status"], "denied") }
+    run_id := req["params"]["run"]
+    path := index_path(run_id)
+    if current == false { path = join_path(object_root(run_id, req["params"]["version"]), "bundle.json") }
+    if file_exists(path) == false { return http_response(404, "missing") }
+    return http_response(200, read_file(path))
+}
+
+func get_artifact(req, nested) {
+    allowed := auth(req); if allowed["ok"] != true { return http_response(allowed["status"], "denied") }
+    name := req["params"]["name"]
+    if nested { name = req["params"]["group"] + "/" + name }
+    if safe_relative_path(name) == false { return http_response(400, "unsafe") }
+    path := join_path(join_path(object_root(req["params"]["run"], req["params"]["version"]), "artifacts"), name)
+    if file_exists(path) == false { return http_response(404, "missing") }
+    body := read_file(path)
+    if fault == "corrupt" && name == "record.json" { body = body + "corrupt" }
+    return http_response(200, body)
+}
+
+func cleanup(req) {
+    allowed := auth(req); if allowed["ok"] != true { return http_response(allowed["status"], "denied") }
+    remove_tree(staging(req["params"]["run"], req["params"]["version"]))
+    return http_response(204, "")
+}
+
+server := http_server(port)
+server = server.route("GET", "/healthz", func(req) { return http_response(200, "ok") })
+server = server.route("PUT", "/runs/:run/versions/:version/artifacts/:name", func(req) { return put_artifact(req, false) })
+server = server.route("PUT", "/runs/:run/versions/:version/artifacts/:group/:name", func(req) { return put_artifact(req, true) })
+server = server.route("POST", "/runs/:run/versions", func(req) { return finalize(req) })
+server = server.route("GET", "/runs/:run/current", func(req) { return get_metadata(req, true) })
+server = server.route("GET", "/runs/:run/versions/:version", func(req) { return get_metadata(req, false) })
+server = server.route("GET", "/runs/:run/versions/:version/artifacts/:name", func(req) { return get_artifact(req, false) })
+server = server.route("GET", "/runs/:run/versions/:version/artifacts/:group/:name", func(req) { return get_artifact(req, true) })
+server = server.route("DELETE", "/runs/:run/versions/:version/staging", func(req) { return cleanup(req) })
+server.listen()

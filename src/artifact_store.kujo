@@ -170,7 +170,10 @@ export func publish_http(storage_dir, run_id, store, expected_version) {
         "timeout": 60
     })
     remove_tree(temp)
-    if finalized["ok"] != true { return {"ok": false, "error": "Remote artifact-store version finalization failed: " + finalized["error"], "status": finalized["status"]} }
+    if finalized["ok"] != true {
+        request(endpoint + "/runs/" + run_id + "/versions/" + version + "/staging", {"method": "DELETE", "_headers": context["headers"], "timeout": 30})
+        return {"ok": false, "error": "Remote artifact-store version finalization failed: " + finalized["error"], "status": finalized["status"], "attempts": finalized["attempts"]}
+    }
     return {"ok": true, "provider": "http-immutable", "version": version, "status": finalized["status"], "tenantId": context["tenantId"], "region": context["region"], "attempts": finalized["attempts"]}
 }
 

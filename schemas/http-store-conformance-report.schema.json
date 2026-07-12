@@ -12,6 +12,7 @@
     "primaryRegion": { "type": "string", "minLength": 1 },
     "secondaryRegion": { "type": "string", "minLength": 1 },
     "certified": { "type": "boolean" },
+    "scope": { "type": "string", "minLength": 1 },
     "checks": { "type": "object" }
   },
   "additionalProperties": false
