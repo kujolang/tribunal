@@ -1,0 +1,67 @@
+# Tribunal :: schema-validated, provenance-bound custom panel catalogs
+
+from src.catalog import panel, seats_for
+from src.common import array_includes, contains_secret, dict_get, read_json, safe_run_id
+from src.provenance import verify_provenance
+
+func catalog_schema() {
+    home := path_absolute(env_or("TRIBUNAL_HOME", "."))
+    return read_json(join_path(home, "schemas/panel-catalog.schema.json"))
+}
+
+func safe_template(value) {
+    if type(value) != "string" || len(value) > 8192 || contains_secret(value) { return false }
+    if contains(value, "{{context}}") == 0 || contains(value, "{{seat}}") == 0 { return false }
+    scrubbed := replace(replace(value, "{{context}}", ""), "{{seat}}", "")
+    return contains(scrubbed, "{{") == 0 && contains(scrubbed, "}}") == 0
+}
+
+export func load_panel_catalog(config) {
+    settings := dict_get(config, "panels", {})
+    path := trim(dict_get(settings, "catalog_path", ""))
+    if path == "" { return {"ok": true, "builtinOnly": true, "catalog": null} }
+    if file_exists(path) == false || path_is_symlink(path) || file_size(path) > 4194304 { return {"ok": false, "error": "Custom panel catalog is missing or unsafe."} }
+    provenance := verify_provenance(path, dict_get(settings, "provenance_path", ""), dict_get(settings, "public_key_path", ""), dict_get(settings, "anchor_path", ""))
+    if provenance["ok"] != true || provenance["documentKind"] != "panel-catalog" { return {"ok": false, "error": "Custom panel catalog requires valid signed panel-catalog provenance."} }
+    value := null
+    try { value = read_json(path) } except err { return {"ok": false, "error": "Custom panel catalog is invalid JSON."} }
+    checked := json_schema_validate(value, catalog_schema())
+    if checked["valid"] != true { return {"ok": false, "error": "Custom panel catalog failed schema validation.", "details": checked["errors"]} }
+    mut seat_map := {}
+    for custom_seat in value["seats"] {
+        id := custom_seat["id"]
+        if safe_run_id(id) == false || has_key(seat_map, id) == 1 || safe_template(custom_seat["promptTemplate"]) == false { return {"ok": false, "error": "Custom seat ID or prompt template is unsafe: " + id} }
+        if custom_seat["permissions"]["maySeePeerTestimony"] != false { return {"ok": false, "error": "Custom blind seats may not access peer testimony."} }
+        seat_map[id] := custom_seat
+    }
+    mut panel_map := {}
+    for custom_panel in value["panels"] {
+        id := custom_panel["id"]
+        if panel(id) != null || has_key(panel_map, id) == 1 { return {"ok": false, "error": "Custom panel may not replace an existing panel: " + id} }
+        mut seen := {}
+        for seat_id in custom_panel["seatIds"] {
+            if has_key(seat_map, seat_id) == 0 || has_key(seen, seat_id) == 1 { return {"ok": false, "error": "Custom panel has an unknown or duplicate seat: " + seat_id} }
+            seen[seat_id] := true
+        }
+        panel_map[id] := custom_panel
+    }
+    return {"ok": true, "builtinOnly": false, "catalog": value, "seats": seat_map, "panels": panel_map, "provenance": provenance}
+}
+
+export func resolve_panel(config, id) {
+    builtin := panel(id)
+    if builtin != null { return {"ok": true, "panel": builtin, "seats": seats_for(builtin), "source": "builtin"} }
+    loaded := load_panel_catalog(config)
+    if loaded["ok"] != true { return loaded }
+    if loaded["builtinOnly"] || has_key(loaded["panels"], id) == 0 { return {"ok": false, "error": "Unknown panel: " + id} }
+    selected := loaded["panels"][id]
+    mut values := []
+    for seat_id in selected["seatIds"] { values = push(values, loaded["seats"][seat_id]) }
+    return {"ok": true, "panel": selected, "seats": values, "source": "signed-custom", "provenance": loaded["provenance"]}
+}
+
+export func render_seat_prompt(seat_value, context) {
+    template := dict_get(seat_value, "promptTemplate", "{{context}}\n\n# Seat\n\n{{seat}}\nNo other seat testimony is available in this stage.")
+    seat_contract := seat_value["name"] + "\nAuthority: " + seat_value["authority"]
+    return replace(replace(template, "{{context}}", context), "{{seat}}", seat_contract)
+}

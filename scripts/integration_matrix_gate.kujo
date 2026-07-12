@@ -1,0 +1,13 @@
+from src.common import read_json
+home := path_absolute(env_or("TRIBUNAL_HOME", ".")); matrix := read_json(join_path(home, "docs/INTEGRATION_MATRIX.json")); mut failures := []
+if matrix["schemaVersion"] != "1.0.0" || len(matrix["integrations"]) != 8 { failures = push(failures, "matrix-contract") }
+mut names := {}
+for integration in matrix["integrations"] {
+    if has_key(names, integration["name"]) == 1 { failures = push(failures, "duplicate:" + integration["name"]) }
+    names[integration["name"]] := true
+    resolved := join_path(home, integration["path"])
+    if path_is_dir(resolved) == false || len(integration["revision"]) != 40 || trim(integration["version"]) == "" || trim(integration["gate"]) == "" || trim(integration["scope"]) == "" { failures = push(failures, "invalid:" + integration["name"]) }
+}
+print(to_json({"ok": len(failures) == 0, "tribunalVersion": matrix["tribunalVersion"], "integrations": len(matrix["integrations"]), "revisionPinned": true, "failures": failures}))
+if len(failures) > 0 { exit(1) }
+exit(0)

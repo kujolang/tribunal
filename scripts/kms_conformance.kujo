@@ -1,6 +1,6 @@
 # Tribunal :: live managed-signing certification harness.
 
-from src.common import dict_get, ensure_dir, iso_now, remove_tree, write_json
+from src.common import dict_get, ensure_dir, remove_tree, write_json
 from src.config import default_config
 from src.integrity import verify
 from src.signing_provider import load_signing_provider, seal_with_provider
@@ -70,7 +70,7 @@ checks := {
 certified := true
 for name in keys(checks) { if checks[name] != true { certified = false } }
 report := {
-    "schemaVersion": "1.0.0", "generatedAt": iso_now(), "provider": "vault-transit", "protocol": "vault-transit-jwt-v1", "runId": run["runId"], "certified": certified,
+    "schemaVersion": "1.0.0", "generatedAt": now_utc(), "provider": "vault-transit", "protocol": "vault-transit-jwt-v1", "runId": run["runId"], "certified": certified,
     "checks": checks,
     "evidence": {"primary": primary_evidence, "denial": denial_evidence, "rotation": rotation_evidence, "primaryKeyId": primary_key_id, "rotatedKeyId": rotated_key_id}
 }

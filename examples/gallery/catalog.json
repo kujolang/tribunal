@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.0.0",
+  "examples": [
+    { "id": "architecture", "docket": "architecture.md", "panel": "strategic-five", "expectedStatus": "completed", "expectedArtifacts": ["record.json", "ruling.md", "decision-packet.md", "checkpoint.json", "artifact-manifest.json"] },
+    { "id": "security", "docket": "security.md", "panel": "fast-two-model", "expectedStatus": "completed", "expectedArtifacts": ["record.json", "ruling.md", "decision-packet.md", "checkpoint.json", "artifact-manifest.json"] },
+    { "id": "launch", "docket": "launch.md", "panel": "fast-two-model", "expectedStatus": "completed", "expectedArtifacts": ["record.json", "ruling.md", "decision-packet.md", "checkpoint.json", "artifact-manifest.json"] },
+    { "id": "incident", "docket": "incident.md", "panel": "executioner-only", "expectedStatus": "completed", "expectedArtifacts": ["record.json", "ruling.md", "decision-packet.md", "checkpoint.json", "artifact-manifest.json"] },
+    { "id": "procurement", "docket": "procurement.md", "panel": "strategic-five", "expectedStatus": "completed", "expectedArtifacts": ["record.json", "ruling.md", "decision-packet.md", "checkpoint.json", "artifact-manifest.json"] },
+    { "id": "product", "docket": "product.md", "panel": "strategic-five", "expectedStatus": "completed", "expectedArtifacts": ["record.json", "ruling.md", "decision-packet.md", "checkpoint.json", "artifact-manifest.json"] }
+  ]
+}

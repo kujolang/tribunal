@@ -1,0 +1,12 @@
+from src.common import ensure_dir, remove_tree
+from src.dashboard import export_dashboard
+root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-a11y-" + uuid_v4()); storage := join_path(root, "runs"); ensure_dir(storage)
+output := join_path(root, "dashboard.html"); result := export_dashboard(storage, output); mut failures := []
+if result["ok"] != true { failures = push(failures, "export") }
+html := read_file(output)
+for required in ["<html lang=\"en\">", "Skip to recent runs", "<main>", "<h1>", "<dl class=\"cards\"", "<caption>Recent runs</caption>", "scope=\"col\"", "role=\"region\"", "tabindex=\"0\"", "Content-Security-Policy", "default-src 'none'", "color-scheme"] { if contains(html, required) == 0 { failures = push(failures, required) } }
+for forbidden in ["<script", "<form", "http://", "https://"] { if contains(html, forbidden) == 1 { failures = push(failures, "forbidden:" + forbidden) } }
+print(to_json({"ok": len(failures) == 0, "target": "WCAG-2.2-AA-fundamentals", "manualChecksRemaining": ["screen-reader", "400-percent-zoom", "forced-colors"], "failures": failures}))
+remove_tree(root)
+if len(failures) > 0 { exit(1) }
+exit(0)

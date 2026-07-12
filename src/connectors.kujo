@@ -1,0 +1,55 @@
+# Tribunal :: narrow, provenance-bound provider-neutral context connector contract
+
+from src.common import contains_secret, dict_get, ensure_dir, inspect_path_boundary, last_json_line, read_json, redact, remove_tree, safe_process_env, safe_run_id, utf8_byte_length, write_json
+from src.provenance import verify_provenance
+from src.adversarial import inspect_remote_envelope
+
+func schema() { return read_json(join_path(path_absolute(env_or("TRIBUNAL_HOME", ".")), "schemas/context-connector.schema.json")) }
+
+export func load_connector(config) {
+    settings := config["context"]
+    manifest_path := trim(dict_get(settings, "plugin_manifest_path", ""))
+    if manifest_path == "" || file_exists(manifest_path) == false || path_is_symlink(manifest_path) || file_size(manifest_path) > 1048576 { return {"ok": false, "error": "Context connector manifest is missing or unsafe."} }
+    provenance := verify_provenance(manifest_path, dict_get(settings, "plugin_provenance_path", ""), dict_get(settings, "plugin_public_key_path", ""), dict_get(settings, "plugin_anchor_path", ""))
+    if provenance["ok"] != true || provenance["documentKind"] != "connector-catalog" { return {"ok": false, "error": "Context connector requires signed connector-catalog provenance."} }
+    manifest := null
+    try { manifest = read_json(manifest_path) } except err { return {"ok": false, "error": "Context connector manifest is invalid JSON."} }
+    checked := json_schema_validate(manifest, schema())
+    if checked["valid"] != true || safe_run_id(manifest["id"]) == false { return {"ok": false, "error": "Context connector manifest failed validation."} }
+    adapter := manifest["adapterPath"]
+    if starts_with(adapter, "/") == false { adapter = join_path(dirname(path_absolute(manifest_path)), adapter) }
+    if file_exists(adapter) == false || path_is_symlink(adapter) || ends_with(adapter, ".kujo") == false { return {"ok": false, "error": "Context connector adapter must be a regular Kujo source file."} }
+    manifest["adapterPath"] := adapter
+    return {"ok": true, "manifest": manifest, "provenance": provenance}
+}
+
+export func invoke_connector(config, docket) {
+    loaded := load_connector(config)
+    if loaded["ok"] != true { return loaded }
+    manifest := loaded["manifest"]
+    mut source_allowed := false
+    for root in manifest["allowedRoots"] { if inspect_path_boundary(root, docket["sourcePath"], false)["ok"] == true { source_allowed = true } }
+    if source_allowed == false { return {"ok": false, "error": "Docket source is outside the connector's signed allowed roots."} }
+    temp := join_path(env_or("TMPDIR", "/tmp"), "tribunal-connector-" + uuid_v4())
+    ensure_dir(temp)
+    request_path := join_path(temp, "request.json")
+    write_json(request_path, {"schemaVersion": "1.0.0", "connectorId": manifest["id"], "docket": {"title": docket["title"], "scope": docket["scope"], "sourcePath": docket["sourcePath"], "contentSha256": docket["contentSha256"]}})
+    kujo_bin := config["context"]["kujo_bin"]
+    if starts_with(kujo_bin, "/") == false { kujo_bin = path_absolute(kujo_bin) }
+    proc := spawn_process([kujo_bin, "run", manifest["adapterPath"], "--interpreter"], {"inherit_env": false, "env": safe_process_env({"TRIBUNAL_CONNECTOR_REQUEST": request_path}), "timeout_ms": manifest["timeoutMs"], "max_output_bytes": manifest["maxOutputBytes"]})
+    line := last_json_line(proc.stdout)
+    remove_tree(temp)
+    if line == "" { return {"ok": false, "error": "Context connector returned no bounded JSON response: " + redact(proc.stderr)} }
+    inspected := inspect_remote_envelope("context-plugin", {"elapsedMs": 0, "headers": {}, "body": line}, {"timeoutMs": manifest["timeoutMs"], "maxHeaders": 1, "maxHeaderBytes": 128, "maxBodyBytes": manifest["maxOutputBytes"]})
+    if inspected["ok"] != true { return {"ok": false, "error": inspected["error"], "classification": inspected["classification"]} }
+    parsed := inspected["value"]
+    content := dict_get(parsed, "content", "")
+    sources := dict_get(parsed, "sources", [])
+    if dict_get(parsed, "ok", false) != true || type(content) != "string" || type(sources) != "array" || utf8_byte_length(content) > manifest["maxOutputBytes"] || contains_secret(content) { return {"ok": false, "error": "Context connector response failed safety validation."} }
+    mut normalized := []
+    for source in sources {
+        if type(source) != "dict" || type(dict_get(source, "uri", null)) != "string" || type(dict_get(source, "sha256", null)) != "string" || len(source["sha256"]) != 64 { return {"ok": false, "error": "Context connector source provenance is invalid."} }
+        normalized = push(normalized, {"uri": source["uri"], "sha256": source["sha256"]})
+    }
+    return {"ok": true, "content": content, "sources": normalized, "provider": "plugin:" + manifest["id"], "provenance": loaded["provenance"]}
+}

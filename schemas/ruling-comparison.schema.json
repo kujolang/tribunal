@@ -1,0 +1,16 @@
+{
+  "title": "TribunalRulingComparison",
+  "type": "object",
+  "required": ["schemaVersion", "createdAt", "baseRunId", "candidateRunId", "baseRecordSha256", "candidateRecordSha256", "changes", "sourcesUnchanged"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "createdAt": { "type": "string", "minLength": 1 },
+    "baseRunId": { "type": "string", "minLength": 1 },
+    "candidateRunId": { "type": "string", "minLength": 1 },
+    "baseRecordSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "candidateRecordSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "changes": { "type": "array", "items": { "type": "object", "required": ["field", "before", "after", "changed"], "properties": { "field": { "type": "string" }, "before": {}, "after": {}, "changed": { "type": "boolean" } }, "additionalProperties": false } },
+    "sourcesUnchanged": { "const": true }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,16 @@
+from src.common import read_json
+home := path_absolute(env_or("TRIBUNAL_HOME", "."))
+register := read_json(join_path(home, "docs/security/accepted-findings.json"))
+schema := read_json(join_path(home, "schemas/security-findings.schema.json"))
+checked := json_schema_validate(register, schema)
+mut failures := []
+if checked["valid"] != true { failures = push(failures, "findings-register-schema") }
+for finding in register["acceptedFindings"] {
+    fixture := join_path(home, finding["fixture"])
+    if file_exists(fixture) == false || path_is_symlink(fixture) { failures = push(failures, "missing-fixture:" + finding["id"]) }
+}
+commission := join_path(home, "docs/security/INDEPENDENT_REVIEW_COMMISSION.md")
+if file_exists(commission) == false || contains(read_file(commission), register["commissionId"]) == 0 { failures = push(failures, "commission-scope") }
+print(to_json({"ok": len(failures) == 0, "commissionId": register["commissionId"], "reviewStatus": register["reviewStatus"], "acceptedFindings": len(register["acceptedFindings"]), "regressionFixturesRequired": true, "failures": failures}))
+if len(failures) > 0 { exit(1) }
+exit(0)

@@ -29,7 +29,22 @@
     "killPass": { "type": "object" },
     "ruling": { "type": "object" },
     "decisionPacket": { "type": "object" },
+    "decisionPolicy": { "type": "object" },
     "stopReason": { "type": "string" },
+    "lineage": {
+      "type": "object",
+      "required": ["schemaVersion", "priorRunId", "priorRecordSha256", "priorCheckpointSha256", "resumeFromStage", "resumedAt", "replayPolicy"],
+      "properties": {
+        "schemaVersion": { "const": "1.0.0" },
+        "priorRunId": { "type": "string", "minLength": 1 },
+        "priorRecordSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "priorCheckpointSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "resumeFromStage": { "type": "string", "minLength": 1 },
+        "resumedAt": { "type": "string", "minLength": 1 },
+        "replayPolicy": { "const": "full-stage-replay-with-stable-idempotency-keys" }
+      },
+      "additionalProperties": false
+    },
     "governance": {
       "type": "object",
       "required": ["schemaVersion", "retentionClass", "retentionDays", "retainUntilMs", "legalHold", "owner", "createdBy", "createdAt"],

@@ -1,0 +1,33 @@
+# Sustained lock-contention, interruption, and recovery objective gate.
+from src.common import ensure_dir, remove_tree, write_json
+from src.locking import acquire_lock, recover_stale_locks, release_lock
+
+root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-load-chaos-" + uuid_v4())
+storage := join_path(root, "runs"); ensure_dir(storage)
+cycles := 500; mut acquired := 0; mut contentions := 0; mut max_wait_ms := 0
+started := current_timestamp(); mut i := 0
+while i < cycles {
+    run_id := "load-" + to_string(i)
+    primary := acquire_lock(storage, run_id, "worker-primary", 60000)
+    if primary["ok"] == true {
+        acquired = acquired + 1
+        contender := acquire_lock(storage, run_id, "worker-contender", 60000)
+        if contender["ok"] == false && contender["metrics"]["contended"] == true { contentions = contentions + 1 }
+        if contender["metrics"]["waitMs"] > max_wait_ms { max_wait_ms = contender["metrics"]["waitMs"] }
+        release_lock(storage, run_id, primary["lock"]["token"])
+    }
+    i = i + 1
+}
+# Inject an interrupted owner record and prove explicit recovery meets the RTO.
+crashed := acquire_lock(storage, "chaos-crash", "terminated-worker", 60000)
+owner_path := join_path(join_path(join_path(storage, ".locks"), "chaos-crash.lock"), "owner.json")
+owner := parse_json(read_file(owner_path)); owner["acquiredAtMs"] := current_timestamp() - 120000; write_json(owner_path, owner)
+recovered := recover_stale_locks(storage, 1000)
+elapsed := current_timestamp() - started
+rto_ms := 5000; throughput_floor := 15
+throughput := to_int(cycles * 1000 / elapsed)
+ok := acquired == cycles && contentions == cycles && crashed["ok"] == true && len(recovered["recovered"]) == 1 && recovered["recoveryMs"] <= rto_ms && throughput >= throughput_floor
+print(to_json({"schemaVersion": "1.0.0", "ok": ok, "cycles": cycles, "acquired": acquired, "contentions": contentions, "maxContentionWaitMs": max_wait_ms, "elapsedMs": elapsed, "operationsPerSecond": throughput, "throughputFloor": throughput_floor, "chaos": "stale-owner-after-termination", "recoveryMs": recovered["recoveryMs"], "recoveryTimeObjectiveMs": rto_ms}))
+remove_tree(root)
+if ok == false { exit(1) }
+exit(0)

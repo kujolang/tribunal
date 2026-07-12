@@ -9,7 +9,8 @@
     "manifestSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "keyId": { "type": "string", "pattern": "^[a-f0-9]{32}$" },
     "artifactCount": { "type": "integer", "minimum": 1, "maximum": 10000 },
-    "artifacts": { "type": "array", "minItems": 1, "maxItems": 10000, "items": { "type": "string", "minLength": 1, "maxLength": 1024 } }
+    "artifacts": { "type": "array", "minItems": 1, "maxItems": 10000, "items": { "type": "string", "minLength": 1, "maxLength": 1024 } },
+    "artifactDescriptors": { "type": "array", "maxItems": 10000, "items": { "type": "object", "required": ["path", "bytes", "sha256", "chunkBytes", "chunks"], "properties": { "path": { "type": "string" }, "bytes": { "type": "integer", "minimum": 0, "maximum": 67108864 }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "chunkBytes": { "const": 1048576 }, "chunks": { "type": "integer", "minimum": 1, "maximum": 64 } }, "additionalProperties": false } }
   },
   "additionalProperties": false
 }

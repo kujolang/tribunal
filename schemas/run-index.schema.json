@@ -1,0 +1,14 @@
+{
+  "title": "TribunalPersistentRunIndex",
+  "type": "object",
+  "required": ["schemaVersion", "generation", "updatedAt", "runCount", "pageCount", "pageSize"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "generation": { "type": "integer", "minimum": 1 },
+    "updatedAt": { "type": "string", "minLength": 1 },
+    "runCount": { "type": "integer", "minimum": 0 },
+    "pageCount": { "type": "integer", "minimum": 0 },
+    "pageSize": { "const": 100 }
+  },
+  "additionalProperties": false
+}

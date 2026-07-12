@@ -1,7 +1,7 @@
 # Tribunal :: local aggregate decision analytics
 
 from src.common import dict_get
-from src.storage import list_runs, load_record, artifact_path
+from src.storage import list_runs_page, load_record, artifact_path
 
 func increment(values, key) {
     current := 0
@@ -10,54 +10,63 @@ func increment(values, key) {
     return values
 }
 
-export func collect_stats(storage_dir) {
-    manifests := list_runs(storage_dir)
-    mut by_status := {}
-    mut by_panel := {}
-    mut by_disposition := {}
-    mut completed := 0
-    mut stopped := 0
-    mut corrupt := 0
-    mut invocations := 0
-    mut tokens := 0
-    mut duration_ms := 0
+func initial_state() { return {"runs": 0, "completed": 0, "stopped": 0, "corruptRecords": 0, "modelInvocations": 0, "totalTokens": 0, "durationMs": 0, "byStatus": {}, "byPanel": {}, "byDisposition": {}} }
+
+func public_stats(state) {
+    average_duration_ms := 0
+    if state["runs"] > 0 { average_duration_ms = to_int(state["durationMs"] / state["runs"]) }
+    return {"schemaVersion": "1.0.0", "runs": state["runs"], "completed": state["completed"], "stopped": state["stopped"], "corruptRecords": state["corruptRecords"], "modelInvocations": state["modelInvocations"], "totalTokens": state["totalTokens"], "averageDurationMs": average_duration_ms, "byStatus": state["byStatus"], "byPanel": state["byPanel"], "byDisposition": state["byDisposition"]}
+}
+
+export func collect_stats_page(storage_dir, cursor, limit, prior_state) {
+    state := prior_state
+    if type(state) != "dict" { state = initial_state() }
+    bounded_limit := limit
+    if bounded_limit < 1 { bounded_limit = 100 }
+    if bounded_limit > 500 { bounded_limit = 500 }
+    page := list_runs_page(storage_dir, "", "", bounded_limit, cursor)
+    if page["cursorFound"] != true { return {"ok": false, "error": "Stats cursor was not found.", "stats": public_stats(state), "state": state, "nextCursor": "", "hasMore": false, "runsProcessed": 0} }
+    manifests := page["items"]
+    by_status := state["byStatus"]
+    by_panel := state["byPanel"]
+    by_disposition := state["byDisposition"]
     for manifest in manifests {
         status := dict_get(manifest, "status", "unknown")
         by_status = increment(by_status, status)
         by_panel = increment(by_panel, dict_get(manifest, "panelId", "unknown"))
-        if status == "completed" { completed = completed + 1 }
-        if status == "stopped" { stopped = stopped + 1 }
+        if status == "completed" { state["completed"] := state["completed"] + 1 }
+        if status == "stopped" { state["stopped"] := state["stopped"] + 1 }
         record := load_record(storage_dir, manifest["runId"])
         if type(record) == "dict" {
             ruling := dict_get(record, "ruling", {})
             by_disposition = increment(by_disposition, dict_get(ruling, "disposition", "unavailable"))
         } else {
-            corrupt = corrupt + 1
+            state["corruptRecords"] := state["corruptRecords"] + 1
         }
         receipt_path := artifact_path(storage_dir, manifest["runId"], "receipt.json")
         if receipt_path != "" && file_exists(receipt_path) {
             receipt := null
             try { receipt = parse_json(read_file(receipt_path)) } except err { receipt = null }
             if type(receipt) == "dict" {
-                invocations = invocations + dict_get(receipt, "modelInvocations", 0)
-                tokens = tokens + dict_get(receipt, "totalTokens", 0)
-                duration_ms = duration_ms + dict_get(receipt, "durationMs", 0)
+                state["modelInvocations"] := state["modelInvocations"] + dict_get(receipt, "modelInvocations", 0)
+                state["totalTokens"] := state["totalTokens"] + dict_get(receipt, "totalTokens", 0)
+                state["durationMs"] := state["durationMs"] + dict_get(receipt, "durationMs", 0)
             }
         }
     }
-    average_duration_ms := 0
-    if len(manifests) > 0 { average_duration_ms = to_int(duration_ms / len(manifests)) }
-    return {
-        "schemaVersion": "1.0.0",
-        "runs": len(manifests),
-        "completed": completed,
-        "stopped": stopped,
-        "corruptRecords": corrupt,
-        "modelInvocations": invocations,
-        "totalTokens": tokens,
-        "averageDurationMs": average_duration_ms,
-        "byStatus": by_status,
-        "byPanel": by_panel,
-        "byDisposition": by_disposition
+    state["runs"] := state["runs"] + len(manifests)
+    state["byStatus"] := by_status; state["byPanel"] := by_panel; state["byDisposition"] := by_disposition
+    return {"ok": true, "stats": public_stats(state), "state": state, "nextCursor": page["nextCursor"], "hasMore": page["hasMore"], "runsProcessed": len(manifests), "pageLimit": bounded_limit}
+}
+
+export func collect_stats(storage_dir) {
+    cursor := ""
+    state := null
+    result := collect_stats_page(storage_dir, cursor, 100, state)
+    while result["ok"] && result["hasMore"] {
+        cursor = result["nextCursor"]
+        state = result["state"]
+        result = collect_stats_page(storage_dir, cursor, 100, state)
     }
+    return result["stats"]
 }

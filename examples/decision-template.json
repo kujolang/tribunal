@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "portable-production",
+  "defaults": { "suggestedOwnerRole": "accountable decision owner", "suggestedModelLevel": "provider-neutral model selected by policy" },
+  "append": {
+    "acceptanceCriteria": ["Rollback is demonstrated in the target environment"],
+    "evidenceRequired": ["Named owner approval", "Rollback drill receipt"],
+    "stopTheLineConditions": ["Required organization approval is absent"]
+  }
+}

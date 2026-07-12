@@ -1,6 +1,243 @@
 # Tribunal :: durable local run storage
 
-from src.common import ensure_dir, safe_run_id, safe_relative_path, slug, today_utc, write_json, write_text, read_json, relative_files
+from src.common import dict_get, ensure_dir, remove_tree, safe_run_id, safe_relative_path, slug, write_json, write_text, read_json, relative_files
+
+RUN_INDEX_PAGE_SIZE := 100
+
+RUN_INDEX_SCHEMA := {
+    "type": "object",
+    "required": ["schemaVersion", "generation", "updatedAt", "runCount", "pageCount", "pageSize"],
+    "properties": {
+        "schemaVersion": {"const": "1.0.0"},
+        "generation": {"type": "integer", "minimum": 1},
+        "updatedAt": {"type": "string", "minLength": 1},
+        "runCount": {"type": "integer", "minimum": 0},
+        "pageCount": {"type": "integer", "minimum": 0},
+        "pageSize": {"const": 100}
+    },
+    "additionalProperties": false
+}
+
+RUN_INDEX_PAGE_SCHEMA := {
+    "type": "object",
+    "required": ["schemaVersion", "page", "entries"],
+    "properties": {
+        "schemaVersion": {"const": "1.0.0"},
+        "page": {"type": "integer", "minimum": 1},
+        "entries": {"type": "array", "maxItems": 100, "items": {"type": "object", "required": ["runId", "manifestSha256", "manifest"], "properties": {"runId": {"type": "string", "minLength": 1, "maxLength": 128}, "manifestSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "manifest": {"type": "object"}}, "additionalProperties": false}}
+    },
+    "additionalProperties": false
+}
+
+func index_root(storage_dir) { return join_path(storage_dir, ".index") }
+func pages_root(storage_dir) { return join_path(index_root(storage_dir), "pages") }
+export func run_index_path(storage_dir) { return join_path(index_root(storage_dir), "runs.json") }
+
+func page_name(page) {
+    value := to_string(page)
+    if len(value) < 8 { value = repeat("0", 8 - len(value)) + value }
+    return value + ".json"
+}
+
+func index_page_path(storage_dir, page) { return join_path(pages_root(storage_dir), page_name(page)) }
+
+func valid_index(index) {
+    if type(index) != "dict" { return false }
+    checked := json_schema_validate(index, RUN_INDEX_SCHEMA)
+    return checked["valid"] == true && index["pageCount"] * index["pageSize"] >= index["runCount"]
+}
+
+func read_index(storage_dir) {
+    path := run_index_path(storage_dir)
+    if file_exists(path) == false || path_is_symlink(path) || file_size(path) > 1048576 { return null }
+    index := null
+    try { index = read_json(path) } except err { index = null }
+    if valid_index(index) == false { return null }
+    return index
+}
+
+func read_index_page(storage_dir, page) {
+    path := index_page_path(storage_dir, page)
+    if file_exists(path) == false || path_is_symlink(path) || file_size(path) > 8388608 { return null }
+    value := null
+    try { value = read_json(path) } except err { value = null }
+    if type(value) != "dict" { return null }
+    checked := json_schema_validate(value, RUN_INDEX_PAGE_SCHEMA)
+    if checked["valid"] != true || value["page"] != page { return null }
+    mut seen := {}
+    for entry in value["entries"] {
+        if safe_run_id(entry["runId"]) == false || dict_get(entry["manifest"], "runId", "") != entry["runId"] || has_key(seen, entry["runId"]) == 1 { return null }
+        seen[entry["runId"]] := true
+    }
+    return value
+}
+
+func manifest_entry(storage_dir, run_id) {
+    path := artifact_path(storage_dir, run_id, "manifest.json")
+    if path == "" || file_exists(path) == false || path_is_symlink(path) || file_size(path) > 4194304 { return null }
+    manifest := null
+    try { manifest = read_json(path) } except err { manifest = null }
+    if type(manifest) != "dict" || dict_get(manifest, "runId", "") != run_id { return null }
+    return {"runId": run_id, "manifestSha256": sha256(read_file(path)), "manifest": manifest}
+}
+
+func scan_index_entries(storage_dir) {
+    mut entries := []
+    if path_is_dir(storage_dir) == false || path_is_symlink(storage_dir) { return entries }
+    for name in sort(list_dir(storage_dir)) {
+        if safe_run_id(name) && starts_with(name, ".") == false && path_is_dir(join_path(storage_dir, name)) && path_is_symlink(join_path(storage_dir, name)) == false {
+            entry := manifest_entry(storage_dir, name)
+            if type(entry) == "dict" { entries = push(entries, entry) }
+        }
+    }
+    return entries
+}
+
+func persist_rebuilt_index(storage_dir, entries, prior_generation) {
+    ensure_dir(index_root(storage_dir))
+    if path_is_dir(pages_root(storage_dir)) { remove_tree(pages_root(storage_dir)) }
+    ensure_dir(pages_root(storage_dir))
+    mut by_id := {}
+    for entry in entries { by_id[entry["runId"]] := entry }
+    mut ordered := []
+    for run_id in sort(keys(by_id)) { ordered = push(ordered, by_id[run_id]) }
+    mut page := 1
+    mut offset := 0
+    while offset < len(ordered) {
+        mut page_entries := []
+        mut page_offset := 0
+        while page_offset < RUN_INDEX_PAGE_SIZE && offset + page_offset < len(ordered) {
+            page_entries = push(page_entries, ordered[offset + page_offset])
+            page_offset = page_offset + 1
+        }
+        write_json(index_page_path(storage_dir, page), {"schemaVersion": "1.0.0", "page": page, "entries": page_entries})
+        offset = offset + len(page_entries)
+        page = page + 1
+    }
+    page_count := page - 1
+    index := {"schemaVersion": "1.0.0", "generation": prior_generation + 1, "updatedAt": now_utc(), "runCount": len(ordered), "pageCount": page_count, "pageSize": RUN_INDEX_PAGE_SIZE}
+    write_json(run_index_path(storage_dir), index)
+    return index
+}
+
+func all_index_entries(storage_dir, index) {
+    mut entries := []
+    mut page := 1
+    while page <= index["pageCount"] {
+        value := read_index_page(storage_dir, page)
+        if type(value) != "dict" { return null }
+        for entry in value["entries"] { entries = push(entries, entry) }
+        page = page + 1
+    }
+    if len(entries) != index["runCount"] { return null }
+    return entries
+}
+
+export func rebuild_run_index(storage_dir) {
+    if file_exists(storage_dir) && path_is_symlink(storage_dir) { return {"ok": false, "error": "Run storage is unsafe."} }
+    ensure_dir(storage_dir)
+    prior := read_index(storage_dir)
+    generation := 0
+    if type(prior) == "dict" { generation = prior["generation"] }
+    index := persist_rebuilt_index(storage_dir, scan_index_entries(storage_dir), generation)
+    return {"ok": true, "index": index, "rebuilt": index["runCount"]}
+}
+
+export func verify_run_index(storage_dir) {
+    index := read_index(storage_dir)
+    if type(index) != "dict" { return {"ok": false, "error": "Run index is missing, unsafe, or structurally invalid.", "missing": [], "stale": [], "mismatched": []} }
+    indexed_entries := all_index_entries(storage_dir, index)
+    if type(indexed_entries) != "array" { return {"ok": false, "error": "Run-index page set is missing or invalid.", "missing": [], "stale": [], "mismatched": []} }
+    actual := scan_index_entries(storage_dir)
+    mut expected_by_id := {}
+    mut actual_by_id := {}
+    for entry in indexed_entries { expected_by_id[entry["runId"]] := entry }
+    for entry in actual { actual_by_id[entry["runId"]] := entry }
+    mut missing := []
+    mut stale := []
+    mut mismatched := []
+    for run_id in keys(actual_by_id) {
+        if has_key(expected_by_id, run_id) == 0 { missing = push(missing, run_id) }
+        else if expected_by_id[run_id]["manifestSha256"] != actual_by_id[run_id]["manifestSha256"] { mismatched = push(mismatched, run_id) }
+    }
+    for run_id in keys(expected_by_id) { if has_key(actual_by_id, run_id) == 0 { stale = push(stale, run_id) } }
+    ok := len(missing) == 0 && len(stale) == 0 && len(mismatched) == 0
+    return {"ok": ok, "indexed": index["runCount"], "actual": len(actual), "generation": index["generation"], "missing": sort(missing), "stale": sort(stale), "mismatched": sort(mismatched)}
+}
+
+export func repair_run_index(storage_dir) {
+    root := index_root(storage_dir)
+    mut stale_temps := 0
+    for candidate_root in [root, pages_root(storage_dir)] {
+        if path_is_dir(candidate_root) && path_is_symlink(candidate_root) == false {
+            for name in list_dir(candidate_root) {
+                if contains(name, ".tmp-") && safe_relative_path(name) { delete_file(join_path(candidate_root, name)); stale_temps = stale_temps + 1 }
+            }
+        }
+    }
+    rebuilt := rebuild_run_index(storage_dir)
+    if rebuilt["ok"] != true { return rebuilt }
+    checked := verify_run_index(storage_dir)
+    checked["repaired"] := checked["ok"]
+    checked["staleTempsRemoved"] := stale_temps
+    return checked
+}
+
+export func index_run_manifest(storage_dir, run_id) {
+    entry := manifest_entry(storage_dir, run_id)
+    if type(entry) != "dict" { return {"ok": false, "error": "Run manifest is unavailable for indexing."} }
+    index := read_index(storage_dir)
+    if type(index) != "dict" { rebuild_run_index(storage_dir); return {"ok": true, "runId": run_id, "replaced": true} }
+    mut page := index["pageCount"]
+    while page >= 1 {
+        page_value := read_index_page(storage_dir, page)
+        if type(page_value) != "dict" { rebuild_run_index(storage_dir); return {"ok": true, "runId": run_id, "replaced": true} }
+        mut updated := []
+        mut replaced := false
+        for current in page_value["entries"] {
+            if current["runId"] == run_id { updated = push(updated, entry); replaced = true } else { updated = push(updated, current) }
+        }
+        if replaced {
+            page_value["entries"] := updated
+            write_json(index_page_path(storage_dir, page), page_value)
+            index["generation"] := index["generation"] + 1; index["updatedAt"] := now_utc(); write_json(run_index_path(storage_dir), index)
+            return {"ok": true, "runId": run_id, "replaced": true}
+        }
+        page = page - 1
+    }
+    page = index["pageCount"]
+    page_value := null
+    if page > 0 { page_value = read_index_page(storage_dir, page) }
+    if type(page_value) != "dict" || len(page_value["entries"]) >= RUN_INDEX_PAGE_SIZE {
+        page = page + 1
+        page_value = {"schemaVersion": "1.0.0", "page": page, "entries": []}
+        index["pageCount"] := page
+    }
+    page_value["entries"] := push(page_value["entries"], entry)
+    write_json(index_page_path(storage_dir, page), page_value)
+    index["runCount"] := index["runCount"] + 1; index["generation"] := index["generation"] + 1; index["updatedAt"] := now_utc(); write_json(run_index_path(storage_dir), index)
+    return {"ok": true, "runId": run_id, "replaced": false}
+}
+
+export func remove_run_from_index(storage_dir, run_id) {
+    index := read_index(storage_dir)
+    if type(index) != "dict" { return rebuild_run_index(storage_dir) }
+    mut page := index["pageCount"]
+    while page >= 1 {
+        page_value := read_index_page(storage_dir, page)
+        if type(page_value) != "dict" { return rebuild_run_index(storage_dir) }
+        mut entries := []
+        mut removed := false
+        for entry in page_value["entries"] { if entry["runId"] == run_id { removed = true } else { entries = push(entries, entry) } }
+        if removed {
+            page_value["entries"] := entries; write_json(index_page_path(storage_dir, page), page_value)
+            index["runCount"] := index["runCount"] - 1; index["generation"] := index["generation"] + 1; index["updatedAt"] := now_utc(); write_json(run_index_path(storage_dir), index)
+            return {"ok": true, "runId": run_id, "removed": true}
+        }
+        page = page - 1
+    }
+    return {"ok": true, "runId": run_id, "removed": false}
+}
 
 export func run_dir(storage_dir, run_id) {
     if safe_run_id(run_id) == false { return "" }
@@ -13,7 +250,7 @@ export func run_dir(storage_dir, run_id) {
 export func generate_run_id(storage_dir, title) {
     if file_exists(storage_dir) && path_is_symlink(storage_dir) { return "" }
     ensure_dir(storage_dir)
-    prefix := today_utc() + "-" + slug(title)
+    prefix := format_date(now_unix(), "YYYY-MM-DD") + "-" + slug(title)
     mut i := 0
     while i < 10000 {
         candidate := prefix + "-" + to_string(random_int(1000, 9999))
@@ -44,6 +281,7 @@ export func save_json(storage_dir, run_id, name, value) {
     path := artifact_path(storage_dir, run_id, name)
     if path == "" { return false }
     write_json(path, value)
+    if name == "manifest.json" { index_run_manifest(storage_dir, run_id) }
     return true
 }
 
@@ -96,30 +334,37 @@ export func list_runs_filtered(storage_dir, status, panel_id, limit) {
 export func list_runs_page(storage_dir, status, panel_id, limit, cursor) {
     if path_is_dir(storage_dir) == false { return {"items": [], "nextCursor": "", "hasMore": false, "cursorFound": cursor == ""} }
     if path_is_symlink(storage_dir) { return {"items": [], "nextCursor": "", "hasMore": false, "cursorFound": cursor == ""} }
-    names := sort(list_dir(storage_dir))
+    index := read_index(storage_dir)
+    if type(index) != "dict" { index = rebuild_run_index(storage_dir)["index"] }
     mut runs := []
     mut after_cursor := cursor == ""
     mut has_more := false
-    mut i := len(names) - 1
-    while i >= 0 {
-        name := names[i]
-        if after_cursor == false {
-            if name == cursor { after_cursor = true }
-            i = i - 1
-            continue
-        }
-        if safe_run_id(name) && starts_with(name, ".") == false {
-            manifest := load_manifest(storage_dir, name)
-            if type(manifest) == "dict" {
+    mut page := index["pageCount"]
+    mut done := false
+    while page >= 1 && done == false {
+        page_value := read_index_page(storage_dir, page)
+        if type(page_value) != "dict" { return {"items": [], "nextCursor": "", "hasMore": false, "cursorFound": false, "error": "Run-index page is invalid; run index-repair."} }
+        mut i := len(page_value["entries"]) - 1
+        while i >= 0 {
+            entry := page_value["entries"][i]
+            name := entry["runId"]
+            if after_cursor == false {
+                if name == cursor { after_cursor = true }
+                i = i - 1
+                continue
+            }
+            if safe_run_id(name) && starts_with(name, ".") == false {
+                manifest := entry["manifest"]
                 status_match := status == "" || manifest["status"] == status
                 panel_match := panel_id == "" || manifest["panelId"] == panel_id
                 if status_match && panel_match {
-                    if limit > 0 && len(runs) >= limit { has_more = true; break }
+                    if limit > 0 && len(runs) >= limit { has_more = true; done = true; break }
                     runs = push(runs, manifest)
                 }
             }
+            i = i - 1
         }
-        i = i - 1
+        page = page - 1
     }
     next_cursor := ""
     if has_more && len(runs) > 0 { next_cursor = runs[len(runs) - 1]["runId"] }

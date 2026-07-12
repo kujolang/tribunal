@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0.0",
+  "catalogId": "engineering-review",
+  "seats": [
+    {
+      "id": "reliability-reviewer",
+      "name": "Reliability Reviewer",
+      "authority": "Assess failure containment, recovery evidence, and operability.",
+      "nonGoals": ["Expanding product scope"],
+      "stageResponsibilities": ["blind-first-pass", "cross-examination"],
+      "requiredOutputSchema": {
+        "type": "object",
+        "required": ["position", "arguments", "risks", "recommendation"],
+        "properties": {
+          "position": { "type": "string" },
+          "arguments": { "type": "array", "items": { "type": "string" } },
+          "risks": { "type": "array", "items": { "type": "string" } },
+          "recommendation": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      },
+      "defaultModelPreference": { "class": "systems_reasoning", "preferred": ["provider-neutral-reasoner"], "fallback": "local-reasoning" },
+      "escalationTriggers": ["No tested recovery path"],
+      "promptTemplate": "{{context}}\n\n# Assigned seat\n\n{{seat}}\n\nNo other seat testimony is available in this stage.",
+      "permissions": { "contextSources": ["docket", "context-pack"], "maySeePeerTestimony": false }
+    }
+  ],
+  "panels": [
+    { "id": "reliability-one", "name": "Reliability One", "description": "A deterministic custom reliability review.", "seatIds": ["reliability-reviewer"] }
+  ]
+}

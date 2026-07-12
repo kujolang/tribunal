@@ -1,0 +1,59 @@
+# Tribunal :: persistent-index and cursor-bounded projection performance gate.
+
+from src.analytics import collect_stats
+from src.common import ensure_dir, remove_tree
+from src.storage import list_runs_page, rebuild_run_index, run_index_path, verify_run_index
+from src.telemetry import telemetry_payload_page
+
+root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-index-perf-" + to_string(current_timestamp()))
+storage := join_path(root, "runs")
+corpus_runs := 250
+page_limit := 100
+
+func padded(value) {
+    text := to_string(value)
+    if len(text) < 6 { text = repeat("0", 6 - len(text)) + text }
+    return text
+}
+
+func fixture_json(path, value) { write_file(path, to_json(value) + "\n") }
+
+ensure_dir(storage)
+mut i := 0
+while i < corpus_runs {
+    run_id := "2026-07-12-index-perf-" + padded(i)
+    run_root := join_path(storage, run_id)
+    ensure_dir(run_root)
+    fixture_json(join_path(run_root, "manifest.json"), {"schemaVersion": "1.0.0", "runId": run_id, "status": "completed", "openedAt": "2026-07-12T00:00:00Z", "completedAt": "2026-07-12T00:00:01Z", "panelId": "executioner-only", "seatIds": ["executioner"], "docketSource": "index-perf", "mockMode": true, "blindFirstPassRequired": true, "sdkBoundary": "KujoModelClient", "governance": {}})
+    fixture_json(join_path(run_root, "record.json"), {"runId": run_id, "ruling": {"disposition": "proceed"}})
+    fixture_json(join_path(run_root, "receipt.json"), {"modelInvocations": 1, "totalTokens": 10, "durationMs": 100})
+    write_file(join_path(run_root, "events.jsonl"), to_json({"timestamp": "2026-07-12T00:00:00Z", "runId": run_id, "stageId": "persist-record", "eventType": "run_completed", "summary": "completed"}) + "\n")
+    i = i + 1
+}
+
+rebuild_started := current_timestamp()
+rebuilt := rebuild_run_index(storage)
+rebuild_ms := current_timestamp() - rebuild_started
+verified := verify_run_index(storage)
+
+page_started := current_timestamp()
+first := list_runs_page(storage, "completed", "executioner-only", page_limit, "")
+second := list_runs_page(storage, "completed", "executioner-only", page_limit, first["nextCursor"])
+two_page_ms := current_timestamp() - page_started
+
+stats_started := current_timestamp()
+stats := collect_stats(storage)
+stats_ms := current_timestamp() - stats_started
+telemetry := telemetry_payload_page(storage, "", page_limit, stats)
+
+index_metadata := parse_json(read_file(run_index_path(storage)))
+index_bytes := file_size(run_index_path(storage))
+pages_root := join_path(join_path(storage, ".index"), "pages")
+for name in list_dir(pages_root) { index_bytes = index_bytes + file_size(join_path(pages_root, name)) }
+
+ok := rebuilt["ok"] == true && verified["ok"] == true && verified["indexed"] == corpus_runs && index_metadata["pageCount"] == 3 && len(first["items"]) == page_limit && len(second["items"]) == page_limit && stats["runs"] == corpus_runs && stats["modelInvocations"] == corpus_runs && telemetry["ok"] == true && telemetry["runsProcessed"] == page_limit && rebuild_ms <= 15000 && two_page_ms <= 2000 && stats_ms <= 15000
+report := {"schemaVersion": "1.0.0", "ok": ok, "corpusRuns": corpus_runs, "indexPageSize": index_metadata["pageSize"], "indexPages": index_metadata["pageCount"], "indexBytes": index_bytes, "rebuildMs": rebuild_ms, "rebuildBudgetMs": 15000, "twoPageMs": two_page_ms, "twoPageBudgetMs": 2000, "statsMs": stats_ms, "statsBudgetMs": 15000, "projectionPageLimit": page_limit, "memoryContract": "Normal listing, stats folds, telemetry, dashboard, and bulk verification load at most one 100-run index shard plus one bounded result page; full scans are restricted to explicit rebuild/verify/repair operations."}
+print(to_json(report))
+remove_tree(root)
+if ok { exit(0) }
+exit(1)

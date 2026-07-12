@@ -3,10 +3,11 @@
 from src.common import parse_args, flag, has_flag, positional, slice_from, dict_get, array_includes, path_within
 from src.config import load_config, apply_overrides, validate_config
 from src.catalog import PANELS, SEATS
-from src.tribunal import review, validate_docket
-from src.storage import list_runs_page, load_record, load_events
+from src.tribunal import review, resume, validate_docket
+from src.compare import compare_rulings, re_review
+from src.storage import list_runs_page, load_record, load_events, rebuild_run_index, repair_run_index, verify_run_index
 from src.render import summary
-from src.integrity import generate_keys, recover_seal_transactions, seal, verify
+from src.integrity import generate_keys, recover_seal_transactions, seal, verify, verify_runs_page
 from src.integrations import ingest_runledger, ingest_casefile
 from src.diagnostics import doctor
 from src.analytics import collect_stats
@@ -33,6 +34,9 @@ func help() {
         "",
         "Usage:",
         "  tribunal review <file> --panel <panel-name> [--mock|--live] [--private-key <pem> --public-key <pem>]",
+        "  tribunal resume <stopped-run-id> [--private-key <pem> --public-key <pem>]",
+        "  tribunal compare <base-run-id> <candidate-run-id> --output <prefix>",
+        "  tribunal re-review <base-run-id> <file> --panel <panel-name> --output <prefix> [--mock|--live]",
         "  tribunal kill <file> [--mock|--live] [--private-key <pem> --public-key <pem>]",
         "  tribunal validate <file> [--json]",
         "  tribunal list [--status <status> --panel <panel> --limit <n> --json]",
@@ -41,6 +45,7 @@ func help() {
         "  tribunal keys --private-key <pem> --public-key <pem> [--bits 2048|4096]",
         "  tribunal seal <run-id> --private-key <pem> --public-key <pem>",
         "  tribunal verify <run-id> [--public-key <pem> --require-signature]",
+        "  tribunal verify-bulk [--cursor <run-id> --limit <1-100> --public-key <pem> --require-signature]",
         "  tribunal ingest <run-id> --target runledger|casefile --public-key <pem>",
         "  tribunal export <run-id> --format json|jsonl",
         "  tribunal panels",
@@ -60,6 +65,9 @@ func help() {
         "  tribunal store-pull <run-id> [--version <sha256>] --trust-policy <json>",
         "  tribunal telemetry-export [--collector jsonl|http --destination <path|url>]",
         "  tribunal locks-recover [--stale-after-ms <n>]",
+        "  tribunal index-check [--json]",
+        "  tribunal index-rebuild [--json]",
+        "  tribunal index-repair [--json]",
         "  tribunal delete <run-id> --reason <text> [--force-expired]",
         "  tribunal auth-check --permission <permission>",
         "  tribunal dashboard-export --output <html>",
@@ -97,6 +105,9 @@ func allowed_options(parsed, command) {
     global := ["help", "config", "storage-dir", "ai-sdk-path", "kujo-bin", "provider", "context-provider", "packwrite-path", "offline-fixture", "model-timeout-ms", "identity", "access-policy"]
     command_options := {
         "review": ["panel", "mock", "live", "private-key", "public-key"],
+        "resume": ["private-key", "public-key"],
+        "compare": ["output"],
+        "re-review": ["panel", "output", "mock", "live", "private-key", "public-key"],
         "kill": ["mock", "live", "private-key", "public-key"],
         "validate": ["json"],
         "list": ["status", "panel", "limit", "cursor", "json"],
@@ -105,6 +116,7 @@ func allowed_options(parsed, command) {
         "keys": ["private-key", "public-key", "bits"],
         "seal": ["private-key", "public-key"],
         "verify": ["public-key", "require-signature"],
+        "verify-bulk": ["cursor", "limit", "public-key", "require-signature", "json"],
         "ingest": ["target", "public-key", "runledger-path", "ledger", "casefile-path", "casefile-output"],
         "export": ["format"],
         "panels": ["json"],
@@ -124,6 +136,9 @@ func allowed_options(parsed, command) {
         "store-pull": ["version", "trust-policy", "target"],
         "telemetry-export": ["collector", "destination", "json"],
         "locks-recover": ["stale-after-ms", "json"],
+        "index-check": ["json"],
+        "index-rebuild": ["json"],
+        "index-repair": ["json"],
         "delete": ["reason", "force-expired"],
         "auth-check": ["permission", "json"],
         "dashboard-export": ["output", "json"],
@@ -165,13 +180,13 @@ func config_for(parsed) {
 
 func command_permission(command) {
     mapping := {
-        "review": "runs.create", "kill": "runs.create", "validate": "runs.create",
+        "review": "runs.create", "kill": "runs.create", "resume": "runs.create", "re-review": "runs.create", "compare": "runs.read", "validate": "runs.create",
         "list": "runs.list", "show": "runs.read", "replay": "runs.read", "export": "runs.read",
         "panels": "catalog.read", "seats": "catalog.read", "stats": "runs.read", "doctor": "system.diagnose",
-        "keys": "keys.generate", "seal": "runs.sign", "seal-provider": "runs.sign", "verify": "runs.verify", "verify-policy": "runs.verify",
+        "keys": "keys.generate", "seal": "runs.sign", "seal-provider": "runs.sign", "verify": "runs.verify", "verify-bulk": "runs.verify", "verify-policy": "runs.verify",
         "ingest": "runs.ingest", "contracts": "contracts.validate", "audit": "runs.audit", "bundle-export": "bundles.export", "bundle-import": "bundles.import", "bundle-encrypt": "bundles.export", "bundle-decrypt": "bundles.import", "bundle-rekey": "bundles.rekey",
         "store-publish": "store.publish", "store-pull": "store.pull", "telemetry-export": "telemetry.export",
-        "locks-recover": "locks.recover", "delete": "runs.delete", "auth-check": "authorization.inspect", "version": "system.version",
+        "locks-recover": "locks.recover", "index-check": "runs.index.verify", "index-rebuild": "runs.index.rebuild", "index-repair": "runs.index.repair", "delete": "runs.delete", "auth-check": "authorization.inspect", "version": "system.version",
         "dashboard-export": "dashboard.export", "legal-hold": "governance.hold", "provenance-sign": "governance.sign", "provenance-verify": "governance.verify"
     }
     return dict_get(mapping, command, "unknown")
@@ -227,6 +242,31 @@ func cmd_validate(parsed, config) {
     else { eprint("invalid\t" + result["error"]) }
     if result["ok"] { return 0 }
     return 1
+}
+
+func cmd_resume(parsed, config) {
+    usage_error := require_positionals(parsed, 1, "Usage: tribunal resume <stopped-run-id>")
+    if usage_error != "" { return command_error(usage_error, 2) }
+    result := resume(config, positional(parsed, 0, ""), flag(parsed, "private-key", ""), flag(parsed, "public-key", ""))
+    if result["ok"] != true { return command_error(result["error"], 1) }
+    print(to_json_pretty({"runId": result["runId"], "priorRunId": result["record"]["lineage"]["priorRunId"], "runDir": result["runDir"]}))
+    return 0
+}
+
+func cmd_compare(parsed, config) {
+    usage_error := require_positionals(parsed, 2, "Usage: tribunal compare <base-run-id> <candidate-run-id> --output <prefix>")
+    if usage_error != "" || flag(parsed, "output", "") == "" { return command_error("Usage: tribunal compare <base-run-id> <candidate-run-id> --output <prefix>", 2) }
+    result := compare_rulings(config["tribunal"]["storage_dir"], positional(parsed, 0, ""), positional(parsed, 1, ""), flag(parsed, "output", ""))
+    if result["ok"] != true { return command_error(result["error"], 1) }
+    print(to_json_pretty(result)); return 0
+}
+
+func cmd_re_review(parsed, config) {
+    usage_error := require_positionals(parsed, 2, "Usage: tribunal re-review <base-run-id> <file> --panel <panel-name> --output <prefix>")
+    if usage_error != "" || flag(parsed, "output", "") == "" { return command_error("Usage: tribunal re-review <base-run-id> <file> --panel <panel-name> --output <prefix>", 2) }
+    result := re_review(config, positional(parsed, 0, ""), positional(parsed, 1, ""), flag(parsed, "panel", config["tribunal"]["default_panel"]), flag(parsed, "private-key", ""), flag(parsed, "public-key", ""), flag(parsed, "output", ""))
+    if result["ok"] != true { return command_error(result["error"], 1) }
+    print(to_json_pretty({"runId": result["runId"], "comparison": result["comparison"]["jsonPath"]})); return 0
 }
 
 func cmd_list(parsed, config) {
@@ -301,6 +341,17 @@ func cmd_verify(parsed, config) {
         result["errors"] := push(result["errors"], "A verified signature is required.")
     }
     print(to_json_pretty(result))
+    if result["ok"] { return 0 }
+    return 3
+}
+
+func cmd_verify_bulk(parsed, config) {
+    limit := 25
+    try { limit = to_int(flag(parsed, "limit", "25")) } except err { limit = 0 }
+    if limit < 1 || limit > 100 { return command_error("verify-bulk --limit must be between 1 and 100.", 2) }
+    result := verify_runs_page(config["tribunal"]["storage_dir"], flag(parsed, "cursor", ""), limit, flag(parsed, "public-key", ""), has_flag(parsed, "require-signature"))
+    print(to_json_pretty(result))
+    if has_key(result, "error") == 1 { return 2 }
     if result["ok"] { return 0 }
     return 3
 }
@@ -541,6 +592,15 @@ func cmd_locks_recover(parsed, config) {
     return 0
 }
 
+func cmd_index(command, parsed, config) {
+    result := verify_run_index(config["tribunal"]["storage_dir"])
+    if command == "index-rebuild" { result = rebuild_run_index(config["tribunal"]["storage_dir"]); if result["ok"] { result["verification"] := verify_run_index(config["tribunal"]["storage_dir"]) } }
+    if command == "index-repair" { result = repair_run_index(config["tribunal"]["storage_dir"]) }
+    print(to_json_pretty(result))
+    if result["ok"] { return 0 }
+    return 3
+}
+
 func cmd_delete(parsed, config) {
     result := delete_run(config["tribunal"]["storage_dir"], required_run(parsed), config["authorization"]["identity"], flag(parsed, "reason", ""), has_flag(parsed, "force-expired"))
     if result["ok"] != true { return command_error(result["error"], 1) }
@@ -603,11 +663,11 @@ export func main(argv) {
     parsed := parse_args(slice_from(argv, 1), ["help", "mock", "live", "offline-fixture", "json", "require-signature", "force-expired", "enable", "release"])
     if command == "help" || command == "--help" || has_flag(parsed, "help") { help(); return 0 }
     if command == "--version" { command = "version" }
-    known := ["version", "panels", "seats", "keys", "review", "kill", "validate", "list", "show", "replay", "seal", "verify", "ingest", "export", "doctor", "stats", "contracts", "audit", "seal-provider", "verify-policy", "bundle-export", "bundle-import", "bundle-encrypt", "bundle-decrypt", "bundle-rekey", "store-publish", "store-pull", "telemetry-export", "locks-recover", "delete", "auth-check", "dashboard-export", "legal-hold", "provenance-sign", "provenance-verify"]
+    known := ["version", "panels", "seats", "keys", "review", "kill", "resume", "compare", "re-review", "validate", "list", "show", "replay", "seal", "verify", "verify-bulk", "ingest", "export", "doctor", "stats", "contracts", "audit", "seal-provider", "verify-policy", "bundle-export", "bundle-import", "bundle-encrypt", "bundle-decrypt", "bundle-rekey", "store-publish", "store-pull", "telemetry-export", "locks-recover", "index-check", "index-rebuild", "index-repair", "delete", "auth-check", "dashboard-export", "legal-hold", "provenance-sign", "provenance-verify"]
     if array_includes(known, command) == false { return command_error("Unknown command '" + command + "'. Run tribunal help.", 2) }
     cli_error := validate_cli(command, parsed)
     if cli_error != "" { return command_error(cli_error, 2) }
-    if command != "review" && command != "kill" && array_includes(["validate", "show", "replay", "seal", "verify", "ingest", "export", "contracts", "audit", "seal-provider", "verify-policy", "bundle-export", "bundle-import", "bundle-encrypt", "bundle-decrypt", "bundle-rekey", "store-publish", "store-pull", "delete", "legal-hold", "provenance-sign", "provenance-verify"], command) == false {
+    if array_includes(["review", "kill", "resume", "compare", "re-review", "validate", "show", "replay", "seal", "verify", "ingest", "export", "contracts", "audit", "seal-provider", "verify-policy", "bundle-export", "bundle-import", "bundle-encrypt", "bundle-decrypt", "bundle-rekey", "store-publish", "store-pull", "delete", "legal-hold", "provenance-sign", "provenance-verify"], command) == false {
         usage_error := require_positionals(parsed, 0, command + " does not accept positional arguments.")
         if usage_error != "" { return command_error(usage_error, 2) }
     }
@@ -627,12 +687,16 @@ export func main(argv) {
     if command == "seats" { return cmd_seats(parsed) }
     if command == "keys" { return cmd_keys(parsed, config) }
     if command == "review" || command == "kill" { return cmd_review(command, parsed, config) }
+    if command == "resume" { return cmd_resume(parsed, config) }
+    if command == "compare" { return cmd_compare(parsed, config) }
+    if command == "re-review" { return cmd_re_review(parsed, config) }
     if command == "validate" { return cmd_validate(parsed, config) }
     if command == "list" { return cmd_list(parsed, config) }
     if command == "show" { return cmd_show(parsed, config) }
     if command == "replay" { return cmd_replay(parsed, config) }
     if command == "seal" { return cmd_seal(parsed, config) }
     if command == "verify" { return cmd_verify(parsed, config) }
+    if command == "verify-bulk" { return cmd_verify_bulk(parsed, config) }
     if command == "ingest" { return cmd_ingest(parsed, config) }
     if command == "export" { return cmd_export(parsed, config) }
     if command == "doctor" { return cmd_doctor(parsed, config) }
@@ -650,6 +714,7 @@ export func main(argv) {
     if command == "store-pull" { return cmd_store_pull(parsed, config) }
     if command == "telemetry-export" { return cmd_telemetry_export(parsed, config) }
     if command == "locks-recover" { return cmd_locks_recover(parsed, config) }
+    if command == "index-check" || command == "index-rebuild" || command == "index-repair" { return cmd_index(command, parsed, config) }
     if command == "delete" { return cmd_delete(parsed, config) }
     if command == "auth-check" { return cmd_auth_check(parsed, config) }
     if command == "dashboard-export" { return cmd_dashboard_export(parsed, config) }

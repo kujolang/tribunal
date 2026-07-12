@@ -1,0 +1,45 @@
+# Tribunal :: immutable sealed-ruling comparison and re-review workflow
+
+from src.common import dict_get, path_within, safe_run_id, write_json, write_text
+from src.integrity import verify
+from src.storage import artifact_path
+from src.tribunal import review
+
+func field_change(name, before, after) { return {"field": name, "before": before, "after": after, "changed": to_json(before) != to_json(after)} }
+
+export func compare_rulings(storage_dir, base_run_id, candidate_run_id, output_prefix) {
+    if safe_run_id(base_run_id) == false || safe_run_id(candidate_run_id) == false || base_run_id == candidate_run_id { return {"ok": false, "error": "Comparison requires two distinct safe run IDs."} }
+    if trim(output_prefix) == "" || path_within(storage_dir, output_prefix) { return {"ok": false, "error": "Comparison output must be outside immutable run storage."} }
+    base_path := artifact_path(storage_dir, base_run_id, "record.json")
+    candidate_path := artifact_path(storage_dir, candidate_run_id, "record.json")
+    if file_exists(base_path) == false || file_exists(candidate_path) == false { return {"ok": false, "error": "Both comparison records must exist."} }
+    base_digest := sha256(read_file(base_path)); candidate_digest := sha256(read_file(candidate_path))
+    base_verified := verify(storage_dir, base_run_id, ""); candidate_verified := verify(storage_dir, candidate_run_id, "")
+    if base_verified["ok"] != true || candidate_verified["ok"] != true { return {"ok": false, "error": "Both source rulings must pass sealed integrity verification."} }
+    base := parse_json(read_file(base_path)); candidate := parse_json(read_file(candidate_path))
+    before := dict_get(base, "ruling", {}); after := dict_get(candidate, "ruling", {})
+    changes := [
+        field_change("disposition", dict_get(before, "disposition", ""), dict_get(after, "disposition", "")),
+        field_change("confidence", dict_get(before, "confidence", 0), dict_get(after, "confidence", 0)),
+        field_change("finalVerdict", dict_get(before, "finalVerdict", ""), dict_get(after, "finalVerdict", "")),
+        field_change("requiredChanges", dict_get(before, "requiredChanges", []), dict_get(after, "requiredChanges", [])),
+        field_change("unresolved", dict_get(before, "unresolved", []), dict_get(after, "unresolved", []))
+    ]
+    comparison := {"schemaVersion": "1.0.0", "createdAt": now_utc(), "baseRunId": base_run_id, "candidateRunId": candidate_run_id, "baseRecordSha256": base_digest, "candidateRecordSha256": candidate_digest, "changes": changes, "sourcesUnchanged": true}
+    json_path := output_prefix + ".json"; markdown_path := output_prefix + ".md"
+    if file_exists(json_path) || file_exists(markdown_path) { return {"ok": false, "error": "Comparison outputs already exist."} }
+    write_json(json_path, comparison)
+    mut markdown := "# Tribunal ruling comparison\n\n- Base: `" + base_run_id + "`\n- Candidate: `" + candidate_run_id + "`\n\n| Field | Changed | Before | After |\n|---|---:|---|---|\n"
+    for change in changes { markdown = markdown + "| " + change["field"] + " | " + to_string(change["changed"]) + " | `" + replace(to_json(change["before"]), "|", "\\|") + "` | `" + replace(to_json(change["after"]), "|", "\\|") + "` |\n" }
+    write_text(markdown_path, markdown)
+    if sha256(read_file(base_path)) != base_digest || sha256(read_file(candidate_path)) != candidate_digest { return {"ok": false, "error": "A source record changed during comparison."} }
+    return {"ok": true, "comparison": comparison, "jsonPath": json_path, "markdownPath": markdown_path}
+}
+
+export func re_review(config, base_run_id, docket_path, panel_id, private_key, public_key, output_prefix) {
+    reviewed := review(config, docket_path, panel_id, private_key, public_key)
+    if reviewed["ok"] != true { return reviewed }
+    compared := compare_rulings(config["tribunal"]["storage_dir"], base_run_id, reviewed["runId"], output_prefix)
+    if compared["ok"] != true { return {"ok": false, "runId": reviewed["runId"], "error": compared["error"]} }
+    return {"ok": true, "runId": reviewed["runId"], "review": reviewed, "comparison": compared}
+}

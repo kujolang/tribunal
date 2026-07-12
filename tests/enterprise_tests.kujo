@@ -3,20 +3,21 @@
 from src.common import dict_get, ensure_dir, last_json_line, remove_tree, write_json
 from src.config import default_config, validate_config
 from src.tribunal import review
-from src.integrity import begin_seal_transaction, generate_keys, recover_seal_transactions, verify
+from src.integrity import begin_seal_transaction, generate_keys, recover_seal_transactions, verify, verify_runs_page
 from src.signing_provider import load_signing_provider, seal_with_provider
 from src.policy import authorize, load_access_policy, load_trust_policy, trusted_key
 from src.locking import acquire_lock, release_lock, recover_stale_locks
 from src.governance import delete_run, set_legal_hold
-from src.telemetry import export_telemetry
+from src.telemetry import export_telemetry, telemetry_payload_page
 from src.contracts import validate_run_contracts
 from src.bundles import export_bundle, export_encrypted_bundle, import_bundle, import_encrypted_bundle, rotate_encrypted_bundle_key, verify_encrypted_bundle_integrity
 from src.artifact_store import publish_http, publish_local, pull_local
-from src.storage import list_runs_page
+from src.storage import list_runs_page, repair_run_index, run_index_path, verify_run_index
 from src.dashboard import export_dashboard
 from src.audit import audit_run
 from src.algorithms import algorithm_gate, algorithm_registry, migration_readiness
 from src.provenance import sign_provenance, verify_provenance
+from src.analytics import collect_stats_page
 
 mut passed := 0
 mut failed := 0
@@ -187,7 +188,7 @@ if signed["ok"] == true {
 
     bundle_path := join_path(ROOT, "bundle")
     bundle := export_bundle(storage, run_id, bundle_path)
-    check(bundle["ok"] == true && file_exists(join_path(bundle_path, "bundle.json")), "signed evidence bundle exports")
+    check(bundle["ok"] == true && file_exists(join_path(bundle_path, "bundle.json")) && len(bundle["bundle"]["artifactDescriptors"]) == bundle["bundle"]["artifactCount"], "signed evidence bundle exports through bounded streaming copies with transfer descriptors")
     imported_storage := join_path(ROOT, "imported-runs")
     imported := import_bundle(bundle_path, imported_storage, trust, "bundle-import")
     check(imported["ok"] == true && imported["verification"]["signature"] == "verified", "signed evidence bundle imports under trust policy")
@@ -242,6 +243,30 @@ if signed["ok"] == true {
 
     page := list_runs_page(storage, "completed", "executioner-only", 1, "")
     check(len(page["items"]) == 1, "cursor page returns bounded items")
+    stats_page := collect_stats_page(storage, "", 1, null)
+    check(stats_page["ok"] == true && stats_page["runsProcessed"] == 1 && stats_page["pageLimit"] == 1, "stats aggregation exposes a bounded incremental page contract")
+    telemetry_page := telemetry_payload_page(storage, "", 1, stats_page["stats"])
+    check(telemetry_page["ok"] == true && telemetry_page["runsProcessed"] == 1 && telemetry_page["pageLimit"] == 1, "telemetry projection exposes a bounded incremental page contract")
+    bulk_page := verify_runs_page(storage, "", 1, signed["publicKey"], true)
+    check(bulk_page["ok"] == true && bulk_page["runsProcessed"] == 1 && json_schema_validate(bulk_page, parse_json(read_file(join_path(HOME, "schemas/bulk-verification.schema.json"))))["valid"] == true, "bulk integrity verification is cursor-bounded and schema-valid")
+    indexed := verify_run_index(storage)
+    check(indexed["ok"] == true && indexed["indexed"] == 1, "persistent run index matches durable storage")
+    orphan_id := "2026-07-12-orphan-index-fixture"
+    orphan_root := join_path(storage, orphan_id); ensure_dir(orphan_root)
+    write_json(join_path(orphan_root, "manifest.json"), {"schemaVersion": "1.0.0", "runId": orphan_id, "status": "stopped", "openedAt": "2026-07-12T00:00:00Z", "completedAt": "2026-07-12T00:00:01Z", "panelId": "executioner-only", "seatIds": ["executioner"], "docketSource": "fixture", "mockMode": true, "blindFirstPassRequired": true, "sdkBoundary": "KujoModelClient", "governance": {}})
+    drifted_index := verify_run_index(storage)
+    check(drifted_index["ok"] == false && len(drifted_index["missing"]) == 1, "run-index verification detects an unindexed durable run")
+    repaired_index := repair_run_index(storage)
+    check(repaired_index["ok"] == true && repaired_index["indexed"] == 2, "run-index repair rebuilds missing entries from durable manifests")
+    indexed_manifest_path := join_path(join_path(storage, run_id), "manifest.json")
+    indexed_manifest_original := read_file(indexed_manifest_path)
+    indexed_manifest := parse_json(indexed_manifest_original); indexed_manifest["status"] := "stopped"; write_json(indexed_manifest_path, indexed_manifest)
+    check(len(verify_run_index(storage)["mismatched"]) == 1, "run-index verification detects manifest digest drift")
+    write_file(indexed_manifest_path, indexed_manifest_original, true)
+    stale_index_temp := run_index_path(storage) + ".tmp-crash-fixture"; write_file(stale_index_temp, "partial")
+    write_file(run_index_path(storage), "{corrupt", true)
+    recovered_index := repair_run_index(storage)
+    check(recovered_index["ok"] == true && recovered_index["staleTempsRemoved"] == 1 && file_exists(stale_index_temp) == false, "crash repair atomically rebuilds a corrupt index and removes stale write fragments")
 }
 
 governance_storage := join_path(ROOT, "governance-runs")

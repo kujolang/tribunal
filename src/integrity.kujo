@@ -1,7 +1,7 @@
 # Tribunal :: Kujo-native SHA-256 artifact integrity and RSA signatures
 
-from src.common import dict_get, ensure_dir, iso_now, path_within, write_json, write_text, read_json, remove_tree, safe_relative_path, safe_run_id, read_file_digest
-from src.storage import artifacts, artifact_path
+from src.common import dict_get, ensure_dir, path_within, write_json, write_text, read_json, remove_tree, safe_relative_path, safe_run_id, read_file_digest
+from src.storage import artifacts, artifact_path, list_runs_page
 
 MANIFEST_NAME := "artifact-manifest.json"
 SIGNATURE_NAME := "signature.json"
@@ -39,7 +39,7 @@ export func begin_seal_transaction(storage_dir, run_id) {
     had_signature := file_exists(signature_path)
     if had_manifest { copy_file(manifest_path, join_path(root, MANIFEST_NAME)) }
     if had_signature { copy_file(signature_path, join_path(root, SIGNATURE_NAME)) }
-    write_json(join_path(root, "transaction.json"), {"schemaVersion": "1.0.0", "runId": run_id, "startedAt": iso_now(), "hadManifest": had_manifest, "hadSignature": had_signature})
+    write_json(join_path(root, "transaction.json"), {"schemaVersion": "1.0.0", "runId": run_id, "startedAt": now_utc(), "hadManifest": had_manifest, "hadSignature": had_signature})
     return {"ok": true, "path": root}
 }
 
@@ -117,7 +117,7 @@ func sign_existing_manifest(storage_dir, run_id, private_path, public_path) {
     private_key := read_file(private_path)
     public_key := read_file(public_path)
     key_id := substring(sha256(public_key), 0, 32)
-    signed_at := iso_now()
+    signed_at := now_utc()
     payload := signature_payload(run_id, sha256(manifest_text), key_id, signed_at)
     payload_text := to_json(payload)
     signature_value := null
@@ -165,7 +165,7 @@ export func seal(storage_dir, run_id, private_path, public_path) {
     manifest := {
         "schemaVersion": "1.0.0",
         "runId": run_id,
-        "generatedAt": iso_now(),
+        "generatedAt": now_utc(),
         "algorithm": "sha256",
         "exclusions": [MANIFEST_NAME, SIGNATURE_NAME],
         "artifacts": entries
@@ -298,4 +298,23 @@ export func verify(storage_dir, run_id, public_path) {
     }
     response["ok"] := len(response["missing"]) == 0 && len(response["unexpected"]) == 0 && len(response["mismatched"]) == 0 && len(response["errors"]) == 0
     return response
+}
+
+export func verify_runs_page(storage_dir, cursor, limit, public_path, require_signature) {
+    bounded_limit := limit
+    if bounded_limit < 1 { bounded_limit = 25 }
+    if bounded_limit > 100 { bounded_limit = 100 }
+    page := list_runs_page(storage_dir, "", "", bounded_limit, cursor)
+    if page["cursorFound"] != true { return {"ok": false, "error": "Bulk-verification cursor was not found.", "results": [], "nextCursor": "", "hasMore": false} }
+    mut results := []
+    mut passed := 0
+    mut failed := 0
+    for manifest in page["items"] {
+        checked := verify(storage_dir, manifest["runId"], public_path)
+        accepted := checked["ok"] == true
+        if require_signature && checked["signature"] != "verified" { accepted = false }
+        if accepted { passed = passed + 1 } else { failed = failed + 1 }
+        results = push(results, {"runId": manifest["runId"], "ok": accepted, "signature": checked["signature"], "artifactsChecked": checked["artifactsChecked"], "errors": checked["errors"]})
+    }
+    return {"ok": failed == 0, "schemaVersion": "1.0.0", "runsProcessed": len(results), "passed": passed, "failed": failed, "pageLimit": bounded_limit, "cursor": cursor, "nextCursor": page["nextCursor"], "hasMore": page["hasMore"], "results": results}
 }

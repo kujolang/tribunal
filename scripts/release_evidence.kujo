@@ -1,7 +1,7 @@
 # Tribunal Kujo-only release evidence orchestration.
 
 from src.bundles import export_bundle
-from src.common import ensure_dir, iso_now, remove_tree, write_json, write_text
+from src.common import ensure_dir, remove_tree, write_json, write_text
 from src.config import default_config
 from src.contracts import validate_run_contracts
 from src.signing_provider import load_signing_provider, seal_with_provider
@@ -48,7 +48,7 @@ archive := zip_create(archive_path)
 if zip_add_dir(archive, bundle_path) != true || zip_close(archive) != true { remove_tree(output_root); eprint("Release evidence archive failed."); exit(1) }
 
 receipt := {
-    "schemaVersion": "1.0.0", "version": VERSION, "runId": result["runId"], "createdAt": iso_now(),
+    "schemaVersion": "1.0.0", "version": VERSION, "runId": result["runId"], "createdAt": now_utc(),
     "manifestSha256": sealed["signature"]["manifestSha256"], "keyId": sealed["signature"]["keyId"],
     "signingProvider": sealed["signature"]["signingProvider"], "contractsValidated": contracts["validated"],
     "auditReportSha256": sha256_file(audit_path),

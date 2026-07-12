@@ -1,0 +1,18 @@
+{
+  "title": "TribunalBulkVerificationPage",
+  "type": "object",
+  "required": ["ok", "schemaVersion", "runsProcessed", "passed", "failed", "pageLimit", "cursor", "nextCursor", "hasMore", "results"],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "schemaVersion": { "const": "1.0.0" },
+    "runsProcessed": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "passed": { "type": "integer", "minimum": 0 },
+    "failed": { "type": "integer", "minimum": 0 },
+    "pageLimit": { "type": "integer", "minimum": 1, "maximum": 100 },
+    "cursor": { "type": "string" },
+    "nextCursor": { "type": "string" },
+    "hasMore": { "type": "boolean" },
+    "results": { "type": "array", "maxItems": 100, "items": { "type": "object" } }
+  },
+  "additionalProperties": false
+}

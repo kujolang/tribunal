@@ -1,0 +1,26 @@
+from src.adversarial import inspect_remote_envelope
+
+limits := {"timeoutMs": 1000, "maxHeaders": 8, "maxHeaderBytes": 1024, "maxBodyBytes": 1024}
+cases := [
+    ["slow", {"elapsedMs": 1001, "headers": {}, "body": "{}"}, "slow-response"],
+    ["truncated", {"elapsedMs": 1, "headers": {}, "body": "{\"ok\":"}, "truncated-json"],
+    ["bomb", {"elapsedMs": 1, "headers": {"Content-Encoding": "gzip"}, "body": "{}"}, "decompression-bomb"],
+    ["headers", {"elapsedMs": 1, "headers": {"X": repeat("h", 2048)}, "body": "{}"}, "oversized-headers"]
+]
+mut failures := []
+for fixture in cases {
+    for surface in ["provider", "context-plugin", "store", "telemetry"] {
+        checked := inspect_remote_envelope(surface, fixture[1], limits)
+        if checked["ok"] == true || checked["classification"] != fixture[2] { failures = push(failures, surface + ":" + fixture[0]) }
+    }
+}
+duplicate_bodies := {"store": "{\"runId\":\"a\",\"runId\":\"b\"}", "context-plugin": "{\"content\":\"a\",\"content\":\"b\"}", "telemetry": "{\"accepted\":1,\"accepted\":2}"}
+for surface in keys(duplicate_bodies) {
+    checked := inspect_remote_envelope(surface, {"elapsedMs": 1, "headers": {}, "body": duplicate_bodies[surface]}, limits)
+    if checked["ok"] == true || checked["classification"] != "duplicate-fields" { failures = push(failures, surface + ":duplicate") }
+}
+server_source := read_file(join_path(path_absolute(env_or("TRIBUNAL_HOME", ".")), "tests/adversarial/malicious_server.kujo"))
+for route in ["/slow", "/truncated", "/duplicate", "/bomb", "/headers", "/provider", "/context-plugin", "/store", "/telemetry"] { if contains(server_source, route) == 0 { failures = push(failures, "missing-server-route:" + route) } }
+print(to_json({"ok": len(failures) == 0, "surfaces": 4, "fixtures": len(cases) + 3, "serverRoutes": 9, "failures": failures}))
+if len(failures) > 0 { exit(1) }
+exit(0)

@@ -4,7 +4,7 @@
   "required": ["schemaVersion", "documentKind", "documentSha256", "sequence", "previousProvenanceSha256", "keyId", "signedAt", "payloadSha256", "signature"],
   "properties": {
     "schemaVersion": { "const": "1.0.0" },
-    "documentKind": { "enum": ["access-policy", "trust-policy", "governance-registry", "deletion-tombstone", "artifact-store-index"] },
+    "documentKind": { "enum": ["access-policy", "trust-policy", "governance-registry", "deletion-tombstone", "artifact-store-index", "panel-catalog", "organization-policy", "connector-catalog"] },
     "documentSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "sequence": { "type": "integer", "minimum": 1 },
     "previousProvenanceSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },

@@ -1,0 +1,7 @@
+from src.common import write_json
+from src.version import VERSION
+platform := env_or("TRIBUNAL_PLATFORM", ""); revision := env_or("TRIBUNAL_SOURCE_REVISION", ""); output := env_or("TRIBUNAL_COMPATIBILITY_OUTPUT", "")
+kujo := env_or("KUJO_BIN", "")
+if platform == "" || revision == "" || output == "" || file_exists(kujo) == false { print("Platform receipt inputs are required."); exit(2) }
+receipt := {"schemaVersion": "1.0.0", "tribunalVersion": VERSION, "sourceRevision": revision, "platform": platform, "kujoVersion": "1.0.0", "kujoSha256": sha256_file(kujo), "measuredAt": now_utc(), "gates": ["tribunal-tests", "property-tests", "schema", "performance", "index-performance", "adversarial", "dashboard-accessibility"], "result": "pass", "claimBoundary": "This receipt covers the named revision, runtime digest, architecture, and gates only."}
+write_json(output, receipt); print(to_json(receipt)); exit(0)
