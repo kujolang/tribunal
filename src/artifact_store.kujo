@@ -4,7 +4,7 @@ from src.bundles import export_bundle, import_bundle, validate_bundle_metadata
 from src.common import dict_get, ensure_dir, lower_hex, read_json, redact, remove_tree, safe_run_id, utf8_byte_length, write_json
 from src.integrity import verify
 
-func request(url, options) {
+func request_once(url, options) {
     response := {"ok": false, "status": 0, "body": "", "error": "request failed"}
     try {
         result := http_request(url, options)
@@ -19,6 +19,38 @@ func request(url, options) {
         }
     } except err { response["error"] := redact(to_string(err)) }
     return response
+}
+
+func request(url, options) {
+    mut attempt := 1
+    mut response := {"ok": false, "status": 0, "body": "", "error": "request failed", "attempts": 0}
+    while attempt <= 3 {
+        response = request_once(url, options)
+        response["attempts"] := attempt
+        if response["ok"] || (response["status"] != 0 && response["status"] != 429 && response["status"] < 500) { return response }
+        if attempt < 3 { sleep(100 * attempt) }
+        attempt = attempt + 1
+    }
+    return response
+}
+
+func http_store_context(store) {
+    if type(store) != "dict" { return {"ok": false, "error": "Unauthenticated HTTP artifact-store calls are not supported."} }
+    endpoint := trim(dict_get(store, "endpoint", ""))
+    tenant := trim(dict_get(store, "tenant_id", ""))
+    region := trim(dict_get(store, "region", ""))
+    token_path := trim(dict_get(store, "bearer_token_file", ""))
+    if endpoint == "" || tenant == "" || region == "" || safe_run_id(tenant) == false || safe_run_id(region) == false { return {"ok": false, "error": "Authenticated HTTP store endpoint, tenant, and region are required."} }
+    if file_exists(token_path) == false || path_is_symlink(token_path) || file_size(token_path) > 1048576 { return {"ok": false, "error": "HTTP store bearer-token file is missing or unsafe."} }
+    token := trim(read_file(token_path))
+    if token == "" || contains(token, "\n") || contains(token, "\r") { return {"ok": false, "error": "HTTP store bearer token is invalid."} }
+    return {"ok": true, "endpoint": endpoint, "headers": {"Authorization": "Bearer " + token, "X-Tribunal-Tenant": tenant, "X-Tribunal-Region": region}, "tenantId": tenant, "region": region}
+}
+
+func merge_headers(base, extra) {
+    result := base
+    for name in keys(extra) { result[name] := extra[name] }
+    return result
 }
 
 func local_index(root, run_id) { return join_path(join_path(root, "indexes"), run_id + ".json") }
@@ -105,9 +137,12 @@ export func pull_local(root, run_id, version, storage_dir, trust_policy, target)
     return import_bundle(source, storage_dir, trust_policy, target)
 }
 
-export func publish_http(storage_dir, run_id, endpoint, expected_version) {
+export func publish_http(storage_dir, run_id, store, expected_version) {
     if safe_run_id(run_id) == false { return {"ok": false, "error": "Run ID is unsafe."} }
     if expected_version != "" && lower_hex(expected_version, 64) == false { return {"ok": false, "error": "Expected version must be a lowercase SHA-256 digest."} }
+    context := http_store_context(store)
+    if context["ok"] != true { return context }
+    endpoint := context["endpoint"]
     temp := join_path(env_or("TMPDIR", "/tmp"), "tribunal-http-bundle-" + to_string(current_timestamp()) + "-" + to_string(random_int(1000, 9999)))
     exported := export_bundle(storage_dir, run_id, temp)
     if exported["ok"] != true { return exported }
@@ -117,32 +152,38 @@ export func publish_http(storage_dir, run_id, endpoint, expected_version) {
         source := join_path(join_path(temp, "artifacts"), name)
         uploaded := request(endpoint + "/runs/" + run_id + "/versions/" + version + "/artifacts/" + name, {
             "method": "PUT",
-            "_headers": {"Content-Type": "application/octet-stream", "If-None-Match": "*", "Content-SHA256": sha256_file(source)},
+            "_headers": merge_headers(context["headers"], {"Content-Type": "application/octet-stream", "If-None-Match": "*", "Content-SHA256": sha256_file(source)}),
             "_body": read_file(source),
             "timeout": 60
         })
-        if uploaded["ok"] != true { remove_tree(temp); return {"ok": false, "error": "Remote artifact upload failed for " + name + ": " + uploaded["error"], "status": uploaded["status"]} }
+        if uploaded["ok"] != true {
+            request(endpoint + "/runs/" + run_id + "/versions/" + version + "/staging", {"method": "DELETE", "_headers": context["headers"], "timeout": 30})
+            remove_tree(temp); return {"ok": false, "error": "Remote artifact upload failed for " + name + ": " + uploaded["error"], "status": uploaded["status"], "attempts": uploaded["attempts"]}
+        }
     }
     condition_headers := {"Content-Type": "application/json", "Idempotency-Key": metadata["manifestSha256"]}
     if expected_version == "" { condition_headers["If-None-Match"] := "*" } else { condition_headers["If-Match"] := expected_version }
     finalized := request(endpoint + "/runs/" + run_id + "/versions", {
         "method": "POST",
-        "_headers": condition_headers,
+        "_headers": merge_headers(context["headers"], condition_headers),
         "_body": to_json(metadata),
         "timeout": 60
     })
     remove_tree(temp)
     if finalized["ok"] != true { return {"ok": false, "error": "Remote artifact-store version finalization failed: " + finalized["error"], "status": finalized["status"]} }
-    return {"ok": true, "provider": "http-immutable", "version": version, "status": finalized["status"]}
+    return {"ok": true, "provider": "http-immutable", "version": version, "status": finalized["status"], "tenantId": context["tenantId"], "region": context["region"], "attempts": finalized["attempts"]}
 }
 
-export func pull_http(endpoint, run_id, version, storage_dir, trust_policy, target) {
+export func pull_http(store, run_id, version, storage_dir, trust_policy, target) {
     if safe_run_id(run_id) == false { return {"ok": false, "error": "Run ID is unsafe."} }
     if version != "" && lower_hex(version, 64) == false { return {"ok": false, "error": "Version must be a lowercase SHA-256 digest."} }
+    context := http_store_context(store)
+    if context["ok"] != true { return context }
+    endpoint := context["endpoint"]
     selected := version
     suffix := "/runs/" + run_id + "/versions/" + selected
     if selected == "" { suffix = "/runs/" + run_id + "/current" }
-    fetched := request(endpoint + suffix, {"method": "GET", "timeout": 60})
+    fetched := request(endpoint + suffix, {"method": "GET", "_headers": context["headers"], "timeout": 60})
     if fetched["ok"] != true { return {"ok": false, "error": "Remote artifact-store metadata fetch failed.", "status": fetched["status"]} }
     metadata := null
     try { metadata = parse_json(fetched["body"]) } except err { return {"ok": false, "error": "Remote artifact-store metadata is invalid JSON."} }
@@ -155,7 +196,7 @@ export func pull_http(endpoint, run_id, version, storage_dir, trust_policy, targ
     ensure_dir(join_path(temp, "artifacts"))
     write_json(join_path(temp, "bundle.json"), metadata)
     for name in dict_get(metadata, "artifacts", []) {
-        downloaded := request(endpoint + "/runs/" + run_id + "/versions/" + selected + "/artifacts/" + name, {"method": "GET", "timeout": 60})
+        downloaded := request(endpoint + "/runs/" + run_id + "/versions/" + selected + "/artifacts/" + name, {"method": "GET", "_headers": context["headers"], "timeout": 60})
         if downloaded["ok"] != true { remove_tree(temp); return {"ok": false, "error": "Remote artifact download failed for " + name + ".", "status": downloaded["status"]} }
         if utf8_byte_length(downloaded["body"]) > 67108864 { remove_tree(temp); return {"ok": false, "error": "Remote artifact exceeds the per-file safety limit: " + name} }
         destination := join_path(join_path(temp, "artifacts"), name)

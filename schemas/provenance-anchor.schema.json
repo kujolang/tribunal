@@ -1,0 +1,15 @@
+{
+  "title": "TribunalExternalProvenanceAnchor",
+  "type": "object",
+  "required": ["schemaVersion", "documentKind", "minimumSequence", "provenanceSha256", "documentSha256", "keyId", "anchoredAt"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "documentKind": { "enum": ["access-policy", "trust-policy", "governance-registry", "deletion-tombstone", "artifact-store-index"] },
+    "minimumSequence": { "type": "integer", "minimum": 1 },
+    "provenanceSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "documentSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "keyId": { "type": "string", "pattern": "^[a-f0-9]{32}$" },
+    "anchoredAt": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

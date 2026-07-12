@@ -1,0 +1,82 @@
+# Tribunal :: signed document provenance with externally anchored rollback resistance.
+
+from src.common import array_includes, dict_get, iso_now, read_json, write_json
+
+KINDS := ["access-policy", "trust-policy", "governance-registry", "deletion-tombstone", "artifact-store-index"]
+
+PROVENANCE_SCHEMA := {
+    "type": "object",
+    "required": ["schemaVersion", "documentKind", "documentSha256", "sequence", "previousProvenanceSha256", "keyId", "signedAt", "payloadSha256", "signature"],
+    "properties": {
+        "schemaVersion": {"const": "1.0.0"},
+        "documentKind": {"enum": ["access-policy", "trust-policy", "governance-registry", "deletion-tombstone", "artifact-store-index"]},
+        "documentSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "sequence": {"type": "integer", "minimum": 1},
+        "previousProvenanceSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "keyId": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
+        "signedAt": {"type": "string", "minLength": 1},
+        "payloadSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "signature": {"type": "string", "minLength": 40, "maxLength": 1048576}
+    },
+    "additionalProperties": false
+}
+
+func provenance_payload(record) {
+    return {"schemaVersion": record["schemaVersion"], "documentKind": record["documentKind"], "documentSha256": record["documentSha256"], "sequence": record["sequence"], "previousProvenanceSha256": record["previousProvenanceSha256"], "keyId": record["keyId"], "signedAt": record["signedAt"]}
+}
+
+func safe_key(path, private_key) {
+    if file_exists(path) == false || path_is_symlink(path) || file_size(path) > 1048576 { return false }
+    value := read_file(path)
+    if private_key { return contains(value, "PRIVATE KEY") == 1 }
+    return contains(value, "PUBLIC KEY") == 1 && contains(value, "PRIVATE KEY") == 0
+}
+
+export func verify_provenance(document_path, provenance_path, public_path, anchor_path) {
+    if file_exists(document_path) == false || path_is_symlink(document_path) || file_exists(provenance_path) == false || path_is_symlink(provenance_path) || safe_key(public_path, false) == false { return {"ok": false, "error": "Provenance inputs are missing or unsafe."} }
+    record := null
+    try { record = read_json(provenance_path) } except err { return {"ok": false, "error": "Provenance record is invalid JSON."} }
+    contract := json_schema_validate(record, PROVENANCE_SCHEMA)
+    if contract["valid"] != true || sha256(read_file(document_path)) != record["documentSha256"] { return {"ok": false, "error": "Document provenance contract or digest is invalid."} }
+    public_key := read_file(public_path)
+    if substring(sha256(public_key), 0, 32) != record["keyId"] { return {"ok": false, "error": "Provenance key fingerprint is invalid."} }
+    payload_text := to_json(provenance_payload(record))
+    if sha256(payload_text) != record["payloadSha256"] { return {"ok": false, "error": "Provenance payload digest is invalid."} }
+    valid := false
+    try { valid = rsa_verify(payload_text, record["signature"], public_key) } except err { valid = false }
+    if valid != true { return {"ok": false, "error": "Provenance signature is invalid."} }
+    if trim(anchor_path) != "" {
+        if file_exists(anchor_path) == false || path_is_symlink(anchor_path) { return {"ok": false, "error": "External provenance anchor is missing or unsafe."} }
+        anchor := null
+        try { anchor = read_json(anchor_path) } except err { return {"ok": false, "error": "External provenance anchor is invalid."} }
+        if dict_get(anchor, "schemaVersion", "") != "1.0.0" || dict_get(anchor, "documentKind", "") != record["documentKind"] || dict_get(anchor, "minimumSequence", 0) > record["sequence"] || dict_get(anchor, "provenanceSha256", "") != sha256(read_file(provenance_path)) || dict_get(anchor, "documentSha256", "") != record["documentSha256"] { return {"ok": false, "error": "Provenance is older than or inconsistent with the external anchor."} }
+    }
+    return {"ok": true, "documentKind": record["documentKind"], "sequence": record["sequence"], "documentSha256": record["documentSha256"], "keyId": record["keyId"], "rollbackProtected": trim(anchor_path) != ""}
+}
+
+export func sign_provenance(document_path, document_kind, sequence, previous_path, private_path, public_path, output_path, anchor_path) {
+    if array_includes(KINDS, document_kind) == false || type(sequence) != "int" || sequence < 1 { return {"ok": false, "error": "Provenance kind or sequence is invalid."} }
+    if file_exists(document_path) == false || path_is_symlink(document_path) || safe_key(private_path, true) == false || safe_key(public_path, false) == false { return {"ok": false, "error": "Provenance document or key input is unsafe."} }
+    if file_exists(output_path) || path_is_dir(output_path) || file_exists(anchor_path) || path_is_dir(anchor_path) { return {"ok": false, "error": "Provenance output and external anchor must be new paths."} }
+    public_key := read_file(public_path)
+    previous_digest := repeat("0", 64)
+    if sequence > 1 {
+        if file_exists(previous_path) == false || path_is_symlink(previous_path) { return {"ok": false, "error": "Previous provenance record is required."} }
+        prior := read_json(previous_path)
+        if dict_get(prior, "sequence", 0) != sequence - 1 || dict_get(prior, "documentKind", "") != document_kind { return {"ok": false, "error": "Previous provenance sequence or kind is inconsistent."} }
+        previous_digest = sha256(read_file(previous_path))
+    } else if trim(previous_path) != "" { return {"ok": false, "error": "Sequence one cannot reference prior provenance."} }
+    record := {"schemaVersion": "1.0.0", "documentKind": document_kind, "documentSha256": sha256(read_file(document_path)), "sequence": sequence, "previousProvenanceSha256": previous_digest, "keyId": substring(sha256(public_key), 0, 32), "signedAt": iso_now(), "payloadSha256": "", "signature": ""}
+    payload_text := to_json(provenance_payload(record))
+    record["payloadSha256"] := sha256(payload_text)
+    signature := null
+    try { signature = rsa_sign(payload_text, read_file(private_path)) } except err { signature = null }
+    if type(signature) != "string" { return {"ok": false, "error": "Unable to sign document provenance."} }
+    record["signature"] := signature
+    write_json(output_path, record)
+    anchor := {"schemaVersion": "1.0.0", "documentKind": document_kind, "minimumSequence": sequence, "provenanceSha256": sha256(read_file(output_path)), "documentSha256": record["documentSha256"], "keyId": record["keyId"], "anchoredAt": iso_now()}
+    write_json(anchor_path, anchor)
+    checked := verify_provenance(document_path, output_path, public_path, anchor_path)
+    if checked["ok"] != true { return checked }
+    return {"ok": true, "provenance": record, "anchor": anchor, "path": output_path, "anchorPath": anchor_path}
+}

@@ -1,0 +1,19 @@
+{
+  "title": "TribunalEncryptedBundleEnvelope",
+  "type": "object",
+  "required": ["schemaVersion", "runId", "createdAt", "cipher", "keyWrap", "manifestSha256", "signingKeyId", "wrappedKeys", "artifactCount", "artifacts", "legalHold"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "runId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "createdAt": { "type": "string", "minLength": 1 },
+    "cipher": { "const": "AES-256-GCM" },
+    "keyWrap": { "const": "RSA-OAEP" },
+    "manifestSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "signingKeyId": { "type": "string", "pattern": "^[a-f0-9]{32}$" },
+    "wrappedKeys": { "type": "array", "minItems": 1, "maxItems": 16, "items": { "type": "object" } },
+    "artifactCount": { "type": "integer", "minimum": 1, "maximum": 10000 },
+    "artifacts": { "type": "array", "minItems": 1, "maxItems": 10000, "items": { "type": "object" } },
+    "legalHold": { "type": "boolean" }
+  },
+  "additionalProperties": false
+}

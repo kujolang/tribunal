@@ -41,7 +41,10 @@
   "artifact_store": {
     "provider": "local-immutable",
     "root": "./.tribunal/artifact-store",
-    "endpoint": ""
+    "endpoint": "",
+    "tenant_id": "",
+    "bearer_token_file": "",
+    "region": ""
   },
   "telemetry": {
     "collector": "jsonl",

@@ -1,0 +1,39 @@
+# Tribunal :: versioned cryptographic algorithm registry and migration gates.
+
+from src.common import array_includes, dict_get
+
+export func algorithm_registry() {
+    return {
+        "schemaVersion": "1.0.0",
+        "algorithms": [
+            {"id": "RSA-PKCS1v15-SHA256", "status": "legacy-write", "runtimeAvailable": true, "minimumEnvelope": "1.0.0", "maximumEnvelope": "1.2.0", "keyTypes": ["RSA-2048", "RSA-4096"], "verificationPolicy": "accept-trusted-existing-and-new"},
+            {"id": "RSA-PSS-SHA256", "status": "migration-target", "runtimeAvailable": false, "minimumEnvelope": "2.0.0", "maximumEnvelope": "2.0.0", "keyTypes": ["RSA-3072", "RSA-4096"], "verificationPolicy": "reject-until-runtime-and-policy-enabled"},
+            {"id": "Ed25519", "status": "migration-target", "runtimeAvailable": false, "minimumEnvelope": "2.0.0", "maximumEnvelope": "2.0.0", "keyTypes": ["Ed25519"], "verificationPolicy": "reject-until-runtime-and-policy-enabled"}
+        ]
+    }
+}
+
+export func algorithm_profile(id) {
+    for entry in algorithm_registry()["algorithms"] { if entry["id"] == id { return entry } }
+    return null
+}
+
+export func algorithm_gate(id, operation, envelope_version, explicitly_enabled) {
+    profile := algorithm_profile(id)
+    if profile == null { return {"ok": false, "error": "Unknown signature algorithm: " + id} }
+    if array_includes(["sign", "verify"], operation) == false { return {"ok": false, "error": "Unknown algorithm operation."} }
+    if envelope_version < profile["minimumEnvelope"] || envelope_version > profile["maximumEnvelope"] { return {"ok": false, "error": "Algorithm is not valid for signature envelope " + envelope_version + "."} }
+    if profile["runtimeAvailable"] != true { return {"ok": false, "error": "Algorithm is defined for migration but unavailable in this Kujo runtime."} }
+    if operation == "sign" && profile["status"] == "migration-target" && explicitly_enabled != true { return {"ok": false, "error": "Migration algorithm requires explicit policy enablement."} }
+    return {"ok": true, "profile": profile, "operation": operation}
+}
+
+export func migration_readiness() {
+    registry := algorithm_registry()
+    mut ready := []
+    mut blocked := []
+    for entry in registry["algorithms"] {
+        if entry["runtimeAvailable"] { ready = push(ready, entry["id"]) } else { blocked = push(blocked, entry["id"]) }
+    }
+    return {"schemaVersion": registry["schemaVersion"], "writeAlgorithms": ready, "runtimeBlocked": blocked, "legacyVerificationEnvelopes": ["1.0.0", "1.1.0", "1.2.0"], "nextEnvelope": "2.0.0"}
+}

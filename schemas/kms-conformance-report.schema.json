@@ -1,0 +1,20 @@
+{
+  "title": "Tribunal managed-signing conformance report",
+  "type": "object",
+  "required": ["schemaVersion", "generatedAt", "provider", "protocol", "runId", "certified", "checks", "evidence"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "generatedAt": { "type": "string", "minLength": 1 },
+    "provider": { "const": "vault-transit" },
+    "protocol": { "const": "vault-transit-jwt-v1" },
+    "runId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "certified": { "type": "boolean" },
+    "checks": {
+      "type": "object",
+      "required": ["workloadIdentity", "auditEvidence", "denial", "boundedRetry", "rotation", "noPrivateMaterial", "integrityIndependent"],
+      "additionalProperties": { "type": "boolean" }
+    },
+    "evidence": { "type": "object" }
+  },
+  "additionalProperties": false
+}

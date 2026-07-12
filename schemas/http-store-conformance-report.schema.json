@@ -1,0 +1,18 @@
+{
+  "title": "TribunalAuthenticatedHttpStoreConformanceReport",
+  "type": "object",
+  "required": ["schemaVersion", "generatedAt", "provider", "runId", "version", "tenantId", "primaryRegion", "secondaryRegion", "certified", "checks"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "generatedAt": { "type": "string", "minLength": 1 },
+    "provider": { "const": "authenticated-http-immutable" },
+    "runId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "version": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "tenantId": { "type": "string", "minLength": 1 },
+    "primaryRegion": { "type": "string", "minLength": 1 },
+    "secondaryRegion": { "type": "string", "minLength": 1 },
+    "certified": { "type": "boolean" },
+    "checks": { "type": "object" }
+  },
+  "additionalProperties": false
+}

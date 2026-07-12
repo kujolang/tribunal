@@ -1,0 +1,82 @@
+# Tribunal :: live managed-signing certification harness.
+
+from src.common import dict_get, ensure_dir, iso_now, remove_tree, write_json
+from src.config import default_config
+from src.integrity import verify
+from src.signing_provider import load_signing_provider, seal_with_provider
+from src.tribunal import review
+
+home := path_absolute(env_or("TRIBUNAL_HOME", "."))
+primary_path := env_or("TRIBUNAL_KMS_PRIMARY_CONFIG", "")
+denied_path := env_or("TRIBUNAL_KMS_DENIED_CONFIG", "")
+rotated_path := env_or("TRIBUNAL_KMS_ROTATED_CONFIG", "")
+output_path := env_or("TRIBUNAL_KMS_REPORT", "")
+if primary_path == "" || denied_path == "" || rotated_path == "" || output_path == "" {
+    print("TRIBUNAL_KMS_PRIMARY_CONFIG, TRIBUNAL_KMS_DENIED_CONFIG, TRIBUNAL_KMS_ROTATED_CONFIG, and TRIBUNAL_KMS_REPORT are required.")
+    exit(2)
+}
+
+primary := load_signing_provider(primary_path)
+denied := load_signing_provider(denied_path)
+rotated := load_signing_provider(rotated_path)
+if primary["ok"] != true || denied["ok"] != true || rotated["ok"] != true { print("Managed-signing certification configuration is invalid."); exit(2) }
+if dict_get(primary["config"], "protocol", "") != "vault-transit-jwt-v1" || dict_get(denied["config"], "protocol", "") != "vault-transit-jwt-v1" || dict_get(rotated["config"], "protocol", "") != "vault-transit-jwt-v1" { print("Certification requires three Vault Transit workload-identity profiles."); exit(2) }
+
+root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-kms-conformance-" + to_string(current_timestamp()))
+storage := join_path(root, "runs")
+docket := join_path(root, "docket.md")
+ensure_dir(root)
+write_file(docket, "# Managed signing certification\n\n## Scope\n\nProve workload identity, denial, retry, audit, rotation, and private-key non-export.\n")
+config := default_config()
+tribunal := config["tribunal"]; tribunal["storage_dir"] := storage; config["tribunal"] := tribunal
+ai := config["kujo_ai"]; ai["kujo_bin"] := path_absolute(env_or("KUJO_BIN", join_path(home, "../kujo/target/release/kujo"))); config["kujo_ai"] := ai
+run := review(config, docket, "executioner-only", "", "")
+if run["ok"] != true { remove_tree(root); print("Unable to create certification evidence run."); exit(1) }
+
+primary_seal := seal_with_provider(storage, run["runId"], primary["config"])
+primary_public := join_path(root, "primary-public.pem")
+primary_verified := {"ok": false}
+if primary_seal["ok"] == true { write_file(primary_public, primary_seal["publicKey"]); primary_verified = verify(storage, run["runId"], primary_public) }
+denial := seal_with_provider(storage, run["runId"], denied["config"])
+after_denial := verify(storage, run["runId"], primary_public)
+rotation := seal_with_provider(storage, run["runId"], rotated["config"])
+rotated_public := join_path(root, "rotated-public.pem")
+rotated_verified := {"ok": false}
+if rotation["ok"] == true { write_file(rotated_public, rotation["publicKey"]); rotated_verified = verify(storage, run["runId"], rotated_public) }
+old_after_rotation := verify(storage, run["runId"], primary_public)
+
+primary_evidence := dict_get(primary_seal, "providerEvidence", {})
+rotation_evidence := dict_get(rotation, "providerEvidence", {})
+denial_evidence := dict_get(denial, "providerEvidence", {})
+workload_identity_ok := primary_seal["ok"] == true && trim(dict_get(primary_evidence, "workloadSubject", "")) != ""
+audit_evidence_ok := trim(dict_get(primary_evidence, "auditId", "")) != "" && trim(dict_get(rotation_evidence, "auditId", "")) != ""
+denial_ok := denial["ok"] == false && after_denial["ok"] == true && dict_get(after_denial, "signature", "") == "verified"
+bounded_retry_ok := dict_get(denial_evidence, "attempts", 0) >= 1 && dict_get(denial_evidence, "attempts", 0) <= dict_get(denied["config"], "maxAttempts", 3)
+primary_key_id := dict_get(dict_get(primary_seal, "signature", {}), "keyId", "")
+rotated_key_id := dict_get(dict_get(rotation, "signature", {}), "keyId", "")
+rotation_ok := rotation["ok"] == true && dict_get(rotated_verified, "signature", "") == "verified" && old_after_rotation["ok"] == false && primary_key_id != rotated_key_id
+no_private_material_ok := primary_seal["ok"] == true && rotation["ok"] == true
+if no_private_material_ok { no_private_material_ok = contains(primary_seal["publicKey"], "PRIVATE KEY") == 0 && contains(rotation["publicKey"], "PRIVATE KEY") == 0 }
+integrity_independent_ok := primary_verified["ok"] == true && after_denial["ok"] == true && rotated_verified["ok"] == true
+checks := {
+    "workloadIdentity": workload_identity_ok,
+    "auditEvidence": audit_evidence_ok,
+    "denial": denial_ok,
+    "boundedRetry": bounded_retry_ok,
+    "rotation": rotation_ok,
+    "noPrivateMaterial": no_private_material_ok,
+    "integrityIndependent": integrity_independent_ok
+}
+certified := true
+for name in keys(checks) { if checks[name] != true { certified = false } }
+report := {
+    "schemaVersion": "1.0.0", "generatedAt": iso_now(), "provider": "vault-transit", "protocol": "vault-transit-jwt-v1", "runId": run["runId"], "certified": certified,
+    "checks": checks,
+    "evidence": {"primary": primary_evidence, "denial": denial_evidence, "rotation": rotation_evidence, "primaryKeyId": primary_key_id, "rotatedKeyId": rotated_key_id}
+}
+ensure_dir(dirname(output_path))
+write_json(output_path, report)
+remove_tree(root)
+print(to_json_pretty(report))
+if certified { exit(0) }
+exit(1)

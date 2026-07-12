@@ -1,0 +1,60 @@
+# Tribunal :: live authenticated immutable HTTP-store certification harness.
+
+from src.artifact_store import publish_http, pull_http
+from src.common import dict_get, ensure_dir, iso_now, read_json, remove_tree, write_json
+from src.config import default_config, validate_config
+from src.policy import load_trust_policy
+
+func load_profile(path) {
+    if file_exists(path) == false || path_is_symlink(path) { return {"ok": false, "error": "Store profile is missing or unsafe."} }
+    store := read_json(path)
+    config := default_config(); config["artifact_store"] := store
+    error := validate_config(config)
+    if error != "" || dict_get(store, "provider", "") != "http-immutable" { return {"ok": false, "error": "Store profile is invalid: " + error} }
+    return {"ok": true, "store": store}
+}
+
+storage := env_or("TRIBUNAL_STORE_SOURCE_STORAGE", "")
+run_id := env_or("TRIBUNAL_STORE_RUN_ID", "")
+trust_path := env_or("TRIBUNAL_STORE_TRUST_POLICY", "")
+report_path := env_or("TRIBUNAL_STORE_REPORT", "")
+profile_names := ["PRIMARY", "OTHER_TENANT", "PARTIAL", "CORRUPT", "BACKUP", "REGIONAL_FAILURE", "SECONDARY"]
+mut profiles := {}
+for name in profile_names {
+    loaded := load_profile(env_or("TRIBUNAL_STORE_" + name + "_CONFIG", ""))
+    if loaded["ok"] != true { print(loaded["error"]); exit(2) }
+    profiles[name] := loaded["store"]
+}
+trust := load_trust_policy(trust_path)
+if storage == "" || run_id == "" || report_path == "" || trust["ok"] != true { print("Source storage, signed run, trust policy, and report path are required."); exit(2) }
+
+root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-http-store-conformance-" + uuid_v4())
+ensure_dir(root)
+published := publish_http(storage, run_id, profiles["PRIMARY"], "")
+version := dict_get(published, "version", "")
+race := publish_http(storage, run_id, profiles["PRIMARY"], "")
+other_tenant := pull_http(profiles["OTHER_TENANT"], run_id, version, join_path(root, "other-tenant"), trust["policy"], "store-pull")
+partial := publish_http(storage, run_id, profiles["PARTIAL"], "")
+corrupt := pull_http(profiles["CORRUPT"], run_id, version, join_path(root, "corrupt"), trust["policy"], "store-pull")
+backup := pull_http(profiles["BACKUP"], run_id, version, join_path(root, "backup"), trust["policy"], "store-pull")
+regional_failure := pull_http(profiles["REGIONAL_FAILURE"], run_id, version, join_path(root, "failed-region"), trust["policy"], "store-pull")
+secondary := pull_http(profiles["SECONDARY"], run_id, version, join_path(root, "secondary"), trust["policy"], "store-pull")
+
+authenticated_publication_ok := published["ok"] == true && dict_get(published, "tenantId", "") == profiles["PRIMARY"]["tenant_id"]
+partial_upload_ok := partial["ok"] == false && dict_get(partial, "attempts", 0) == 3
+regional_failure_ok := regional_failure["ok"] == false && secondary["ok"] == true
+checks := {
+    "authenticatedPublication": authenticated_publication_ok,
+    "conditionalWriteRace": race["ok"] == false,
+    "tenantIsolation": other_tenant["ok"] == false,
+    "partialUploadCleanup": partial_upload_ok,
+    "corruptionRejected": corrupt["ok"] == false,
+    "backupRestore": backup["ok"] == true,
+    "regionalFailure": regional_failure_ok
+}
+certified := true
+for name in keys(checks) { if checks[name] != true { certified = false } }
+report := {"schemaVersion": "1.0.0", "generatedAt": iso_now(), "provider": "authenticated-http-immutable", "runId": run_id, "version": version, "tenantId": dict_get(profiles["PRIMARY"], "tenant_id", ""), "primaryRegion": dict_get(profiles["PRIMARY"], "region", ""), "secondaryRegion": dict_get(profiles["SECONDARY"], "region", ""), "certified": certified, "checks": checks}
+ensure_dir(dirname(report_path)); write_json(report_path, report); remove_tree(root); print(to_json_pretty(report))
+if certified { exit(0) }
+exit(1)

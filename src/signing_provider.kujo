@@ -1,6 +1,6 @@
 # Tribunal :: external HSM/KMS signing-provider contract
 
-from src.common import dict_get, last_json_line, parent_dir, read_json, redact, safe_process_env, write_json
+from src.common import dict_get, last_json_line, parent_dir, read_json, redact, safe_process_env, safe_relative_path, safe_run_id, write_json
 from src.integrity import begin_seal_transaction, finish_seal_transaction, rollback_seal_transaction, seal, signature_payload_for, verify
 from src.storage import artifact_path
 
@@ -13,7 +13,33 @@ PROVIDER_SCHEMA := {
         "command": {"type": "string", "minLength": 1},
         "keyReference": {"type": "string", "minLength": 1},
         "kujoBin": {"type": "string", "minLength": 1},
-        "timeoutMs": {"type": "integer", "minimum": 1000, "maximum": 120000}
+        "timeoutMs": {"type": "integer", "minimum": 1000, "maximum": 120000},
+        "protocol": {"enum": ["command-v1", "vault-transit-jwt-v1"]},
+        "endpoint": {"type": "string"},
+        "jwtRole": {"type": "string"},
+        "jwtAuthPath": {"type": "string"},
+        "transitPath": {"type": "string"},
+        "namespace": {"type": "string"},
+        "audience": {"type": "string"},
+        "maxAttempts": {"type": "integer", "minimum": 1, "maximum": 5},
+        "baseDelayMs": {"type": "integer", "minimum": 10, "maximum": 5000}
+    },
+    "additionalProperties": false
+}
+
+PROVIDER_RESPONSE_SCHEMA := {
+    "type": "object",
+    "required": ["ok", "algorithm", "keyId", "publicKey", "signature"],
+    "properties": {
+        "ok": {"const": true},
+        "algorithm": {"const": "RSA-PKCS1v15-SHA256"},
+        "keyId": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
+        "publicKey": {"type": "string", "minLength": 40, "maxLength": 1048576},
+        "signature": {"type": "string", "minLength": 40, "maxLength": 1048576},
+        "attempts": {"type": "integer", "minimum": 1, "maximum": 15},
+        "keyVersion": {"type": "string", "maxLength": 128},
+        "auditId": {"type": "string", "maxLength": 512},
+        "workloadSubject": {"type": "string", "maxLength": 512}
     },
     "additionalProperties": false
 }
@@ -26,6 +52,15 @@ export func load_signing_provider(path) {
     try { config = read_json(path) } except err { return {"ok": false, "error": "Signing-provider config is invalid JSON."} }
     checked := json_schema_validate(config, PROVIDER_SCHEMA)
     if checked["valid"] != true { return {"ok": false, "error": "Signing-provider config failed validation: " + to_json(checked["errors"])} }
+    protocol := dict_get(config, "protocol", "command-v1")
+    if protocol == "vault-transit-jwt-v1" {
+        endpoint := dict_get(config, "endpoint", "")
+        if starts_with(endpoint, "https://") == false && starts_with(endpoint, "http://127.0.0.1") == false && starts_with(endpoint, "http://localhost") == false && starts_with(endpoint, "http://[::1]") == false { return {"ok": false, "error": "Vault Transit endpoint must use HTTPS outside loopback development."} }
+        if contains(endpoint, "@") || contains(endpoint, "?") || contains(endpoint, "#") { return {"ok": false, "error": "Vault Transit endpoint must be a credential-free base URL."} }
+        for field in ["jwtRole", "audience"] { if trim(dict_get(config, field, "")) == "" { return {"ok": false, "error": "Vault Transit signing requires " + field + "."} } }
+        if trim(dict_get(config, "jwtAuthPath", "jwt")) == "" || trim(dict_get(config, "transitPath", "transit")) == "" { return {"ok": false, "error": "Vault auth and transit paths are required."} }
+        if safe_relative_path(dict_get(config, "jwtAuthPath", "jwt")) == false || safe_relative_path(dict_get(config, "transitPath", "transit")) == false || safe_run_id(config["keyReference"]) == false { return {"ok": false, "error": "Vault mount paths or key reference are unsafe."} }
+    }
     base := parent_dir(path_absolute(path))
     if starts_with(config["command"], "/") == false { config["command"] := join_path(base, config["command"]) }
     if starts_with(config["kujoBin"], "/") == false { config["kujoBin"] := join_path(base, config["kujoBin"]) }
@@ -37,7 +72,7 @@ export func load_signing_provider(path) {
 func provider_environment(request) {
     values := {"TRIBUNAL_SIGNING_REQUEST": to_json(request)}
     # Federated workload identity only. Long-lived cloud secret variables are deliberately excluded.
-    for name in ["AWS_ROLE_ARN", "AWS_WEB_IDENTITY_TOKEN_FILE", "AWS_REGION", "AWS_DEFAULT_REGION", "AZURE_CLIENT_ID", "AZURE_TENANT_ID", "AZURE_FEDERATED_TOKEN_FILE", "GOOGLE_APPLICATION_CREDENTIALS", "ACTIONS_ID_TOKEN_REQUEST_URL", "ACTIONS_ID_TOKEN_REQUEST_TOKEN"] {
+    for name in ["TRIBUNAL_WORKLOAD_IDENTITY_TOKEN_FILE", "AWS_ROLE_ARN", "AWS_WEB_IDENTITY_TOKEN_FILE", "AWS_REGION", "AWS_DEFAULT_REGION", "AZURE_CLIENT_ID", "AZURE_TENANT_ID", "AZURE_FEDERATED_TOKEN_FILE", "GOOGLE_APPLICATION_CREDENTIALS", "ACTIONS_ID_TOKEN_REQUEST_URL", "ACTIONS_ID_TOKEN_REQUEST_TOKEN"] {
         value := env_or(name, "")
         if value != "" { values[name] := value }
     }
@@ -64,6 +99,9 @@ export func seal_with_provider(storage_dir, run_id, provider_config) {
         "signedAt": signed_at,
         "keyReference": provider_config["keyReference"]
     }
+    for field in ["protocol", "endpoint", "jwtRole", "jwtAuthPath", "transitPath", "namespace", "audience", "maxAttempts", "baseDelayMs"] {
+        if has_key(provider_config, field) == 1 { request[field] := provider_config[field] }
+    }
     if file_exists(provider_config["kujoBin"]) == false || file_exists(provider_config["command"]) == false { return {"ok": false, "error": "Signing provider runtime or command is unavailable."} }
     kujo_bin := path_absolute(provider_config["kujoBin"])
     command := path_absolute(provider_config["command"])
@@ -77,8 +115,9 @@ export func seal_with_provider(storage_dir, run_id, provider_config) {
     if line == "" { return {"ok": false, "error": "Signing provider returned no JSON: " + redact(proc.stderr)} }
     response := null
     try { response = parse_json(line) } except err { return {"ok": false, "error": "Signing provider returned invalid JSON."} }
-    if dict_get(response, "ok", false) != true { return {"ok": false, "error": "Signing provider failed: " + redact(dict_get(response, "error", "unknown error"))} }
-    if dict_get(response, "algorithm", "") != "RSA-PKCS1v15-SHA256" { return {"ok": false, "error": "Signing provider returned an unsupported algorithm."} }
+    if dict_get(response, "ok", false) != true { return {"ok": false, "error": "Signing provider failed: " + redact(dict_get(response, "error", "unknown error")), "providerEvidence": {"attempts": dict_get(response, "attempts", 0)}} }
+    response_contract := json_schema_validate(response, PROVIDER_RESPONSE_SCHEMA)
+    if response_contract["valid"] != true { return {"ok": false, "error": "Signing provider response failed validation."} }
     public_key := dict_get(response, "publicKey", "")
     if contains(public_key, "PRIVATE KEY") { return {"ok": false, "error": "Signing provider attempted to return private key material."} }
     if contains(public_key, "PUBLIC KEY") == false { return {"ok": false, "error": "Signing provider returned no usable public key."} }
@@ -106,5 +145,11 @@ export func seal_with_provider(storage_dir, run_id, provider_config) {
     if transaction["ok"] != true { return transaction }
     try { write_json(artifact_path(storage_dir, run_id, "signature.json"), envelope) } except err { rollback_seal_transaction(storage_dir, run_id); return {"ok": false, "error": "Unable to persist external signature."} }
     finish_seal_transaction(storage_dir, run_id)
-    return {"ok": true, "manifestSha256": manifest_hash, "signature": envelope, "publicKey": public_key}
+    provider_evidence := {
+        "attempts": dict_get(response, "attempts", 1),
+        "keyVersion": dict_get(response, "keyVersion", ""),
+        "auditId": dict_get(response, "auditId", ""),
+        "workloadSubject": dict_get(response, "workloadSubject", "")
+    }
+    return {"ok": true, "manifestSha256": manifest_hash, "signature": envelope, "publicKey": public_key, "providerEvidence": provider_evidence}
 }

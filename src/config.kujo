@@ -1,6 +1,6 @@
 # Tribunal :: JSON configuration with Kujo-first invariants
 
-from src.common import dict_get, truthy, array_includes, path_within
+from src.common import dict_get, truthy, array_includes, path_within, safe_run_id
 from src.catalog import panel
 
 export func default_config() {
@@ -48,7 +48,10 @@ export func default_config() {
         "artifact_store": {
             "provider": "local-immutable",
             "root": "./.tribunal/artifact-store",
-            "endpoint": ""
+            "endpoint": "",
+            "tenant_id": "",
+            "bearer_token_file": "",
+            "region": ""
         },
         "telemetry": {
             "collector": "jsonl",
@@ -140,7 +143,7 @@ export func validate_config(config) {
     if unknown != "" { return "Unknown authorization config field: " + unknown }
     unknown = unknown_key(governance, ["retention_class", "retention_days", "legal_hold", "owner"])
     if unknown != "" { return "Unknown governance config field: " + unknown }
-    unknown = unknown_key(artifact_store, ["provider", "root", "endpoint"])
+    unknown = unknown_key(artifact_store, ["provider", "root", "endpoint", "tenant_id", "bearer_token_file", "region"])
     if unknown != "" { return "Unknown artifact_store config field: " + unknown }
     unknown = unknown_key(telemetry, ["collector", "destination"])
     if unknown != "" { return "Unknown telemetry config field: " + unknown }
@@ -172,9 +175,11 @@ export func validate_config(config) {
     if valid_positive_int(dict_get(governance, "retention_days", 0), 1, 36500) == false { return "governance.retention_days must be between 1 and 36500." }
     if type(dict_get(governance, "legal_hold", null)) != "bool" || type(dict_get(governance, "owner", null)) != "string" || trim(dict_get(governance, "owner", "")) == "" { return "Governance legal_hold and owner fields are invalid." }
     if array_includes(["local-immutable", "http-immutable"], dict_get(artifact_store, "provider", "")) == false { return "artifact_store.provider is invalid." }
-    if type(dict_get(artifact_store, "root", null)) != "string" || type(dict_get(artifact_store, "endpoint", null)) != "string" { return "Artifact-store root and endpoint must be strings." }
+    if type(dict_get(artifact_store, "root", null)) != "string" || type(dict_get(artifact_store, "endpoint", null)) != "string" || type(dict_get(artifact_store, "tenant_id", null)) != "string" || type(dict_get(artifact_store, "bearer_token_file", null)) != "string" || type(dict_get(artifact_store, "region", null)) != "string" { return "Artifact-store root, endpoint, tenant, token-file, and region fields must be strings." }
     if artifact_store["provider"] == "local-immutable" && trim(artifact_store["root"]) == "" { return "artifact_store.root is required for local-immutable." }
     if artifact_store["provider"] == "http-immutable" && secure_http_url(artifact_store["endpoint"]) == false { return "artifact_store.endpoint must use HTTPS (plain HTTP is allowed only for loopback development)." }
+    if artifact_store["provider"] == "http-immutable" && (trim(artifact_store["tenant_id"]) == "" || trim(artifact_store["bearer_token_file"]) == "" || trim(artifact_store["region"]) == "") { return "Authenticated HTTP stores require artifact_store.tenant_id, bearer_token_file, and region." }
+    if artifact_store["provider"] == "http-immutable" && (safe_run_id(artifact_store["tenant_id"]) == false || safe_run_id(artifact_store["region"]) == false) { return "Artifact-store tenant_id or region is unsafe." }
     if contains(artifact_store["endpoint"], "@") { return "Artifact-store endpoint must not embed credentials." }
     if artifact_store["provider"] == "http-immutable" && (contains(artifact_store["endpoint"], "?") || contains(artifact_store["endpoint"], "#")) { return "artifact_store.endpoint must be a base URL without query or fragment." }
     if artifact_store["provider"] == "local-immutable" && path_within(tribunal["storage_dir"], artifact_store["root"]) { return "artifact_store.root must be outside tribunal.storage_dir." }

@@ -55,7 +55,7 @@ credential_url_config := default_config(); credential_store := credential_url_co
 check(validate_config(credential_url_config) != "", "remote endpoint configuration rejects embedded credentials")
 insecure_url_config := default_config(); insecure_store := insecure_url_config["artifact_store"]; insecure_store["provider"] := "http-immutable"; insecure_store["endpoint"] := "http://artifact-store.example.test"; insecure_url_config["artifact_store"] := insecure_store
 check(validate_config(insecure_url_config) != "", "remote endpoint configuration requires TLS outside loopback development")
-loopback_url_config := default_config(); loopback_store := loopback_url_config["artifact_store"]; loopback_store["provider"] := "http-immutable"; loopback_store["endpoint"] := "http://127.0.0.1:8080"; loopback_url_config["artifact_store"] := loopback_store
+loopback_url_config := default_config(); loopback_store := loopback_url_config["artifact_store"]; loopback_store["provider"] := "http-immutable"; loopback_store["endpoint"] := "http://127.0.0.1:8080"; loopback_store["tenant_id"] := "test-tenant"; loopback_store["bearer_token_file"] := "/tmp/tribunal-test-token"; loopback_store["region"] := "test-region"; loopback_url_config["artifact_store"] := loopback_store
 check(validate_config(loopback_url_config) == "", "loopback HTTP remains available for local adapter development")
 inside_output_config := default_config(); inside_telemetry := inside_output_config["telemetry"]; inside_telemetry["destination"] := "./tribunal-runs/run/telemetry.jsonl"; inside_output_config["telemetry"] := inside_telemetry
 check(validate_config(inside_output_config) != "", "external telemetry cannot be configured inside sealed run storage")

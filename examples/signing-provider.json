@@ -1,8 +1,17 @@
 {
   "schemaVersion": "1.0.0",
-  "provider": "external-kujo-hsm-adapter",
-  "command": "../tests/fixtures/external_signer.kujo",
-  "keyReference": "replace-with-kms-or-hsm-key-reference",
+  "provider": "vault-transit",
+  "protocol": "vault-transit-jwt-v1",
+  "command": "../src/bridges/vault_transit_signing_adapter.kujo",
+  "keyReference": "tribunal-signing",
   "kujoBin": "../../kujo/target/release/kujo",
-  "timeoutMs": 60000
+  "timeoutMs": 60000,
+  "endpoint": "https://vault.example.com:8200",
+  "jwtRole": "tribunal",
+  "jwtAuthPath": "jwt",
+  "transitPath": "transit",
+  "namespace": "",
+  "audience": "https://vault.example.com/tribunal",
+  "maxAttempts": 3,
+  "baseDelayMs": 250
 }

@@ -1,0 +1,158 @@
+# Tribunal :: HashiCorp Vault Transit signing adapter with JWT workload identity.
+#
+# This adapter never receives or returns private key material. It exchanges a
+# short-lived workload JWT for a Vault token, reads the active RSA public key,
+# and asks Transit to sign Tribunal's canonical v1.2 payload.
+
+from src.common import dict_get, redact, safe_relative_path, safe_run_id
+from src.integrity import signature_payload_for
+
+func response_status(value) { return dict_get(value, "_status", dict_get(value, "status", 0)) }
+func response_body(value) { return dict_get(value, "_body", dict_get(value, "body", "")) }
+
+func http_call(url, method, headers, body, timeout_seconds) {
+    result := null
+    try {
+        result = http_request(url, {"method": method, "_headers": headers, "_body": body, "timeout": timeout_seconds})
+    } except err { return {"ok": false, "status": 0, "body": "", "error": redact(err)} }
+    match result {
+        case Ok(response): {
+            status := response_status(response)
+            successful := status >= 200 && status < 300
+            return {"ok": successful, "status": status, "body": response_body(response), "error": ""}
+        }
+        case Err(error): { return {"ok": false, "status": 0, "body": "", "error": redact(error)} }
+    }
+}
+
+func retryable(status) {
+    return status == 0 || status == 429 || status == 500 || status == 502 || status == 503 || status == 504
+}
+
+func request_with_retry(url, method, headers, body, max_attempts, base_delay_ms, timeout_seconds) {
+    mut attempt := 1
+    mut last := {"ok": false, "status": 0, "body": "", "error": "request failed", "attempts": 0}
+    while attempt <= max_attempts {
+        last = http_call(url, method, headers, body, timeout_seconds)
+        last["attempts"] := attempt
+        if last["ok"] == true || retryable(last["status"]) == false { return last }
+        if attempt < max_attempts { sleep(base_delay_ms * attempt) }
+        attempt = attempt + 1
+    }
+    return last
+}
+
+func read_token_file(path) {
+    if trim(path) == "" || file_exists(path) == false || path_is_symlink(path) || file_size(path) > 1048576 { return {"ok": false, "error": "Workload identity token file is missing or unsafe."} }
+    token := trim(read_file(path))
+    if token == "" || len(token) > 1048576 { return {"ok": false, "error": "Workload identity token is empty or oversized."} }
+    return {"ok": true, "token": token, "source": "file"}
+}
+
+func workload_identity(audience, timeout_seconds) {
+    for name in ["TRIBUNAL_WORKLOAD_IDENTITY_TOKEN_FILE", "AWS_WEB_IDENTITY_TOKEN_FILE", "AZURE_FEDERATED_TOKEN_FILE"] {
+        path := env_or(name, "")
+        if path != "" { return read_token_file(path) }
+    }
+    request_url := env_or("ACTIONS_ID_TOKEN_REQUEST_URL", "")
+    request_token := env_or("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "")
+    if request_url != "" && request_token != "" {
+        separator := "?"
+        if contains(request_url, "?") { separator = "&" }
+        fetched := http_call(request_url + separator + "audience=" + audience, "GET", {"Authorization": "Bearer " + request_token}, "", timeout_seconds)
+        if fetched["ok"] != true { return {"ok": false, "error": "GitHub Actions workload identity request failed with HTTP " + to_string(fetched["status"]) + "."} }
+        parsed := null
+        try { parsed = parse_json(fetched["body"]) } except err { parsed = null }
+        token := dict_get(parsed, "value", "")
+        if token == "" || len(token) > 1048576 { return {"ok": false, "error": "GitHub Actions workload identity response is invalid."} }
+        return {"ok": true, "token": token, "source": "github-actions-oidc"}
+    }
+    return {"ok": false, "error": "No supported workload identity source is available."}
+}
+
+func vault_headers(token, namespace) {
+    headers := {"Content-Type": "application/json", "X-Vault-Token": token}
+    if trim(namespace) != "" { headers["X-Vault-Namespace"] := namespace }
+    return headers
+}
+
+func fail(message, attempts) {
+    print(to_json({"ok": false, "error": message, "attempts": attempts}))
+    exit(1)
+}
+
+request_text := env_or("TRIBUNAL_SIGNING_REQUEST", "")
+if request_text == "" || len(request_text) > 1048576 { fail("Missing or oversized Tribunal signing request.", 0) }
+request := null
+try { request = parse_json(request_text) } except err { fail("Tribunal signing request is invalid JSON.", 0) }
+if dict_get(request, "protocol", "") != "vault-transit-jwt-v1" || dict_get(request, "operation", "") != "sign" || dict_get(request, "algorithm", "") != "RSA-PKCS1v15-SHA256" { fail("Unsupported signing request contract.", 0) }
+
+endpoint := trim(dict_get(request, "endpoint", ""))
+role := trim(dict_get(request, "jwtRole", ""))
+auth_path := trim(dict_get(request, "jwtAuthPath", "jwt"))
+transit_path := trim(dict_get(request, "transitPath", "transit"))
+namespace := trim(dict_get(request, "namespace", ""))
+audience := trim(dict_get(request, "audience", ""))
+key_name := trim(dict_get(request, "keyReference", ""))
+max_attempts := dict_get(request, "maxAttempts", 3)
+base_delay_ms := dict_get(request, "baseDelayMs", 250)
+timeout_seconds := 30
+if endpoint == "" || role == "" || auth_path == "" || transit_path == "" || audience == "" || key_name == "" { fail("Vault Transit signing request is incomplete.", 0) }
+if (starts_with(endpoint, "https://") == false && starts_with(endpoint, "http://127.0.0.1") == false && starts_with(endpoint, "http://localhost") == false && starts_with(endpoint, "http://[::1]") == false) || contains(endpoint, "@") || contains(endpoint, "?") || contains(endpoint, "#") { fail("Vault Transit endpoint is unsafe.", 0) }
+if safe_relative_path(auth_path) == false || safe_relative_path(transit_path) == false || safe_run_id(key_name) == false || contains(role, "\n") || contains(role, "\r") || contains(namespace, "\n") || contains(namespace, "\r") || contains(audience, "&") || contains(audience, "#") { fail("Vault Transit identity or path fields are unsafe.", 0) }
+if type(max_attempts) != "int" || max_attempts < 1 || max_attempts > 5 || type(base_delay_ms) != "int" || base_delay_ms < 10 || base_delay_ms > 5000 { fail("Vault Transit retry policy is unsafe.", 0) }
+
+identity := workload_identity(audience, timeout_seconds)
+if identity["ok"] != true { fail(identity["error"], 0) }
+
+login := request_with_retry(endpoint + "/v1/auth/" + auth_path + "/login", "POST", {"Content-Type": "application/json"}, to_json({"role": role, "jwt": identity["token"]}), max_attempts, base_delay_ms, timeout_seconds)
+if login["ok"] != true { fail("Vault workload identity login was denied or unavailable (HTTP " + to_string(login["status"]) + ").", login["attempts"]) }
+login_data := null
+try { login_data = parse_json(login["body"]) } except err { login_data = null }
+auth := dict_get(login_data, "auth", {})
+vault_token := dict_get(auth, "client_token", "")
+if vault_token == "" { fail("Vault workload identity login returned no client token.", login["attempts"]) }
+
+headers := vault_headers(vault_token, namespace)
+key_result := request_with_retry(endpoint + "/v1/" + transit_path + "/keys/" + key_name, "GET", headers, "", max_attempts, base_delay_ms, timeout_seconds)
+if key_result["ok"] != true { fail("Vault Transit public-key lookup failed (HTTP " + to_string(key_result["status"]) + ").", login["attempts"] + key_result["attempts"]) }
+key_response := null
+try { key_response = parse_json(key_result["body"]) } except err { key_response = null }
+key_data := dict_get(key_response, "data", {})
+latest_version := dict_get(key_data, "latest_version", 0)
+versions := dict_get(key_data, "keys", {})
+version_key := to_string(latest_version)
+version_entry := {}
+if type(versions) == "dict" && has_key(versions, version_key) == 1 { version_entry = versions[version_key] }
+public_key := dict_get(version_entry, "public_key", "")
+if latest_version < 1 || contains(public_key, "PUBLIC KEY") == false || contains(public_key, "PRIVATE KEY") { fail("Vault Transit returned no safe active RSA public key.", login["attempts"] + key_result["attempts"]) }
+
+key_id := substring(sha256(public_key), 0, 32)
+payload := signature_payload_for("1.2.0", request["runId"], request["manifestSha256"], key_id, request["signedAt"])
+sign_body := {
+    "input": encode_base64(to_json(payload)),
+    "hash_algorithm": "sha2-256",
+    "signature_algorithm": "pkcs1v15",
+    "prehashed": false,
+    "key_version": latest_version
+}
+signed := request_with_retry(endpoint + "/v1/" + transit_path + "/sign/" + key_name, "POST", headers, to_json(sign_body), max_attempts, base_delay_ms, timeout_seconds)
+if signed["ok"] != true { fail("Vault Transit signing failed (HTTP " + to_string(signed["status"]) + ").", login["attempts"] + key_result["attempts"] + signed["attempts"]) }
+signed_response := null
+try { signed_response = parse_json(signed["body"]) } except err { signed_response = null }
+vault_signature := dict_get(dict_get(signed_response, "data", {}), "signature", "")
+parts := split(vault_signature, ":")
+if len(parts) != 3 || parts[0] != "vault" || parts[1] != "v" + to_string(latest_version) || trim(parts[2]) == "" { fail("Vault Transit returned an invalid signature envelope.", login["attempts"] + key_result["attempts"] + signed["attempts"]) }
+
+print(to_json({
+    "ok": true,
+    "algorithm": "RSA-PKCS1v15-SHA256",
+    "keyId": key_id,
+    "publicKey": public_key,
+    "signature": parts[2],
+    "attempts": login["attempts"] + key_result["attempts"] + signed["attempts"],
+    "keyVersion": to_string(latest_version),
+    "auditId": dict_get(signed_response, "request_id", ""),
+    "workloadSubject": dict_get(auth, "entity_id", "")
+}))
+exit(0)

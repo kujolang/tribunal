@@ -93,11 +93,14 @@
     },
     "artifact_store": {
       "type": "object",
-      "required": ["provider", "root", "endpoint"],
+      "required": ["provider", "root", "endpoint", "tenant_id", "bearer_token_file", "region"],
       "properties": {
         "provider": { "enum": ["local-immutable", "http-immutable"] },
         "root": { "type": "string" },
-        "endpoint": { "type": "string" }
+        "endpoint": { "type": "string" },
+        "tenant_id": { "type": "string" },
+        "bearer_token_file": { "type": "string" },
+        "region": { "type": "string" }
       },
       "additionalProperties": false
     },
