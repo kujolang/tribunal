@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.7.0 - 2026-07-12
+
+- Replaced inventory rescans with an atomically written, sharded persistent run index plus verify, repair, rebuild, and cursor-bounded CLI/library contracts.
+- Made analytics, telemetry, dashboard, and bulk verification page-bounded; added reproducible index, load, contention, chaos-recovery, streaming-transfer, and multi-host certification gates with explicit budgets.
+- Evaluated blind-seat concurrency with isolation, deterministic persistence, provider bounds, cancellation evidence, and a fail-closed Kujo runtime gate for the current nested-runtime defect.
+- Added streamed bundle copies and a 1 MiB chunked remote artifact protocol with per-chunk idempotency, digests, request bounds, and final whole-file verification.
+- Added signed custom panel catalogs, safe templates, permission boundaries, explicit checkpoints, stable idempotency keys, resumable stopped hearings, immutable lineage, compare/re-review workflows, and the stable Kujo library API 1.0.
+- Added provenance-bound context connectors, portable decision-packet templates, signed organization policy checks, canonical filesystem inspection, entropy/organization secret detection, malicious remote-response fixtures, and an independent security-review commission/register gate.
+- Added a Kennel package, upgrade/rollback guide, six-example gallery, generated command/man/completion assets, operator recipes, an explicit no-service decision, and WCAG-oriented dashboard evaluation/gates.
+- Added reproducible source archives, SPDX SBOM, in-toto/SLSA-style provenance, pinned Kujo runtime compatibility jobs, ecosystem integration matrices, release verification instructions, and privacy-preserving opt-in adoption measurement contracts.
+
 ## 0.6.0 - 2026-07-11
 
 - Added a Kujo-only Vault Transit adapter with JWT workload identity, strict provider responses, bounded retry, denial/rotation tests, audit metadata, and a live certification harness.

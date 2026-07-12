@@ -1,0 +1,95 @@
+.TH TRIBUNAL 1 "2026-07-12" "Tribunal" "User Commands"
+.SH NAME
+tribunal \- sealed adversarial decision review in Kujo
+.SH SYNOPSIS
+.B tribunal
+.I command options
+.SH COMMANDS
+.TP
+.B tribunal review <file> \-\-panel <panel\-name> [\-\-mock|\-\-live] [\-\-private\-key <pem> \-\-public\-key <pem>]
+.TP
+.B tribunal resume <stopped\-run\-id> [\-\-private\-key <pem> \-\-public\-key <pem>]
+.TP
+.B tribunal compare <base\-run\-id> <candidate\-run\-id> \-\-output <prefix>
+.TP
+.B tribunal re\-review <base\-run\-id> <file> \-\-panel <panel\-name> \-\-output <prefix> [\-\-mock|\-\-live]
+.TP
+.B tribunal kill <file> [\-\-mock|\-\-live] [\-\-private\-key <pem> \-\-public\-key <pem>]
+.TP
+.B tribunal validate <file> [\-\-json]
+.TP
+.B tribunal list [\-\-status <status> \-\-panel <panel> \-\-limit <n> \-\-json]
+.TP
+.B tribunal show <run\-id> [\-\-json]
+.TP
+.B tribunal replay <run\-id> [\-\-public\-key <pem> \-\-require\-signature]
+.TP
+.B tribunal keys \-\-private\-key <pem> \-\-public\-key <pem> [\-\-bits 2048|4096]
+.TP
+.B tribunal seal <run\-id> \-\-private\-key <pem> \-\-public\-key <pem>
+.TP
+.B tribunal verify <run\-id> [\-\-public\-key <pem> \-\-require\-signature]
+.TP
+.B tribunal verify\-bulk [\-\-cursor <run\-id> \-\-limit <1\-100> \-\-public\-key <pem> \-\-require\-signature]
+.TP
+.B tribunal ingest <run\-id> \-\-target runledger|casefile \-\-public\-key <pem>
+.TP
+.B tribunal export <run\-id> \-\-format json|jsonl
+.TP
+.B tribunal panels
+.TP
+.B tribunal seats
+.TP
+.B tribunal doctor [\-\-json]
+.TP
+.B tribunal stats [\-\-json]
+.TP
+.B tribunal contracts <run\-id> [\-\-json]
+.TP
+.B tribunal audit <run\-id> [\-\-public\-key <pem>|\-\-trust\-policy <json> \-\-target <name>] [\-\-require\-signature]
+.TP
+.B tribunal seal\-provider <run\-id> \-\-provider\-config <json>
+.TP
+.B tribunal verify\-policy <run\-id> \-\-trust\-policy <json> \-\-target <name>
+.TP
+.B tribunal bundle\-export <run\-id> \-\-output <directory>
+.TP
+.B tribunal bundle\-import <directory> \-\-trust\-policy <json> \-\-target <name>
+.TP
+.B tribunal bundle\-encrypt <run\-id> \-\-output <directory> \-\-recipient\-public\-key <pem> [\-\-recovery\-public\-key <pem>]
+.TP
+.B tribunal bundle\-decrypt <directory> \-\-recipient\-private\-key <pem> \-\-trust\-policy <json> \-\-target <name>
+.TP
+.B tribunal bundle\-rekey <directory> \-\-recipient\-private\-key <pem> \-\-recipient\-public\-key <pem>
+.TP
+.B tribunal store\-publish <run\-id> [\-\-expected\-version <sha256>]
+.TP
+.B tribunal store\-pull <run\-id> [\-\-version <sha256>] \-\-trust\-policy <json>
+.TP
+.B tribunal telemetry\-export [\-\-collector jsonl|http \-\-destination <path|url>]
+.TP
+.B tribunal locks\-recover [\-\-stale\-after\-ms <n>]
+.TP
+.B tribunal index\-check [\-\-json]
+.TP
+.B tribunal index\-rebuild [\-\-json]
+.TP
+.B tribunal index\-repair [\-\-json]
+.TP
+.B tribunal delete <run\-id> \-\-reason <text> [\-\-force\-expired]
+.TP
+.B tribunal auth\-check \-\-permission <permission>
+.TP
+.B tribunal dashboard\-export \-\-output <html>
+.TP
+.B tribunal legal\-hold <run\-id> \-\-enable|\-\-release \-\-reason <text>
+.TP
+.B tribunal provenance\-sign <document> \-\-kind <kind> \-\-sequence <n> \-\-private\-key <pem> \-\-public\-key <pem> \-\-output <json> \-\-anchor <json> [\-\-previous <json>]
+.TP
+.B tribunal provenance\-verify <document> \-\-provenance <json> \-\-public\-key <pem> \-\-anchor <json>
+.TP
+.B tribunal version
+.SH EXIT STATUS
+0 success; 1 runtime failure; 2 usage/configuration or stopped hearing; 3 integrity failure.
+.SH SEE ALSO
+Tribunal README and docs/OPERATIONS.md.

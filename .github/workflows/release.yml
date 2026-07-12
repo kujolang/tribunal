@@ -37,6 +37,13 @@ jobs:
           "$KUJO_BIN" run scripts/spec_gate.kujo
           "$KUJO_BIN" run scripts/perf_gate.kujo
           "$KUJO_BIN" run scripts/scale_perf_gate.kujo
+          "$KUJO_BIN" run scripts/index_perf_gate.kujo
+          "$KUJO_BIN" run scripts/load_chaos_gate.kujo
+          "$KUJO_BIN" run scripts/adversarial_gate.kujo
+          "$KUJO_BIN" run scripts/dashboard_accessibility_gate.kujo
+          "$KUJO_BIN" run scripts/security_review_gate.kujo
+          "$KUJO_BIN" run scripts/integration_matrix_gate.kujo
+          "$KUJO_BIN" run scripts/gallery_gate.kujo
 
       - name: Create signed release evidence bundle
         env:
@@ -45,11 +52,28 @@ jobs:
           rm -rf "$TRIBUNAL_RELEASE_OUTPUT"
           "$KUJO_BIN" run scripts/release_evidence.kujo
 
+      - name: Create reproducible source archive, SBOM, and provenance
+        env:
+          TRIBUNAL_RELEASE_ARCHIVE_OUTPUT: ${{ runner.temp }}/tribunal-release-archive
+          TRIBUNAL_SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          rm -rf "$TRIBUNAL_RELEASE_ARCHIVE_OUTPUT"
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$GITHUB_SHA")"
+          "$KUJO_BIN" run scripts/release_archive.kujo --interpreter
+
       - name: Upload immutable signed evidence
         uses: actions/upload-artifact@v4
         with:
           name: tribunal-${{ github.ref_name }}-signed-evidence
           path: ${{ runner.temp }}/tribunal-release-evidence
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload reproducible release package
+        uses: actions/upload-artifact@v4
+        with:
+          name: tribunal-${{ github.ref_name }}-reproducible-package
+          path: ${{ runner.temp }}/tribunal-release-archive
           if-no-files-found: error
           retention-days: 90
 
@@ -60,3 +84,4 @@ jobs:
         run: |
           gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1 || gh release create "${GITHUB_REF_NAME}" --verify-tag --title "Tribunal ${GITHUB_REF_NAME}" --generate-notes
           gh release upload "${GITHUB_REF_NAME}" "$RUNNER_TEMP/tribunal-release-evidence/tribunal-v${GITHUB_REF_NAME#v}-signed-evidence.zip" --clobber
+          gh release upload "${GITHUB_REF_NAME}" "$RUNNER_TEMP/tribunal-release-archive/tribunal-v${GITHUB_REF_NAME#v}.zip" "$RUNNER_TEMP/tribunal-release-archive/release-archive-receipt.json" --clobber

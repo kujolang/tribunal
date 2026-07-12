@@ -15,4 +15,6 @@ The server must authenticate identities, enforce tenant/run ownership, preserve 
 
 Tribunal validates bundle metadata before downloads/copies, rejects duplicate and unsafe paths, and caps artifact count, individual size, and aggregate bundle size. The local store root must remain outside run storage.
 
+Artifacts larger than 1 MiB use the v1 chunk contract: indexed PUT/GET endpoints under `/artifacts/<path>/chunks/<index>`, a 1 MiB maximum decoded chunk, exact offset/byte count, base64-payload digest, conditional create, and an idempotency key bound to version/path/index. A final `/complete` request binds the descriptor and whole-file SHA-256. Pull validates every chunk, final bytes, and final digest before trusted bundle import. At the 64 MiB artifact ceiling this uses at most 64 data requests plus one completion request and one temporary/final copy as documented in `PERFORMANCE_AND_SCALE.md`.
+
 Tribunal's pull path reconstructs a temporary bundle, verifies it under the target trust policy, then atomically admits the run to empty local storage.

@@ -18,7 +18,7 @@ An unsigned SHA-256 manifest proves internal consistency, not provenance. A sign
 
 - Generate 4096-bit keys by default; 2048-bit keys exist for compatibility and fast local tests.
 - Store private keys outside the repository and run storage.
-- Apply operating-system permissions and organizational custody controls immediately after generation.
+- Kujo 1.0.0 does not expose a portable restrictive permission API. Treat local key generation as development-only unless an external launcher atomically applies and verifies the target platform's permissions; production uses managed signing.
 - Rotate and revoke keys through independently distributed trust policy. Tribunal validates lifecycle state but does not distribute or protect that policy for you.
 - Never accept a public key copied from the same untrusted evidence bundle as its trust anchor.
 
@@ -26,7 +26,7 @@ An unsigned SHA-256 manifest proves internal consistency, not provenance. A sign
 
 Use a dedicated service identity, a non-symlinked storage root with least-privilege permissions, explicit size/time limits, HTTPS remote adapters, and an allowlisted provider. Keep live credentials in process environment or a managed secret launcher. Prefer managed signing for production because portable restrictive key-file permissions are not yet a Kujo runtime contract. Run `tribunal doctor`, `tribunal audit --require-signature`, offline gates, and backup/restore exercises before promotion.
 
-Known production gaps are documented in [docs/ENTERPRISE_READINESS.md](docs/ENTERPRISE_READINESS.md).
+Known production boundaries are documented in [docs/ENTERPRISE_READINESS.md](docs/ENTERPRISE_READINESS.md). The [independent review commission](docs/security/INDEPENDENT_REVIEW_COMMISSION.md) is published but is not represented as a completed assessment.
 
 ## Managed trust and authorization
 

@@ -1,0 +1,73 @@
+name: Tribunal measured platform compatibility
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, "codex/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  platform:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux-x86_64
+          - runner: macos-13
+            platform: macos-x86_64
+          - runner: macos-14
+            platform: macos-arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: tribunal
+      - uses: actions/checkout@v4
+        with:
+          repository: kujolang/kujo
+          ref: 0f7778107ee9efab09ab7559e30c0c97935a890e
+          path: kujo
+      - uses: actions/checkout@v4
+        with:
+          repository: kujolang/ai-sdk
+          ref: 9177e3cbefe4d7adf5fd7c0489ab126b1bbdcaee
+          path: ai-sdk
+      - uses: actions/checkout@v4
+        with:
+          repository: kujolang/packwrite
+          ref: 359f8aeba4ee3ca9825072214c25fb639df2e940
+          path: packwrite
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build pinned Kujo runtime
+        working-directory: kujo
+        run: cargo build --release --locked
+      - name: Run platform gates
+        working-directory: tribunal
+        env:
+          TRIBUNAL_HOME: ${{ github.workspace }}/tribunal
+          KUJO_BIN: ${{ github.workspace }}/kujo/target/release/kujo
+        run: |
+          "$KUJO_BIN" run tests/tribunal_tests.kujo --interpreter
+          "$KUJO_BIN" run tests/property_tests.kujo --interpreter
+          "$KUJO_BIN" run scripts/schema_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/perf_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/index_perf_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/adversarial_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/dashboard_accessibility_gate.kujo --interpreter
+      - name: Publish measured receipt
+        working-directory: tribunal
+        env:
+          TRIBUNAL_HOME: ${{ github.workspace }}/tribunal
+          KUJO_BIN: ${{ github.workspace }}/kujo/target/release/kujo
+          TRIBUNAL_PLATFORM: ${{ matrix.platform }}
+          TRIBUNAL_SOURCE_REVISION: ${{ github.sha }}
+          TRIBUNAL_COMPATIBILITY_OUTPUT: ${{ runner.temp }}/compatibility-${{ matrix.platform }}.json
+        run: "$KUJO_BIN run scripts/platform_receipt.kujo --interpreter"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tribunal-compatibility-${{ matrix.platform }}
+          path: ${{ runner.temp }}/compatibility-${{ matrix.platform }}.json
+          if-no-files-found: error

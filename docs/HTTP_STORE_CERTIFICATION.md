@@ -1,6 +1,6 @@
 # Authenticated immutable HTTP-store profile
 
-Tribunal's remote store client requires HTTPS outside loopback development, a bearer token file, an explicit tenant ID, and an explicit region. Credentials are loaded per operation, sent only in the `Authorization` header, and never accepted in URLs or returned in errors. Every request also carries `X-Tribunal-Tenant` and `X-Tribunal-Region`.
+Tribunal's remote store client requires HTTPS outside loopback development, a bearer token file, an explicit tenant ID, and an explicit region. Credentials are loaded per operation, sent only in the `Authorization` header, and never accepted in URLs or returned in errors. Every request also carries `X-Tribunal-Tenant` and `X-Tribunal-Region`. Certification must cover both the small single-request path and the large 1 MiB chunk/complete protocol.
 
 Artifact uploads use `If-None-Match: *` and a content SHA-256. Version finalization uses `If-None-Match` or `If-Match` plus an idempotency key. Network, rate-limit, and server failures receive three bounded attempts. Failed multipart publication calls the version-staging cleanup endpoint before returning. Pull validates metadata, tenant-selected version, size limits, every signed artifact digest, the evidence signature, and the trust policy before accepting a run.
 

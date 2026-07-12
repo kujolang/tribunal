@@ -2,11 +2,17 @@
 
 ## Current posture
 
-Tribunal v0.6.0 provides a strong production-oriented application core for enterprise decision evidence: default-deny authorization, external managed signing, trusted-key lifecycle, immutable versioned stores, concurrency/recovery, retention/legal hold/deletion, external telemetry, executable schemas, adversarial property gates, cursor pagination, release budgets, CI publication, a safe offline dashboard, and a combined audit command.
+Tribunal v0.7.0 provides a strong production-oriented application core for enterprise decision evidence: default-deny authorization, external managed signing, trusted-key lifecycle, immutable versioned stores, concurrency/recovery, retention/legal hold/deletion, external telemetry, executable schemas, adversarial property gates, persistent sharded indexing, bounded projections, resumable lineage, custom panels, a stable Kujo library API, reproducible releases, CI compatibility receipts, a safe offline dashboard, and a combined audit command.
 
-That is not a universal deployment certification. Identity proofing, policy provenance/distribution, real HSM/store adapters, tenant mapping, encryption, network controls, platform support, recovery objectives, and capacity evidence remain deployment responsibilities.
+That is not a universal deployment certification. Identity proofing, policy provenance/distribution, target HSM/store certification, tenant mapping, encrypted-volume custody, network controls, platform receipts, independent assessment, recovery objectives, and capacity evidence remain deployment responsibilities.
 
-Deployment-specific HSM/KMS and HTTP store adapters remain deliberately outside the core. They must be certified against the published Kujo contracts with the target organization's identity, network, custody, retention, and audit controls.
+The repository includes Vault Transit and authenticated immutable HTTP reference adapters and conformance harnesses. Reference evidence is not a target deployment certification; run the harnesses with the organization's identity, network, custody, retention, and audit controls.
+
+## Concrete supported deployment profile
+
+The supported 0.7.0 profile is an operator-controlled process on a platform with a passing release receipt; local non-symlinked storage on one filesystem; one active writer per run; default-deny local or policy identity; mock or Kujo AI SDK provider boundary; managed external signer for production provenance; independently distributed trust policy; external encrypted volume; local immutable or certified HTTPS artifact store; and external telemetry/dashboard outputs. Multi-host writers are supported only for a shared filesystem that passes the two-host harness and preserves its receipt.
+
+Explicit non-goals are a public hosted service, ambient credentials, direct provider SDK calls, hidden policy prompts, automatic stale-lock theft, local key-file custody as the production recommendation, universal filesystem/platform claims, legal advice, and claims that mock/reference evidence certifies a deployment.
 
 ## Deployment matrix
 
@@ -18,11 +24,11 @@ Deployment-specific HSM/KMS and HTTP store adapters remain deliberately outside 
 | Trust | status, validity, rotation, revocation, target restrictions | independent policy/public-key distribution |
 | Evidence | exact hashing, v1.0–v1.2 verification, bundles | storage IAM, backup, regional durability |
 | Artifact store | conditional local/HTTP immutable versions | authenticated HTTP implementation and SLAs |
-| Concurrency | atomic per-run locks and seal rollback journals | multi-host coordination if sharing non-local filesystems |
+| Concurrency | atomic per-run locks, wait/contention metrics, explicit recovery, multi-host harness | certify target shared filesystem or add external coordination |
 | Governance | sealed retention, external holds, whole-run tombstones | legal policy, approvals, retention schedule |
 | Audit | redacted JSONL/HTTP telemetry | collector durability, SIEM access and alerting |
 | Verification | one-command integrity/contracts/trust audit | policy provenance, review cadence, incident response |
-| Experience | offline CSP dashboard | authenticated hosting if an organization chooses to publish it |
+| Experience | accessible offline CSP dashboard and stable Kujo library | authenticated static hosting if an organization chooses to publish it |
 
 ## Threat and authorization boundary
 
@@ -33,13 +39,12 @@ The detailed threat model is [THREAT_MODEL.md](THREAT_MODEL.md). No network API 
 A releasable commit must pass:
 
 - every Kujo source check;
-- 92 core, 48 CLI, 44 enterprise, and 18 property assertions;
-- 18 executable JSON Schemas;
+- all four current test suites and every executable JSON Schema;
 - Concord with no high/critical drift;
 - strict Spec validation;
-- ten Eval checks;
-- local and scale performance gates;
+- seventeen Eval checks;
+- local, scale, index, load/chaos, adversarial, accessibility, integration, gallery, and platform gates;
 - `tribunal doctor --json` with zero failures;
-- signed release bundle creation through an external provider.
+- signed release evidence plus reproducible archive/SBOM/provenance creation.
 
 See [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) and [NEXT_SESSION_REVIEW.md](NEXT_SESSION_REVIEW.md).

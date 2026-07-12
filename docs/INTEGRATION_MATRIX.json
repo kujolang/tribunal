@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0.0",
+  "tribunalVersion": "0.7.0",
+  "certifiedAt": "2026-07-12",
+  "integrations": [
+    { "name": "Kujo AI SDK", "version": "1.0.0", "revision": "9177e3cbefe4d7adf5fd7c0489ab126b1bbdcaee", "path": "../ai-sdk", "gate": "tests/tribunal_tests.kujo", "scope": "real SDK bridge, provider-neutral resolution, offline provider fixture" },
+    { "name": "PackWrite", "version": "0.1.0", "revision": "359f8aeba4ee3ca9825072214c25fb639df2e940", "path": "../packwrite", "gate": "tests/tribunal_tests.kujo", "scope": "real repository context bridge with isolated process environment" },
+    { "name": "RunLedger", "version": "0.1.0", "revision": "7d7a1b418a291faf6290be6aed642baacddaac29", "path": "../runledger", "gate": "tests/tribunal_tests.kujo", "scope": "trusted signed-run ingestion and external receipt" },
+    { "name": "CaseFile", "version": "1.0.0", "revision": "3a221e6261dcb51e9a1acd55f9adbde3398b614b", "path": "../casefile", "gate": "tests/tribunal_tests.kujo", "scope": "trusted signed-run capture and external receipt" },
+    { "name": "Concord", "version": "1.0.0", "revision": "a3004f7e140f89cc3b00da72b03fb4905bc42868", "path": "../concord", "gate": "scripts/drift_gate.kujo", "scope": "repository drift scan with blocking severity policy" },
+    { "name": "Spec", "version": "0.1.0", "revision": "9c37073cdd5003c657b5139e6085a8be2fcab1b8", "path": "../spec", "gate": "scripts/spec_gate.kujo", "scope": "strict task-contract validation and export" },
+    { "name": "Eval", "version": "1.0.0", "revision": "db9d0c3a60b10c8bf0bba7b7909dcf96b8338937", "path": "../eval", "gate": "tests/tribunal_eval.json", "scope": "deterministic seventeen-check release evaluation" },
+    { "name": "Kennel", "version": "0.1.0", "revision": "2fa7e5e5a06d43c4af971c403592400209f06818", "path": "../kennel", "gate": "kennel validate --project-dir tribunal", "scope": "package manifest, exports, pinned-install contract" }
+  ]
+}
