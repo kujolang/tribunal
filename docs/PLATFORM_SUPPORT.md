@@ -4,7 +4,7 @@ Tribunal does not claim universal platform support. A platform is release-suppor
 
 | Platform | Status for 0.7.0 | Evidence |
 |---|---|---|
-| macOS x86_64 | locally measured | Core, enterprise, CLI, property, schema, performance, adversarial, and accessibility gates run on Darwin 25.3.0 with Kujo 1.0.0; the release workflow must publish the revision-specific receipt. |
+| macOS x86_64 | locally measured | Core, enterprise, CLI, property, schema, performance, adversarial, and accessibility gates run on Darwin 25.3.0 with Kujo 1.0.0; the bounded compatibility receipt is under `docs/compatibility/`. |
 | macOS arm64 | CI candidate | `macos-14` compatibility job; supported only after a passing uploaded receipt. |
 | Linux x86_64 | CI candidate | `ubuntu-24.04` compatibility job; supported only after a passing uploaded receipt. |
 | Linux arm64 | not yet supported | No maintained runner receipt. |

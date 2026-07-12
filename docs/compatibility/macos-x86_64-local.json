@@ -1,0 +1,20 @@
+{
+  "claimBoundary": "This receipt covers the named revision, runtime digest, architecture, and gates only.",
+  "gates": [
+    "tribunal-tests",
+    "property-tests",
+    "schema",
+    "performance",
+    "index-performance",
+    "adversarial",
+    "dashboard-accessibility"
+  ],
+  "kujoSha256": "3fe47ac529997f8d219fbb7b88fb94ec103155dc938dd1021d635930500829ba",
+  "kujoVersion": "1.0.0",
+  "measuredAt": "2026-07-12T15:47:24Z",
+  "platform": "macos-x86_64",
+  "result": "pass",
+  "schemaVersion": "1.0.0",
+  "sourceRevision": "d4d41791e0e3631301310dc4a006364c00d05199",
+  "tribunalVersion": "0.7.0"
+}
