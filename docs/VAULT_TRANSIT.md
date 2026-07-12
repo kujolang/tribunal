@@ -25,4 +25,6 @@ export TRIBUNAL_KMS_REPORT=/secure/evidence/kms-conformance.json
 
 Certification succeeds only when workload identity, Vault audit IDs, denial, bounded retry, key rotation, old-key rejection, signature verification, and non-export are all proven. Preserve the report with the matching Vault audit records. A fixture run or an unconfigured repository is not a certification claim.
 
+The checked-in [reference report](certification/vault-transit-reference.json) and [redacted audit correlation](certification/vault-transit-audit.jsonl) passed against Vault v1.20.4 with JWT authentication, two non-exportable Transit RSA keys, a denied policy, and separate rotation policy. Its scope is the adapter/reference integration, not any adopter's production identity provider, Vault cluster, HSM seal, network, or audit backend; those controls require the same harness in the target deployment.
+
 HashiCorp references: [JWT login API](https://developer.hashicorp.com/vault/api-docs/auth/jwt#jwt-login), [Transit sign API](https://developer.hashicorp.com/vault/api-docs/secret/transit#sign-data), and [Transit key API](https://developer.hashicorp.com/vault/api-docs/secret/transit#read-key).

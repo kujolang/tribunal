@@ -4,8 +4,8 @@ Tribunal v0.5.0 is a strong production-oriented local decision-evidence engine, 
 
 ## P0 — deployment proof and cryptographic lifecycle
 
-- [ ] Certify at least one real HSM/KMS adapter end to end with workload identity, denial/retry/rotation drills, audit evidence, and no exported private material.
-- [ ] Certify one authenticated immutable HTTP store with tenant isolation, conditional-write races, partial uploads, corruption recovery, backup/restore, and regional failure evidence.
+- [x] Certify at least one real HSM/KMS adapter end to end with workload identity, denial/retry/rotation drills, audit evidence, and no exported private material.
+- [x] Certify one authenticated immutable HTTP store with tenant isolation, conditional-write races, partial uploads, corruption recovery, backup/restore, and regional failure evidence.
 - [x] Add signed, rollback-resistant provenance for access policies, trust policies, governance registries, deletion tombstones, and artifact-store indexes.
 - [x] Design evidence encryption at rest and in portable bundles with envelope keys, rotation, recovery, and legal-hold compatibility; keep integrity verification independent from confidentiality.
 - [x] Define algorithm-agility and migration contracts beyond RSA-PKCS#1 v1.5, gated by Kujo runtime support and backward-compatible verification fixtures.

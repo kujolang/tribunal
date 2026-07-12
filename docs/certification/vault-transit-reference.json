@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-07-12T01:47:16Z",
+  "provider": "vault-transit",
+  "protocol": "vault-transit-jwt-v1",
+  "runId": "2026-07-12-docket-md-9104",
+  "certified": true,
+  "scope": "Vault v1.20.4 local reference integration; not a production deployment certification",
+  "checks": {
+    "workloadIdentity": true,
+    "auditEvidence": true,
+    "denial": true,
+    "boundedRetry": true,
+    "rotation": true,
+    "noPrivateMaterial": true,
+    "integrityIndependent": true
+  },
+  "evidence": {
+    "primary": {
+      "attempts": 3,
+      "keyVersion": "1",
+      "auditId": "e44a90a2-639c-c017-67eb-426792eb8c2f",
+      "workloadSubject": "9167b228-602d-f00c-733f-abe46a2c00b0"
+    },
+    "denial": { "attempts": 2 },
+    "rotation": {
+      "attempts": 3,
+      "keyVersion": "1",
+      "auditId": "9055e2d6-c463-1dde-8b32-63950f50805d",
+      "workloadSubject": "9167b228-602d-f00c-733f-abe46a2c00b0"
+    },
+    "primaryKeyId": "15482f6647a2ab78661cd3058e2afadb",
+    "rotatedKeyId": "501e48270e07a68d38c1ce2faf7b4700"
+  }
+}

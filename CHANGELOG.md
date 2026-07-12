@@ -10,6 +10,7 @@
 - Added AES-256-GCM portable evidence encryption, RSA-OAEP primary/recovery envelopes, authenticated import, independent integrity verification, and ciphertext-preserving recipient rotation.
 - Defined fail-closed RSA-PSS and Ed25519 migration contracts while retaining verification compatibility for all existing RSA signature envelopes.
 - Expanded the Kujo enterprise suite and executable schema gate, and documented the remaining deployment-certification boundary without overstating production evidence.
+- Added a Kujo authenticated immutable HTTP reference service and preserved passing reference certifications for Vault Transit and the HTTP-store protocol with explicitly non-production scope.
 
 ## 0.5.0 - 2026-07-11
 

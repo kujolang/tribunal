@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-07-12T01:50:47Z",
+  "provider": "authenticated-http-immutable",
+  "runId": "2026-07-12-docket-md-7053",
+  "version": "049e85427060cbad57bba24172d627b3f0639ab2b8b72c5e03692fa52d2dbf6b",
+  "tenantId": "tenant-a",
+  "primaryRegion": "primary",
+  "secondaryRegion": "secondary",
+  "certified": true,
+  "scope": "Kujo reference service integration; not a production infrastructure certification",
+  "checks": {
+    "authenticatedPublication": true,
+    "conditionalWriteRace": true,
+    "tenantIsolation": true,
+    "partialUploadCleanup": true,
+    "corruptionRejected": true,
+    "backupRestore": true,
+    "regionalFailure": true
+  }
+}

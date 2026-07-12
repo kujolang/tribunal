@@ -212,7 +212,7 @@ done
 (cd ../eval && "$KUJO_BIN" run main.kujo --interpreter run "$TRIBUNAL_HOME/tests/tribunal_eval.json")
 ```
 
-The offline gates exercise 45 Kujo source files, 228 assertions across four suites, 24 executable schemas, signing/tamper/recovery, authorization, governance, encrypted bundles, provenance rollback, bounded authenticated stores, audit reports, telemetry/dashboard isolation, PackWrite, RunLedger, CaseFile, the AI SDK fixture, Spec, Concord, ten Eval checks, and two performance gates. See [Contributing](CONTRIBUTING.md).
+The offline gates exercise 46 Kujo source files, 230 assertions across four suites, 24 executable schemas, signing/tamper/recovery, authorization, governance, encrypted bundles, provenance rollback, bounded authenticated stores, audit reports, telemetry/dashboard isolation, PackWrite, RunLedger, CaseFile, the AI SDK fixture, Spec, Concord, ten Eval checks, and two performance gates. See [Contributing](CONTRIBUTING.md).
 
 ## Repository layout
 
