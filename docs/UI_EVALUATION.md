@@ -2,7 +2,7 @@
 
 ## Decision
 
-Continue providing an authorized offline HTML export in v0.5.0; do not introduce a network API or hosted UI without an approved transport and tenancy contract.
+Continue providing an authorized offline HTML export in v0.6.0; do not introduce a network API or hosted UI without an approved transport and tenancy contract.
 
 ## Rationale
 

@@ -10,7 +10,7 @@ Tribunal is also a practical showcase for [Kujo](https://github.com/kujolang/kuj
 
 ## Production-readiness statement
 
-Tribunal v0.5.0 is production-oriented and useful as a local or operator-controlled decision-evidence engine. It is not automatically “universally enterprise-ready”: a real deployment must still certify its identity binding, HSM/KMS adapter, immutable store, network controls, retention policy, backup/recovery, capacity, and supported platforms.
+Tribunal v0.6.0 is production-oriented and useful as a local or operator-controlled decision-evidence engine. It is not automatically “universally enterprise-ready”: the included Vault Transit and authenticated HTTP-store profiles must still be run against a real deployment and preserve passing certification evidence before making that claim.
 
 | Use case | Posture |
 | --- | --- |
@@ -71,12 +71,17 @@ tribunal seal-provider <run-id> --provider-config <json>
 tribunal verify-policy <run-id> --trust-policy <json> --target <name>
 tribunal bundle-export <run-id> --output <directory>
 tribunal bundle-import <directory> --trust-policy <json> --target <name>
+tribunal bundle-encrypt <run-id> --output <directory> --recipient-public-key <pem> [--recovery-public-key <pem>]
+tribunal bundle-decrypt <directory> --recipient-private-key <pem> --trust-policy <json> --target <name>
+tribunal bundle-rekey <directory> --recipient-private-key <pem> --recipient-public-key <pem>
 tribunal store-publish <run-id> [--expected-version <sha256>]
 tribunal store-pull <run-id> [--version <sha256>] --trust-policy <json>
 tribunal telemetry-export [--collector jsonl|http --destination <path|url>]
 tribunal dashboard-export --output <html>
 tribunal legal-hold <run-id> --enable|--release --reason <text>
 tribunal delete <run-id> --reason <text> [--force-expired]
+tribunal provenance-sign <document> --kind <kind> --sequence <n> --private-key <pem> --public-key <pem> --output <json> --anchor <json>
+tribunal provenance-verify <document> --provenance <json> --public-key <pem> --anchor <json>
 tribunal locks-recover [--stale-after-ms <n>]
 tribunal auth-check --permission <permission>
 tribunal version
@@ -136,7 +141,9 @@ Every completed or stopped run receives a byte-accurate SHA-256 manifest. Option
   --require-signature
 ```
 
-Never commit private keys. For managed custody, `seal-provider` invokes an external Kujo HSM/KMS adapter with an opaque key reference and federated workload identity. Private key material never enters Tribunal. Versioned trust policies separately enforce key status, validity, rotation, revocation, and target permissions.
+Never commit private keys. For managed custody, `seal-provider` invokes an external Kujo HSM/KMS adapter with an opaque key reference and federated workload identity. The included Vault Transit adapter authenticates with AWS, Azure, GitHub Actions, or a generic workload-token file, and returns audit/key-version evidence without private key material entering Tribunal. The live conformance harness must pass before declaring a deployment certified. Versioned trust policies separately enforce key status, validity, rotation, revocation, and target permissions.
+
+Portable evidence can use AES-256-GCM envelope encryption with independent primary and recovery RSA-OAEP recipients. Signed manifest integrity remains verifiable without decrypting evidence; rekeying does not rewrite ciphertext. Live run storage should use an organization-approved encrypted volume or managed encrypted filesystem so Tribunal can retain atomic, inspectable files without embedding a local master key.
 
 Signed runs can be ingested idempotently into Kujo RunLedger or CaseFile. The source run remains immutable; downstream receipts are kept outside its sealed evidence directory.
 
@@ -161,7 +168,7 @@ Optional PackWrite context enrichment is deterministic and redacted:
 
 ## Enterprise controls
 
-Tribunal v0.5.0 includes:
+Tribunal v0.6.0 includes:
 
 - default-deny service/user identity and role authorization;
 - external HSM/KMS signing-provider contracts and v1.2 signer provenance;
@@ -176,6 +183,11 @@ Tribunal v0.5.0 includes:
 - an authorized offline read-only HTML dashboard without introducing a network API;
 - a combined audit report, exclusive run creation, non-stealing lock acquisition, bounded imports, pre-deletion tombstones, and secure external-output boundaries;
 - HTTPS-by-default remote endpoints, with plain HTTP permitted only for loopback adapter development.
+- a Vault Transit JWT workload-identity adapter plus live denial/retry/rotation/audit certification harness;
+- tenant- and region-bound authenticated HTTP-store requests, bounded retry, staging cleanup, and a live failure/backup certification harness;
+- signed sequence chains with external rollback anchors for policies, governance, tombstones, and store indexes;
+- AES-256-GCM encrypted decision packets with RSA-OAEP primary/recovery key wrapping and ciphertext-preserving rotation;
+- a fail-closed algorithm registry defining RSA-PSS and Ed25519 migration targets while preserving legacy RSA verification.
 
 See [Security](SECURITY.md), [Operations](docs/OPERATIONS.md), and [Enterprise readiness](docs/ENTERPRISE_READINESS.md) before production adoption. Machine-readable contracts live in [`schemas/`](schemas/).
 
@@ -200,7 +212,7 @@ done
 (cd ../eval && "$KUJO_BIN" run main.kujo --interpreter run "$TRIBUNAL_HOME/tests/tribunal_eval.json")
 ```
 
-The offline gates exercise 40 Kujo source files, 202 assertions across four suites, 18 executable schemas, signing/tamper/recovery, authorization, governance, bounded bundles/stores, audit reports, telemetry/dashboard isolation, PackWrite, RunLedger, CaseFile, the AI SDK fixture, Spec, Concord, ten Eval checks, and two performance gates. See [Contributing](CONTRIBUTING.md).
+The offline gates exercise 45 Kujo source files, 228 assertions across four suites, 24 executable schemas, signing/tamper/recovery, authorization, governance, encrypted bundles, provenance rollback, bounded authenticated stores, audit reports, telemetry/dashboard isolation, PackWrite, RunLedger, CaseFile, the AI SDK fixture, Spec, Concord, ten Eval checks, and two performance gates. See [Contributing](CONTRIBUTING.md).
 
 ## Repository layout
 
@@ -215,6 +227,11 @@ Application logic lives under [`src/`](src/). The only root Kujo files are the t
 - [Threat model](docs/THREAT_MODEL.md)
 - [Authorization](docs/AUTHORIZATION.md)
 - [Artifact stores and bundles](docs/ARTIFACT_STORES.md)
+- [Vault Transit certification](docs/VAULT_TRANSIT.md)
+- [HTTP store certification](docs/HTTP_STORE_CERTIFICATION.md)
+- [Evidence encryption](docs/EVIDENCE_ENCRYPTION.md)
+- [Signed governance provenance](docs/PROVENANCE.md)
+- [Cryptographic migration](docs/CRYPTOGRAPHIC_MIGRATION.md)
 - [Release evidence](docs/RELEASE_EVIDENCE.md)
 - [Read-only UI evaluation](docs/UI_EVALUATION.md)
 - [Integrations](docs/integrations.md)

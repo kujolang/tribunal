@@ -2,7 +2,7 @@
 
 ## Current posture
 
-Tribunal v0.5.0 provides a strong production-oriented application core for enterprise decision evidence: default-deny authorization, external managed signing, trusted-key lifecycle, immutable versioned stores, concurrency/recovery, retention/legal hold/deletion, external telemetry, executable schemas, adversarial property gates, cursor pagination, release budgets, CI publication, a safe offline dashboard, and a combined audit command.
+Tribunal v0.6.0 provides a strong production-oriented application core for enterprise decision evidence: default-deny authorization, external managed signing, trusted-key lifecycle, immutable versioned stores, concurrency/recovery, retention/legal hold/deletion, external telemetry, executable schemas, adversarial property gates, cursor pagination, release budgets, CI publication, a safe offline dashboard, and a combined audit command.
 
 That is not a universal deployment certification. Identity proofing, policy provenance/distribution, real HSM/store adapters, tenant mapping, encryption, network controls, platform support, recovery objectives, and capacity evidence remain deployment responsibilities.
 

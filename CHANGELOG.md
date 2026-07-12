@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 0.6.0 - 2026-07-11
+
+- Added a Kujo-only Vault Transit adapter with JWT workload identity, strict provider responses, bounded retry, denial/rotation tests, audit metadata, and a live certification harness.
+- Required tenant-, region-, and token-bound authenticated HTTP artifact stores, added bounded retry and staging cleanup, and published a live isolation/failure/backup conformance harness.
+- Added signed sequence provenance and external rollback anchors for policies, governance registries, deletion tombstones, and artifact-store indexes.
+- Added AES-256-GCM portable evidence encryption, RSA-OAEP primary/recovery envelopes, authenticated import, independent integrity verification, and ciphertext-preserving recipient rotation.
+- Defined fail-closed RSA-PSS and Ed25519 migration contracts while retaining verification compatibility for all existing RSA signature envelopes.
+- Expanded the Kujo enterprise suite and executable schema gate, and documented the remaining deployment-certification boundary without overstating production evidence.
+
 ## 0.5.0 - 2026-07-11
 
 - Added `tribunal audit` to combine artifact integrity, signature/trust, and complete contract validation in one machine-readable report.

@@ -67,4 +67,4 @@ The dashboard is static, script-free, CSP-restricted, and capped at 500 rows. Tr
 
 Tag releases run all Kujo checks, four test suites, 17 schema contracts, Concord, Spec, Eval, and both benchmarks on a self-hosted Kujo runner. CI uses an external signing-provider config and publishes a signed evidence bundle. See [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md).
 
-Tribunal v0.5.0 verifies signature schemas v1.0, v1.1, and v1.2. Rollback does not authorize modifying newer runs.
+Tribunal v0.6.0 verifies signature schemas v1.0, v1.1, and v1.2. Rollback does not authorize modifying newer runs.
