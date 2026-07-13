@@ -8,7 +8,7 @@ blockers:
     next_action: "Engage the commissioned assessor and import the signed report plus accepted-finding fixtures."
   - id: maintained-platform-and-shared-filesystem-runners
     command: ".github/workflows/compatibility.yml; scripts/multi_host_worker.kujo; scripts/multi_host_report.kujo"
-    evidence: "The v0.7 x86 receipts remain preserved, but the v0.8 candidate has no maintained runner receipts and no two-host NFS/SMB/shared-filesystem mounts were available. GitHub Actions run 29225459373 rejected the ubuntu-24.04 and macos-14 jobs before execution because recent account payments failed or the spending limit must be increased; its macos-13 job remained queued after that image was retired. The workflow now targets current ubuntu-24.04, macos-15-intel, and macos-15 labels. Local processes or synthetic mounts are not represented as multi-host certification."
+    evidence: "The v0.7 x86 receipts remain preserved, but the v0.8 candidate has no maintained runner receipts and no two-host NFS/SMB/shared-filesystem mounts were available. After replacing retired macos-13 with current runner labels, GitHub Actions run 29226107970 rejected all three ubuntu-24.04, macos-15-intel, and macos-15 jobs before execution because recent account payments failed or the spending limit must be increased. Local processes or synthetic mounts are not represented as multi-host certification."
     status: external-infrastructure-required
     next_action: "Restore GitHub Actions billing/spending authorization, rerun the compatibility workflow, retain passing x86_64 and arm64 receipts, then run the exact revision and runtime digest on every claimed shared filesystem and publish mount/version/contention/recovery receipts."
   - id: organization-live-certification
