@@ -18,7 +18,7 @@ From a checkout, set `KUJO_BIN` and run `kujo run tribunal.kujo --interpreter --
 
 ## Compatibility
 
-Tribunal 0.7.x requires Kujo 1.0.0 or newer. Library API 1.x, run schemas 1.x, signature verification for legacy v1.0/v1.1 and provider v1.2 envelopes, and bundle schema 1.0 remain supported. Optional integrations are certified only for versions listed in `docs/INTEGRATION_MATRIX.md`. macOS arm64 is measured locally; Linux architectures are supported only when the compatibility workflow publishes a passing receipt for the release.
+Tribunal 0.7.x requires Kujo 1.0.0 or newer. Library API 1.x, run schemas 1.x, signature verification for legacy v1.0/v1.1 and provider v1.2 envelopes, and bundle schema 1.0 remain supported. Optional integrations are certified only for versions listed in `docs/INTEGRATION_MATRIX.md`. The measured 0.7.0 platform set is macOS x86_64 and Linux x86_64; macOS arm64, Linux arm64, and Windows remain unsupported until the same pinned release gates publish passing receipts. See `docs/PLATFORM_SUPPORT.md` for the exact revisions and claim boundaries.
 
 ## Upgrade
 

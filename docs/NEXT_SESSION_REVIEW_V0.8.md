@@ -5,7 +5,7 @@ Tribunal 0.7.0 completes the prior application, scale, security-depth, adoption,
 ## P0 — close external evidence
 
 - [ ] Complete the commissioned independent threat-model/code review, verify assessor independence and signed report provenance, and add a regression fixture for every accepted finding.
-- [ ] Preserve passing release compatibility receipts for macOS x86_64/arm64 and Linux x86_64; add Linux arm64 only after a maintained runner passes the same pinned-runtime gates.
+- [ ] Preserve passing release compatibility receipts for macOS x86_64 and Linux x86_64; add macOS arm64 or Linux arm64 only after a maintained runner passes the same pinned-runtime gates.
 - [ ] Run the multi-host worker/report harness against each supported shared filesystem and publish filesystem/version/mount-specific contention and recovery receipts.
 
 ## P1 — Kujo runtime capability follow-through

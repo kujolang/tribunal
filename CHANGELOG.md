@@ -12,6 +12,7 @@
 - Added provenance-bound context connectors, portable decision-packet templates, signed organization policy checks, canonical filesystem inspection, entropy/organization secret detection, malicious remote-response fixtures, and an independent security-review commission/register gate.
 - Added a Kennel package, upgrade/rollback guide, six-example gallery, generated command/man/completion assets, operator recipes, an explicit no-service decision, and WCAG-oriented dashboard evaluation/gates.
 - Added reproducible source archives, SPDX SBOM, in-toto/SLSA-style provenance, pinned Kujo runtime compatibility jobs, ecosystem integration matrices, release verification instructions, and privacy-preserving opt-in adoption measurement contracts.
+- Published full-gate compatibility receipts for macOS x86_64 and Ubuntu Linux x86_64, made Spec/Eval gates portable across the measured runners, and kept unmeasured architectures explicitly unsupported.
 
 ## 0.6.0 - 2026-07-11
 
