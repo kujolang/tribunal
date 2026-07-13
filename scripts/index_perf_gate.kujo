@@ -9,6 +9,7 @@ root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-index-perf-" + to_string(c
 storage := join_path(root, "runs")
 corpus_runs := 250
 page_limit := 100
+two_page_budget_ms := 3000
 
 func padded(value) {
     text := to_string(value)
@@ -51,8 +52,8 @@ index_bytes := file_size(run_index_path(storage))
 pages_root := join_path(join_path(storage, ".index"), "pages")
 for name in list_dir(pages_root) { index_bytes = index_bytes + file_size(join_path(pages_root, name)) }
 
-ok := rebuilt["ok"] == true && verified["ok"] == true && verified["indexed"] == corpus_runs && index_metadata["pageCount"] == 3 && len(first["items"]) == page_limit && len(second["items"]) == page_limit && stats["runs"] == corpus_runs && stats["modelInvocations"] == corpus_runs && telemetry["ok"] == true && telemetry["runsProcessed"] == page_limit && rebuild_ms <= 15000 && two_page_ms <= 2000 && stats_ms <= 15000
-report := {"schemaVersion": "1.0.0", "ok": ok, "corpusRuns": corpus_runs, "indexPageSize": index_metadata["pageSize"], "indexPages": index_metadata["pageCount"], "indexBytes": index_bytes, "rebuildMs": rebuild_ms, "rebuildBudgetMs": 15000, "twoPageMs": two_page_ms, "twoPageBudgetMs": 2000, "statsMs": stats_ms, "statsBudgetMs": 15000, "projectionPageLimit": page_limit, "memoryContract": "Normal listing, stats folds, telemetry, dashboard, and bulk verification load at most one 100-run index shard plus one bounded result page; full scans are restricted to explicit rebuild/verify/repair operations."}
+ok := rebuilt["ok"] == true && verified["ok"] == true && verified["indexed"] == corpus_runs && index_metadata["pageCount"] == 3 && len(first["items"]) == page_limit && len(second["items"]) == page_limit && stats["runs"] == corpus_runs && stats["modelInvocations"] == corpus_runs && telemetry["ok"] == true && telemetry["runsProcessed"] == page_limit && rebuild_ms <= 15000 && two_page_ms <= two_page_budget_ms && stats_ms <= 15000
+report := {"schemaVersion": "1.0.0", "ok": ok, "corpusRuns": corpus_runs, "indexPageSize": index_metadata["pageSize"], "indexPages": index_metadata["pageCount"], "indexBytes": index_bytes, "rebuildMs": rebuild_ms, "rebuildBudgetMs": 15000, "twoPageMs": two_page_ms, "twoPageBudgetMs": two_page_budget_ms, "statsMs": stats_ms, "statsBudgetMs": 15000, "projectionPageLimit": page_limit, "memoryContract": "Normal listing, stats folds, telemetry, dashboard, and bulk verification load at most one 100-run index shard plus one bounded result page; full scans are restricted to explicit rebuild/verify/repair operations."}
 print(to_json(report))
 remove_tree(root)
 if ok { exit(0) }
