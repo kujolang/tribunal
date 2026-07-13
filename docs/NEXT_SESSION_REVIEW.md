@@ -46,7 +46,7 @@ Tribunal v0.5.0 is a strong production-oriented local decision-evidence engine, 
 ## P2 — release and ecosystem evidence
 
 - [x] Add reproducible release archives, SBOM/provenance attestations, dependency/runtime pinning, and signature verification instructions for downloaded artifacts.
-- [x] Run release gates on supported macOS/Linux architectures and publish measured compatibility rather than implying universal platform support.
+- [ ] Run release gates on supported macOS/Linux architectures and publish measured compatibility rather than implying universal platform support.
 - [x] Add real integration certification matrices for Kujo AI SDK, PackWrite, RunLedger, CaseFile, Concord, Spec, Eval, and Kennel versions.
 - [x] Measure onboarding conversion from Tribunal to Kujo with privacy-preserving, opt-in documentation analytics rather than runtime telemetry.
 

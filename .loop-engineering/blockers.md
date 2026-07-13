@@ -1,6 +1,11 @@
 # External Blockers
 
 blockers:
+  - id: release-platform-linux-unavailable
+    command: "Linux compatibility release gate"
+    evidence: "The available runner is Darwin 25.3.0; a locally generated receipt claiming Linux would be false and was not retained. The workflow now contains the Linux gate, but no supported Linux execution or published receipt is available in this environment."
+    status: external-blocked
+    next_action: "Run the pinned compatibility workflow on its Ubuntu runner, verify every gate, and commit the real Linux compatibility receipt before marking docs/NEXT_SESSION_REVIEW.md:49 complete."
   - id: kujo-cli-module-distribution
     command: "kujo run <entry>.kujo"
     evidence: "KUJO_MODULE_PATH now resolves kujo/modules/cli.kujo from external repositories. Tribunal still retains its application-specific parser and needs an explicit adapter contract before replacing it with the smaller first-party parse(spec) API."
