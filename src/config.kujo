@@ -218,7 +218,7 @@ export func validate_config(config) {
     if valid_positive_int(dict_get(execution, "blind_parallelism", 0), 1, 16) == false || valid_positive_int(dict_get(execution, "provider_max_concurrency", 0), 1, 16) == false { return "Execution concurrency limits must be between 1 and 16." }
     if execution["provider_max_concurrency"] > execution["blind_parallelism"] { return "execution.provider_max_concurrency cannot exceed blind_parallelism." }
     if type(dict_get(execution, "cancel_on_failure", null)) != "bool" || execution["cancel_on_failure"] != true { return "execution.cancel_on_failure is a mandatory fail-closed invariant." }
-    if type(dict_get(execution, "live_parallel_enabled", null)) != "bool" || execution["live_parallel_enabled"] != false { return "Live parallel model execution remains runtime-gated and must be false." }
+    if type(dict_get(execution, "live_parallel_enabled", null)) != "bool" { return "execution.live_parallel_enabled must be a boolean." }
     for field in ["catalog_path", "provenance_path", "public_key_path", "anchor_path"] { if type(dict_get(panels, field, null)) != "string" { return "Panel catalog paths must be strings." } }
     if trim(panels["catalog_path"]) != "" && (trim(panels["provenance_path"]) == "" || trim(panels["public_key_path"]) == "" || trim(panels["anchor_path"]) == "") { return "Custom panel catalogs require provenance, public-key, and external-anchor paths." }
     for field in ["template_path", "policy_path", "policy_provenance_path", "policy_public_key_path", "policy_anchor_path"] { if type(dict_get(decision_packet, field, null)) != "string" { return "Decision packet contract paths must be strings." } }

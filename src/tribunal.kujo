@@ -1,6 +1,6 @@
 # Tribunal :: Kujo-native staged adversarial decision engine
 
-from src.common import dict_get, index_by_id, secret_scan, utf8_byte_length
+from src.common import dict_get, index_by_id, redact, secret_scan, utf8_byte_length
 from src.catalog import seat
 from src.panels import resolve_panel, render_seat_prompt
 from src.storage import generate_run_id, create_run, save_json, save_text, append_event, artifact_path
@@ -156,32 +156,42 @@ func call_model(config, storage_dir, state, stage, seat_value, input, output_sch
     return persist_model_result(storage_dir, run_id, stage, seat_value, invoke_checked(config, run_id, stage, seat_value, input, output_schema))
 }
 
+func invoke_blind_job(job) {
+    result := invoke_checked(job["config"], job["runId"], "blind-first-pass", job["seat"], job["input"], job["seat"]["requiredOutputSchema"])
+    if result["ok"] != true {
+        write_file_atomic(job["cancelFile"], "cancel")
+        return error(to_json(result))
+    }
+    return result
+}
+
 func blind_calls(config, storage_dir, state, selected_seats, context) {
     run_id := state["runId"]
+    cancel_file := join_path(join_path(storage_dir, run_id), ".blind-cancel")
+    if file_exists(cancel_file) { delete_file(cancel_file) }
     mut jobs := []
     for seat_value in selected_seats {
         input := render_seat_prompt(seat_value, context)
         system := system_prompt(seat_value, "blind-first-pass")
         save_text(storage_dir, run_id, "prompts/blind-first-pass-" + seat_value["id"] + ".md", "# System\n\n" + system + "\n\n# Input\n\n" + input + "\n")
         emit(storage_dir, run_id, "blind-first-pass", "model_invocation_requested", "Model invocation requested through Kujo AI SDK boundary.", seat_value["id"], {"preference": seat_value["defaultModelPreference"]})
-        jobs = push(jobs, {"seat": seat_value, "input": input})
+        jobs = push(jobs, {"config": config, "runId": run_id, "seat": seat_value, "input": input, "cancelFile": cancel_file})
     }
     concurrency := config["execution"]["blind_parallelism"]
     if config["execution"]["provider_max_concurrency"] < concurrency { concurrency = config["execution"]["provider_max_concurrency"] }
     if len(jobs) < concurrency { concurrency = len(jobs) }
-    # Live calls remain serial until the SDK bridge supports a per-process cwd.
-    if config["kujo_ai"]["mock_mode"] != true { concurrency = 1 }
-    # Kujo's current interpreter parallel_map implementation starts a nested
-    # Tokio runtime and panics. Keep the evaluated contract fail-closed until
-    # that runtime primitive passes Tribunal's deterministic fixture gate.
     requested_concurrency := concurrency
-    concurrency = 1
-    mut results := []
-    for job in jobs {
-        seat_value := job["seat"]
-        results = push(results, invoke_checked(config, run_id, "blind-first-pass", seat_value, job["input"], seat_value["requiredOutputSchema"]))
+    runtime_gate := ""
+    if config["execution"]["live_parallel_enabled"] != true {
+        concurrency = 1
+        runtime_gate = "live-parallel-opt-in"
     }
-    return {"jobs": jobs, "results": results, "concurrency": concurrency, "requestedConcurrency": requested_concurrency, "runtimeGate": "kujo-parallel-map-nested-runtime"}
+    mut results := []
+    mut parallel_error := ""
+    try { results = await parallel_map(jobs, invoke_blind_job, concurrency) } except err { parallel_error = redact(to_string(err)) }
+    if file_exists(cancel_file) { delete_file(cancel_file) }
+    if parallel_error != "" { return {"ok": false, "error": parallel_error, "jobs": jobs, "results": [], "concurrency": concurrency, "requestedConcurrency": requested_concurrency, "runtimeGate": runtime_gate} }
+    return {"ok": true, "jobs": jobs, "results": results, "concurrency": concurrency, "requestedConcurrency": requested_concurrency, "runtimeGate": runtime_gate}
 }
 
 func add_usage(state, call) {
@@ -347,6 +357,7 @@ func review_internal(config, docket_path, panel_id, private_key, public_key, lin
     # are persisted below in canonical panel order; failed-stage results are discarded.
     blind := blind_calls(config, storage_dir, state, selected_seats, context)
     emit(storage_dir, run_id, "blind-first-pass", "parallel_execution_evaluated", "Blind model calls completed under the runtime-safe concurrency bound.", "", {"requestedConcurrency": blind["requestedConcurrency"], "effectiveConcurrency": blind["concurrency"], "runtimeGate": blind["runtimeGate"], "deterministicPersistenceOrder": true, "providerRateLimitBound": true, "cancelOnFailure": true})
+    if blind["ok"] != true { return stop_run(config, state, blind["error"], private_key, public_key) }
     mut blind_index := 0
     for seat_value in selected_seats {
         call := persist_model_result(storage_dir, run_id, "blind-first-pass", seat_value, blind["results"][blind_index])

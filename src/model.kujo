@@ -111,20 +111,20 @@ func live_invoke(config, request) {
     }
     started := current_timestamp()
     proc := null
-    previous_cwd := os_getcwd()
+    proc_options := {
+        "inherit_env": false,
+        "env": provider_env(ai["provider"], payload),
+        "cwd": ai["sdk_path"],
+        "timeout_ms": dict_get(request, "timeoutMs", 60000),
+        "max_output_bytes": config["limits"]["max_process_output_bytes"]
+    }
+    cancel_file := dict_get(request, "cancelFile", "")
+    if cancel_file != "" { proc_options["cancel_file"] := cancel_file }
     try {
-        os_chdir(ai["sdk_path"])
-        proc = spawn_process([kujo_bin, "run", bridge, "--interpreter"], {
-            "inherit_env": false,
-            "env": provider_env(ai["provider"], payload),
-            "timeout_ms": dict_get(request, "timeoutMs", 60000),
-            "max_output_bytes": config["limits"]["max_process_output_bytes"]
-        })
+        proc = spawn_process([kujo_bin, "run", bridge, "--interpreter"], proc_options)
     } except err {
-        os_chdir(previous_cwd)
         return {"ok": false, "content": "", "metadata": {"latencyMs": current_timestamp() - started}, "error": {"code": "kujo_ai_sdk_bridge_error", "message": redact(err), "retryable": false}}
     }
-    os_chdir(previous_cwd)
     json_line := last_json_line(proc.stdout)
     if json_line == "" {
         return {"ok": false, "content": "", "metadata": {"latencyMs": current_timestamp() - started}, "error": {"code": "kujo_ai_sdk_bridge_error", "message": redact(proc.stderr), "retryable": false}}
