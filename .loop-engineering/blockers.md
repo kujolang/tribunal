@@ -13,17 +13,17 @@ blockers:
     next_action: "Restore GitHub Actions billing/spending authorization, rerun the compatibility workflow, retain passing x86_64 and arm64 receipts, then run the exact revision and runtime digest on every claimed shared filesystem and publish mount/version/contention/recovery receipts."
   - id: organization-live-certification
     command: "scripts/vault_live_certification.kujo; scripts/http_store_conformance.kujo"
-    evidence: "No organization-owned Vault workload identity, authenticated HTTP-store profiles, audit-log export, backup administration, or regional fault environment was available. Reference fixtures do not establish deployment certification."
+    evidence: "No organization-owned Vault workload identity, authenticated HTTP-store profiles, audit-log export, backup administration, or regional fault environment was available. The Tribunal repository exposes no Actions secrets or variables for ecosystem checkout, release runtime, signing-provider configuration, or live certification. Reference fixtures do not establish deployment certification."
     status: external-credentials-and-infrastructure-required
     next_action: "Supply approved organization profiles and preserve identity/audit/denial/backup/recovery evidence bound to the release revision."
   - id: signed-kennel-publication
     command: "kennel publish/install/upgrade/rollback/offline restore"
-    evidence: "No approved registry/mirror signing identity or publication authorization was available, and loop policy blocks release actions. Local Kennel validation is not package publication."
+    evidence: "No approved registry/mirror signing identity or publication authorization was available, the Tribunal repository exposes no release configuration secrets or variables, and the kujolang/kennel repository has no GitHub release or version tag. Loop policy blocks release actions. Local Kennel validation is not package publication."
     status: release-authorization-required
     next_action: "Authorize the approved registry/mirror and signing identity, then publish and capture immutable checksum/provenance lifecycle receipts."
   - id: next-ecosystem-releases
     command: "scripts/integration_matrix_gate.kujo"
-    evidence: "The adjacent repositories do not currently expose a next released version for every pinned Tribunal integration. Testing mutable HEAD would not satisfy the released-version requirement."
+    evidence: "A GitHub release/tag audit on 2026-07-13 found no next immutable released version for any pinned integration: AI SDK, CaseFile, and Concord expose only their currently certified v1.0.0 tag; PackWrite, RunLedger, Spec, Eval, and Kennel expose no release or version tag. Testing mutable HEAD would not satisfy the released-version requirement."
     status: external-release-required
     next_action: "When each next version is released, pin its immutable tag/commit and publish explicit compatible or incompatible gate results."
   - id: human-accessibility-and-adoption-evidence
