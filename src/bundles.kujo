@@ -148,10 +148,11 @@ ENCRYPTED_BUNDLE_SCHEMA := {
     "type": "object",
     "required": ["schemaVersion", "runId", "createdAt", "cipher", "keyWrap", "manifestSha256", "signingKeyId", "wrappedKeys", "artifactCount", "artifacts", "legalHold"],
     "properties": {
-        "schemaVersion": {"const": "1.0.0"},
+        "schemaVersion": {"enum": ["1.0.0", "1.1.0"]},
         "runId": {"type": "string", "minLength": 1, "maxLength": 128},
         "createdAt": {"type": "string", "minLength": 1},
         "cipher": {"const": "AES-256-GCM"},
+        "format": {"enum": ["whole-value", "KUJOAEAD1"]},
         "keyWrap": {"const": "RSA-OAEP"},
         "manifestSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
         "signingKeyId": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
@@ -193,12 +194,11 @@ export func export_encrypted_bundle(storage_dir, run_id, destination, recipient_
     mut entries := []
     for name in exported["bundle"]["artifacts"] {
         source := join_path(join_path(temp, "artifacts"), name)
-        plaintext := read_file(source)
-        ciphertext := aes_encrypt(plaintext, data_key)
         target := join_path(join_path(destination, "artifacts"), name + ".enc")
         ensure_dir(dirname(target))
-        write_file(target, ciphertext)
-        entries = push(entries, {"path": name, "bytes": file_size(source), "plaintextSha256": sha256(plaintext), "ciphertextSha256": sha256(ciphertext)})
+        encrypted := aes_encrypt_file_stream(source, target, data_key, 1048576)
+        if type(encrypted) != "dict" || encrypted["ok"] != true { remove_tree(temp); remove_tree(destination); return {"ok": false, "error": "Streaming encryption failed for " + name} }
+        entries = push(entries, {"path": name, "bytes": encrypted["bytes_in"], "plaintextSha256": encrypted["plaintext_sha256"], "ciphertextSha256": sha256_file(target)})
     }
     copy_file(join_path(join_path(temp, "artifacts"), "artifact-manifest.json"), join_path(join_path(destination, "integrity"), "artifact-manifest.json"))
     copy_file(join_path(join_path(temp, "artifacts"), "signature.json"), join_path(join_path(destination, "integrity"), "signature.json"))
@@ -208,7 +208,7 @@ export func export_encrypted_bundle(storage_dir, run_id, destination, recipient_
         record := read_json(record_path)
         legal_hold = dict_get(dict_get(record, "governance", {}), "legalHold", false)
     }
-    envelope := {"schemaVersion": "1.0.0", "runId": run_id, "createdAt": now_utc(), "cipher": "AES-256-GCM", "keyWrap": "RSA-OAEP", "manifestSha256": exported["bundle"]["manifestSha256"], "signingKeyId": exported["bundle"]["keyId"], "wrappedKeys": wrapped_keys, "artifactCount": len(entries), "artifacts": entries, "legalHold": legal_hold}
+    envelope := {"schemaVersion": "1.1.0", "runId": run_id, "createdAt": now_utc(), "cipher": "AES-256-GCM", "format": "KUJOAEAD1", "keyWrap": "RSA-OAEP", "manifestSha256": exported["bundle"]["manifestSha256"], "signingKeyId": exported["bundle"]["keyId"], "wrappedKeys": wrapped_keys, "artifactCount": len(entries), "artifacts": entries, "legalHold": legal_hold}
     write_json(join_path(destination, "bundle.json"), exported["bundle"])
     write_json(join_path(destination, "envelope.json"), envelope)
     remove_tree(temp)
@@ -234,7 +234,7 @@ export func verify_encrypted_bundle_integrity(bundle_path, signing_public_path) 
     for entry in envelope["artifacts"] {
         if safe_relative_path(entry["path"]) == false { return {"ok": false, "error": "Encrypted bundle contains an unsafe artifact path."} }
         cipher_path := join_path(join_path(bundle_path, "artifacts"), entry["path"] + ".enc")
-        if file_exists(cipher_path) == false || path_is_symlink(cipher_path) || sha256(read_file(cipher_path)) != entry["ciphertextSha256"] { return {"ok": false, "error": "Encrypted artifact integrity failed: " + entry["path"]} }
+        if file_exists(cipher_path) == false || path_is_symlink(cipher_path) || sha256_file(cipher_path) != entry["ciphertextSha256"] { return {"ok": false, "error": "Encrypted artifact integrity failed: " + entry["path"]} }
     }
     return {"ok": true, "runId": envelope["runId"], "manifestSha256": envelope["manifestSha256"], "signature": "verified", "confidentiality": "not-required-for-integrity-check", "legalHold": envelope["legalHold"]}
 }
@@ -264,12 +264,18 @@ export func import_encrypted_bundle(bundle_path, storage_dir, trust_policy, targ
     for entry in envelope["artifacts"] {
         if safe_relative_path(entry["path"]) == false { remove_tree(temp); return {"ok": false, "error": "Encrypted bundle contains an unsafe artifact path."} }
         cipher_path := join_path(join_path(bundle_path, "artifacts"), entry["path"] + ".enc")
-        if file_exists(cipher_path) == false || sha256(read_file(cipher_path)) != entry["ciphertextSha256"] { remove_tree(temp); return {"ok": false, "error": "Encrypted artifact integrity failed: " + entry["path"]} }
-        plaintext := null
-        try { plaintext = aes_decrypt(read_file(cipher_path), unwrapped["dataKey"]) } except err { plaintext = null }
-        if type(plaintext) != "string" || sha256(plaintext) != entry["plaintextSha256"] || len(decode_base64(encode_base64(plaintext))) != entry["bytes"] { remove_tree(temp); return {"ok": false, "error": "Encrypted artifact authentication failed: " + entry["path"]} }
+        if file_exists(cipher_path) == false || sha256_file(cipher_path) != entry["ciphertextSha256"] { remove_tree(temp); return {"ok": false, "error": "Encrypted artifact integrity failed: " + entry["path"]} }
         target_path := join_path(join_path(temp, "artifacts"), entry["path"])
-        ensure_dir(dirname(target_path)); write_file(target_path, plaintext)
+        ensure_dir(dirname(target_path))
+        if dict_get(envelope, "format", "whole-value") == "KUJOAEAD1" {
+            decrypted := aes_decrypt_file_stream(cipher_path, target_path, unwrapped["dataKey"])
+            if type(decrypted) != "dict" || decrypted["ok"] != true || decrypted["plaintext_sha256"] != entry["plaintextSha256"] || decrypted["bytes_out"] != entry["bytes"] { remove_tree(temp); return {"ok": false, "error": "Encrypted artifact authentication failed: " + entry["path"]} }
+        } else {
+            plaintext := null
+            try { plaintext = aes_decrypt(read_file(cipher_path), unwrapped["dataKey"]) } except err { plaintext = null }
+            if type(plaintext) != "string" || sha256(plaintext) != entry["plaintextSha256"] || len(decode_base64(encode_base64(plaintext))) != entry["bytes"] { remove_tree(temp); return {"ok": false, "error": "Encrypted artifact authentication failed: " + entry["path"]} }
+            write_file(target_path, plaintext)
+        }
     }
     imported := import_bundle(temp, storage_dir, trust_policy, target)
     remove_tree(temp)

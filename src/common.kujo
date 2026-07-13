@@ -156,8 +156,17 @@ export func inspect_path_boundary(root, candidate, require_same_mount) {
     if ancestor != "" { return {"ok": false, "error": "Path has a symbolic-link ancestor.", "symlink": ancestor} }
     canonical_root := path_absolute(root); canonical_candidate := path_absolute(candidate)
     if canonical_candidate != canonical_root && starts_with(canonical_candidate, canonical_root + "/") == false { return {"ok": false, "error": "Canonical path escapes its allowed root."} }
-    if require_same_mount { return {"ok": false, "error": "Kujo runtime does not expose portable filesystem device IDs; same-mount enforcement is fail-closed.", "runtimeGate": "filesystem-device-id"} }
-    return {"ok": true, "canonicalRoot": canonical_root, "canonicalPath": canonical_candidate, "symlinkAncestors": false, "casePolicy": "canonical-exact", "unicodePolicy": "artifact-components-ascii-only", "mountPolicy": "not-requested"}
+    mount_policy := "not-requested"
+    if require_same_mount {
+        root_metadata := io_file_metadata(canonical_root)
+        candidate_metadata := io_file_metadata(canonical_candidate)
+        root_device := dict_get(root_metadata, "device_id", "")
+        candidate_device := dict_get(candidate_metadata, "device_id", "")
+        if root_device == "" || candidate_device == "" { return {"ok": false, "error": "Filesystem device identity is unavailable; same-mount enforcement is fail-closed.", "runtimeGate": "filesystem-device-id"} }
+        if root_device != candidate_device { return {"ok": false, "error": "Canonical path crosses a filesystem device boundary.", "rootDeviceId": root_device, "candidateDeviceId": candidate_device} }
+        mount_policy = "same-device:" + root_device
+    }
+    return {"ok": true, "canonicalRoot": canonical_root, "canonicalPath": canonical_candidate, "symlinkAncestors": false, "casePolicy": "canonical-exact", "unicodePolicy": "artifact-components-ascii-only", "mountPolicy": mount_policy}
 }
 
 export func safe_join_existing(root, relative) {

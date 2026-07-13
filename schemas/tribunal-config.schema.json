@@ -81,7 +81,7 @@
         "blind_parallelism": { "type": "integer", "minimum": 1, "maximum": 16 },
         "provider_max_concurrency": { "type": "integer", "minimum": 1, "maximum": 16 },
         "cancel_on_failure": { "const": true },
-        "live_parallel_enabled": { "const": false }
+        "live_parallel_enabled": { "type": "boolean" }
       },
       "additionalProperties": false
     },
@@ -113,8 +113,8 @@
       "required": ["organization_secret_patterns_path", "require_same_mount", "private_key_permission_mode"],
       "properties": {
         "organization_secret_patterns_path": { "type": "string" },
-        "require_same_mount": { "const": false },
-        "private_key_permission_mode": { "const": "managed-provider-required" }
+        "require_same_mount": { "type": "boolean" },
+        "private_key_permission_mode": { "enum": ["0600", "managed-provider-required"] }
       },
       "additionalProperties": false
     },

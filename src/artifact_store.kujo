@@ -5,8 +5,6 @@ from src.common import dict_get, ensure_dir, lower_hex, read_json, redact, remov
 from src.integrity import verify
 from src.adversarial import inspect_remote_envelope
 
-REMOTE_CHUNK_BYTES := 1048576
-
 func request_once(url, options) {
     response := {"ok": false, "status": 0, "body": "", "headers": {}, "error": "request failed"}
     try {
@@ -62,21 +60,21 @@ func descriptor_for(metadata, name) {
     return null
 }
 
-func upload_streamed_artifact(endpoint, context, run_id, version, name, source, descriptor) {
-    mut offset := 0; mut index := 0; mut requests := 0
-    while offset < descriptor["bytes"] {
-        count := REMOTE_CHUNK_BYTES
-        if descriptor["bytes"] - offset < count { count = descriptor["bytes"] - offset }
-        bytes := io_read_at(source, offset, count); encoded := encode_base64(bytes)
-        payload := {"schemaVersion": "1.0.0", "index": index, "offset": offset, "bytes": count, "base64Sha256": sha256(encoded), "dataBase64": encoded}
-        uploaded := request(endpoint + "/runs/" + run_id + "/versions/" + version + "/artifacts/" + name + "/chunks/" + to_string(index), {"method": "PUT", "_headers": merge_headers(context["headers"], {"Content-Type": "application/json", "If-None-Match": "*", "Idempotency-Key": version + ":" + name + ":" + to_string(index)}), "_body": to_json(payload), "timeout": 60})
-        requests = requests + uploaded["attempts"]
-        if uploaded["ok"] != true { return {"ok": false, "error": uploaded["error"], "status": uploaded["status"], "attempts": requests} }
-        offset = offset + count; index = index + 1
+func upload_file_request(url, source, headers) {
+    mut attempt := 1
+    mut last := {"ok": false, "status": 0, "error": "request failed", "attempts": 0}
+    while attempt <= 3 {
+        try {
+            result := http_upload_file(url, source, {"method": "PUT", "headers": headers, "max_response_bytes": 1048576})
+            status := dict_get(result, "status", 0)
+            succeeded := status >= 200 && status < 300
+            last = {"ok": succeeded, "status": status, "error": "", "attempts": attempt, "uploadedBytes": dict_get(result, "uploaded_bytes", 0)}
+        } except err { last = {"ok": false, "status": 0, "error": redact(to_string(err)), "attempts": attempt} }
+        if last["ok"] || (last["status"] != 0 && last["status"] != 429 && last["status"] < 500) { return last }
+        if attempt < 3 { sleep(100 * attempt) }
+        attempt = attempt + 1
     }
-    completed := request(endpoint + "/runs/" + run_id + "/versions/" + version + "/artifacts/" + name + "/complete", {"method": "POST", "_headers": merge_headers(context["headers"], {"Content-Type": "application/json", "If-None-Match": "*", "Idempotency-Key": version + ":" + name + ":complete"}), "_body": to_json(descriptor), "timeout": 60})
-    completed["attempts"] := requests + completed["attempts"]
-    return completed
+    return last
 }
 
 func local_index(root, run_id) { return join_path(join_path(root, "indexes"), run_id + ".json") }
@@ -176,18 +174,7 @@ export func publish_http(storage_dir, run_id, store, expected_version) {
     version := metadata["manifestSha256"]
     for name in metadata["artifacts"] {
         source := join_path(join_path(temp, "artifacts"), name)
-        descriptor := descriptor_for(metadata, name)
-        uploaded := null
-        if type(descriptor) == "dict" && descriptor["bytes"] > REMOTE_CHUNK_BYTES {
-            uploaded = upload_streamed_artifact(endpoint, context, run_id, version, name, source, descriptor)
-        } else {
-            uploaded = request(endpoint + "/runs/" + run_id + "/versions/" + version + "/artifacts/" + name, {
-                "method": "PUT",
-                "_headers": merge_headers(context["headers"], {"Content-Type": "application/octet-stream", "If-None-Match": "*", "Content-SHA256": sha256_file(source)}),
-                "_body": read_file(source),
-                "timeout": 60
-            })
-        }
+        uploaded := upload_file_request(endpoint + "/runs/" + run_id + "/versions/" + version + "/artifacts/" + name, source, merge_headers(context["headers"], {"Content-Type": "application/octet-stream", "If-None-Match": "*", "Content-SHA256": sha256_file(source), "Idempotency-Key": version + ":" + name}))
         if uploaded["ok"] != true {
             request(endpoint + "/runs/" + run_id + "/versions/" + version + "/staging", {"method": "DELETE", "_headers": context["headers"], "timeout": 30})
             remove_tree(temp); return {"ok": false, "error": "Remote artifact upload failed for " + name + ": " + uploaded["error"], "status": uploaded["status"], "attempts": uploaded["attempts"]}
@@ -235,26 +222,11 @@ export func pull_http(store, run_id, version, storage_dir, trust_policy, target)
         destination := join_path(join_path(temp, "artifacts"), name)
         ensure_dir(dirname(destination))
         descriptor := descriptor_for(metadata, name)
-        if type(descriptor) == "dict" && descriptor["bytes"] > REMOTE_CHUNK_BYTES {
-            write_file(destination, "")
-            mut index := 0; mut offset := 0
-            while index < descriptor["chunks"] {
-                downloaded := request(endpoint + "/runs/" + run_id + "/versions/" + selected + "/artifacts/" + name + "/chunks/" + to_string(index), {"method": "GET", "_headers": context["headers"], "timeout": 60})
-                if downloaded["ok"] != true { remove_tree(temp); return {"ok": false, "error": "Remote artifact chunk download failed for " + name + ".", "status": downloaded["status"]} }
-                chunk := null
-                try { chunk = parse_json(downloaded["body"]) } except err { chunk = null }
-                if type(chunk) != "dict" || dict_get(chunk, "index", -1) != index || dict_get(chunk, "offset", -1) != offset || sha256(dict_get(chunk, "dataBase64", "")) != dict_get(chunk, "base64Sha256", "") { remove_tree(temp); return {"ok": false, "error": "Remote artifact chunk contract failed for " + name + "."} }
-                bytes := decode_base64(chunk["dataBase64"])
-                if len(bytes) != chunk["bytes"] || chunk["bytes"] > REMOTE_CHUNK_BYTES { remove_tree(temp); return {"ok": false, "error": "Remote artifact chunk size failed for " + name + "."} }
-                io_append_bytes(destination, bytes); offset = offset + chunk["bytes"]; index = index + 1
-            }
-            if file_size(destination) != descriptor["bytes"] || sha256_file(destination) != descriptor["sha256"] { remove_tree(temp); return {"ok": false, "error": "Remote streamed artifact digest failed for " + name + "."} }
-        } else {
-            downloaded := request(endpoint + "/runs/" + run_id + "/versions/" + selected + "/artifacts/" + name, {"method": "GET", "_headers": context["headers"], "timeout": 60})
-            if downloaded["ok"] != true { remove_tree(temp); return {"ok": false, "error": "Remote artifact download failed for " + name + ".", "status": downloaded["status"]} }
-            if utf8_byte_length(downloaded["body"]) > 67108864 { remove_tree(temp); return {"ok": false, "error": "Remote artifact exceeds the per-file safety limit: " + name} }
-            write_file(destination, downloaded["body"])
-        }
+        if type(descriptor) != "dict" { remove_tree(temp); return {"ok": false, "error": "Remote artifact descriptor is missing for " + name + "."} }
+        downloaded := null
+        try { downloaded = http_download_file(endpoint + "/runs/" + run_id + "/versions/" + selected + "/artifacts/" + name, destination, {"headers": context["headers"], "max_bytes": 67108864, "overwrite": false}) } except err { downloaded = {"status": 0, "error": redact(to_string(err))} }
+        if type(downloaded) != "dict" || dict_get(downloaded, "status", 0) < 200 || dict_get(downloaded, "status", 0) >= 300 { remove_tree(temp); return {"ok": false, "error": "Remote artifact download failed for " + name + ".", "status": dict_get(downloaded, "status", 0)} }
+        if downloaded["bytes"] != descriptor["bytes"] || downloaded["sha256"] != descriptor["sha256"] { remove_tree(temp); return {"ok": false, "error": "Remote streamed artifact digest failed for " + name + "."} }
     }
     imported := import_bundle(temp, storage_dir, trust_policy, target)
     remove_tree(temp)

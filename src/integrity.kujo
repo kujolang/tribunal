@@ -104,9 +104,11 @@ export func generate_keys(private_path, public_path, bits) {
     if type(pair) != "dict" || has_key(pair, "private") == 0 || has_key(pair, "public") == 0 {
         return {"ok": false, "error": "Kujo RSA key generation failed."}
     }
-    write_text(private_path, pair["private"])
-    write_text(public_path, pair["public"])
-    return {"ok": true, "algorithm": "RSA-PKCS1v15-SHA256", "bits": bits, "keyId": substring(sha256(pair["public"]), 0, 32), "privateKey": private_path, "publicKey": public_path}
+    ensure_dir(dirname(private_path)); ensure_dir(dirname(public_path))
+    private_receipt := io_write_private_file(private_path, pair["private"], 384)
+    if type(private_receipt) != "dict" || private_receipt["verified"] != true { return {"ok": false, "error": "Private key could not be created atomically with verified mode 0600."} }
+    try { write_file_atomic(public_path, pair["public"], false) } except err { delete_file(private_path); return {"ok": false, "error": "Public key could not be created; private output was removed."} }
+    return {"ok": true, "algorithm": "RSA-PKCS1v15-SHA256", "bits": bits, "keyId": substring(sha256(pair["public"]), 0, 32), "privateKey": private_path, "publicKey": public_path, "privateKeyMode": "0600", "permissionVerified": true}
 }
 
 func sign_existing_manifest(storage_dir, run_id, private_path, public_path) {

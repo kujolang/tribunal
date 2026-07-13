@@ -156,7 +156,7 @@ func call_model(config, storage_dir, state, stage, seat_value, input, output_sch
     return persist_model_result(storage_dir, run_id, stage, seat_value, invoke_checked(config, run_id, stage, seat_value, input, output_schema))
 }
 
-func invoke_blind_job(job) {
+async func invoke_blind_job(job) {
     result := invoke_checked(job["config"], job["runId"], "blind-first-pass", job["seat"], job["input"], job["seat"]["requiredOutputSchema"])
     if result["ok"] != true {
         write_file_atomic(job["cancelFile"], "cancel")
@@ -182,7 +182,7 @@ func blind_calls(config, storage_dir, state, selected_seats, context) {
     if len(jobs) < concurrency { concurrency = len(jobs) }
     requested_concurrency := concurrency
     runtime_gate := ""
-    if config["execution"]["live_parallel_enabled"] != true {
+    if config["kujo_ai"]["mock_mode"] != true && config["execution"]["live_parallel_enabled"] != true {
         concurrency = 1
         runtime_gate = "live-parallel-opt-in"
     }

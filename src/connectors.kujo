@@ -28,7 +28,7 @@ export func invoke_connector(config, docket) {
     if loaded["ok"] != true { return loaded }
     manifest := loaded["manifest"]
     mut source_allowed := false
-    for root in manifest["allowedRoots"] { if inspect_path_boundary(root, docket["sourcePath"], false)["ok"] == true { source_allowed = true } }
+    for root in manifest["allowedRoots"] { if inspect_path_boundary(root, docket["sourcePath"], config["security"]["require_same_mount"])["ok"] == true { source_allowed = true } }
     if source_allowed == false { return {"ok": false, "error": "Docket source is outside the connector's signed allowed roots."} }
     temp := join_path(env_or("TMPDIR", "/tmp"), "tribunal-connector-" + uuid_v4())
     ensure_dir(temp)

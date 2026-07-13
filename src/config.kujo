@@ -59,8 +59,8 @@ export func default_config() {
         },
         "security": {
             "organization_secret_patterns_path": "",
-            "require_same_mount": false,
-            "private_key_permission_mode": "managed-provider-required"
+            "require_same_mount": true,
+            "private_key_permission_mode": "0600"
         },
         "authorization": {
             "mode": "local",
@@ -223,7 +223,7 @@ export func validate_config(config) {
     if trim(panels["catalog_path"]) != "" && (trim(panels["provenance_path"]) == "" || trim(panels["public_key_path"]) == "" || trim(panels["anchor_path"]) == "") { return "Custom panel catalogs require provenance, public-key, and external-anchor paths." }
     for field in ["template_path", "policy_path", "policy_provenance_path", "policy_public_key_path", "policy_anchor_path"] { if type(dict_get(decision_packet, field, null)) != "string" { return "Decision packet contract paths must be strings." } }
     if trim(decision_packet["policy_path"]) != "" && (trim(decision_packet["policy_provenance_path"]) == "" || trim(decision_packet["policy_public_key_path"]) == "" || trim(decision_packet["policy_anchor_path"]) == "") { return "Organization policy requires provenance, public-key, and external-anchor paths." }
-    if type(dict_get(security, "organization_secret_patterns_path", null)) != "string" || type(dict_get(security, "require_same_mount", null)) != "bool" || dict_get(security, "require_same_mount", true) != false || dict_get(security, "private_key_permission_mode", "") != "managed-provider-required" { return "Security runtime gates must remain fail-closed until Kujo exposes portable mount and permission primitives." }
+    if type(dict_get(security, "organization_secret_patterns_path", null)) != "string" || type(dict_get(security, "require_same_mount", null)) != "bool" || array_includes(["0600", "managed-provider-required"], dict_get(security, "private_key_permission_mode", "")) == false { return "security.private_key_permission_mode must be 0600 or managed-provider-required." }
     if array_includes(["local", "policy"], dict_get(authorization, "mode", "")) == false { return "authorization.mode must be local or policy." }
     if type(dict_get(authorization, "identity", null)) != "string" || trim(dict_get(authorization, "identity", "")) == "" { return "authorization.identity is required." }
     if type(dict_get(authorization, "policy_path", null)) != "string" || trim(dict_get(authorization, "policy_path", "")) == "" { return "authorization.policy_path is required." }

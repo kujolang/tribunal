@@ -1,0 +1,3 @@
+receipt := env_or("TRIBUNAL_CANCELLATION_RECEIPT", "")
+sleep(5000)
+if receipt != "" { write_file_atomic(receipt, "completed") }

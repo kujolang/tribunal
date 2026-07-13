@@ -52,8 +52,8 @@
   },
   "security": {
     "organization_secret_patterns_path": "",
-    "require_same_mount": false,
-    "private_key_permission_mode": "managed-provider-required"
+    "require_same_mount": true,
+    "private_key_permission_mode": "0600"
   },
   "authorization": {
     "mode": "local",

@@ -25,6 +25,27 @@ func check(condition, name) {
     }
 }
 
+async func bounded_runtime_worker(job) {
+    marker := join_path(job["activeRoot"], to_string(job["id"]) + ".active")
+    write_file_atomic(marker, "active")
+    active := len(list_dir(job["activeRoot"]))
+    await async_sleep(job["delayMs"])
+    delete_file(marker)
+    return {"id": job["id"], "active": active}
+}
+
+async func cancellable_runtime_worker(job) {
+    if job["fail"] {
+        await async_sleep(100)
+        write_file_atomic(job["cancelFile"], "cancel")
+        return error("intentional-provider-failure")
+    }
+    spawn_process([KUJO_BIN, "run", job["worker"], "--interpreter"], {"inherit_env": false, "env": {"TRIBUNAL_CANCELLATION_RECEIPT": job["receipt"]}, "cancel_file": job["cancelFile"], "timeout_ms": 10000, "max_output_bytes": 1048576})
+    return {"ok": true}
+}
+
+async func sdk_parallel_worker(job) { return invoke(job["config"], job["request"]) }
+
 func contains_text(path, text) {
     if file_exists(path) == false { return false }
     return contains(read_file(path), text) == 1
@@ -104,7 +125,8 @@ func test_catalog_and_config() {
     check(create_run(exclusive_storage, "exclusive-run") != "" && create_run(exclusive_storage, "exclusive-run") == "", "run creation is atomic and refuses an existing run directory")
     boundary_file := join_path(ROOT, "boundary.txt"); write_file(boundary_file, "bounded")
     check(inspect_path_boundary(ROOT, boundary_file, false)["ok"] == true, "canonical filesystem boundary accepts an in-root regular file")
-    check(inspect_path_boundary(ROOT, boundary_file, true)["ok"] == false, "mount-boundary enforcement fails closed without runtime device IDs")
+    same_mount := inspect_path_boundary(ROOT, boundary_file, true)
+    check(same_mount["ok"] == true && starts_with(same_mount["mountPolicy"], "same-device:"), "mount-boundary enforcement verifies runtime device IDs")
     check(safe_relative_path("unicode-é.md") == false && safe_relative_path("Case/File.md") == true, "Unicode normalization is rejected and case is preserved explicitly")
 }
 
@@ -139,7 +161,7 @@ func test_full_mock_review() {
         if event["eventType"] == "parallel_execution_evaluated" { parallel_evidence = event["metadata"] }
     }
     check(to_json(blind_completed) == to_json(record["panel"]["seatIds"]), "blind results persist in deterministic panel order")
-    check(type(parallel_evidence) == "dict" && parallel_evidence["effectiveConcurrency"] == 1 && parallel_evidence["providerRateLimitBound"] == true && parallel_evidence["cancelOnFailure"] == true, "parallel evaluation is rate-bounded and runtime-gated fail closed")
+    check(type(parallel_evidence) == "dict" && parallel_evidence["effectiveConcurrency"] == 2 && parallel_evidence["runtimeGate"] == "" && parallel_evidence["providerRateLimitBound"] == true && parallel_evidence["cancelOnFailure"] == true, "parallel evaluation is isolated, provider-bounded, and runtime-enabled")
     checked := verify(storage, run_id, "")
     check(checked["ok"] == true && checked["artifactsChecked"] > 20, "artifact manifest covers complete run")
 }
@@ -264,7 +286,8 @@ func test_signing_and_tamper() {
     private_key := join_path(ROOT, "private.pem")
     public_key := join_path(ROOT, "public.pem")
     keys := generate_keys(private_key, public_key, 2048)
-    check(keys["ok"] == true, "Kujo RSA keys generated")
+    private_metadata := io_file_metadata(private_key)
+    check(keys["ok"] == true && keys["permissionVerified"] == true && private_metadata["mode"] == 384, "Kujo RSA keys are atomically generated with verified 0600 permissions")
     check(generate_keys(private_key, public_key, 2048)["ok"] == false, "key generation refuses overwrite")
     result := review(base_config(storage), DOCKET, "executioner-only", private_key, public_key)
     check(result["ok"] == true, "signed executioner review succeeds")
@@ -351,6 +374,15 @@ func test_packwrite_and_sdk_bridge() {
     check(response["ok"] == true, "real Kujo AI SDK offline fixture succeeds")
     check(response["metadata"]["provider"] == "openai", "SDK provider metadata is preserved")
     check(response["metadata"]["resolutionSource"] == "provider_class", "SDK-owned model resolution provenance is preserved")
+    execution := sdk_config["execution"]
+    execution["live_parallel_enabled"] := true
+    execution["blind_parallelism"] := 2
+    execution["provider_max_concurrency"] := 2
+    sdk_config["execution"] := execution
+    request_one := {"runId": "sdk-parallel", "stageId": "blind-first-pass", "seatId": "executioner", "modelPreference": SEATS["executioner"]["defaultModelPreference"], "systemPrompt": "Return structured output.", "input": "SDK parallel one", "outputSchema": {"type": "object"}, "timeoutMs": 60000}
+    request_two := {"runId": "sdk-parallel", "stageId": "blind-first-pass", "seatId": "builder", "modelPreference": SEATS["builder"]["defaultModelPreference"], "systemPrompt": "Return structured output.", "input": "SDK parallel two", "outputSchema": {"type": "object"}, "timeoutMs": 60000}
+    parallel_responses := await parallel_map([{"config": sdk_config, "request": request_one}, {"config": sdk_config, "request": request_two}], sdk_parallel_worker, 2)
+    check(parallel_responses[0]["ok"] == true && parallel_responses[1]["ok"] == true, "live SDK offline fixtures pass bounded parallel execution with per-process cwd isolation")
 }
 
 func test_limits_and_analytics() {
@@ -374,6 +406,33 @@ func test_limits_and_analytics() {
     check(len(filtered) == 1, "run list supports status, panel, and limit filters")
 }
 
+func test_parallel_runtime_contract() {
+    active_root := join_path(ROOT, "parallel-active"); ensure_dir(active_root)
+    jobs := [
+        {"id": 1, "activeRoot": active_root, "delayMs": 180},
+        {"id": 2, "activeRoot": active_root, "delayMs": 140},
+        {"id": 3, "activeRoot": active_root, "delayMs": 20},
+        {"id": 4, "activeRoot": active_root, "delayMs": 10}
+    ]
+    ordered := await parallel_map(jobs, bounded_runtime_worker, 2)
+    mut max_active := 0
+    for result in ordered { if result["active"] > max_active { max_active = result["active"] } }
+    check(ordered[0]["id"] == 1 && ordered[1]["id"] == 2 && ordered[2]["id"] == 3 && ordered[3]["id"] == 4, "parallel_map preserves stable input order across out-of-order completion")
+    check(max_active == 2 && len(list_dir(active_root)) == 0, "parallel_map enforces the provider concurrency bound with isolated worker cleanup")
+
+    cancel_file := join_path(ROOT, "parallel-cancel")
+    receipt := join_path(ROOT, "cancelled-worker-receipt")
+    worker := join_path(HOME, "tests/fixtures/cancellable_worker.kujo")
+    cancel_jobs := [
+        {"fail": false, "cancelFile": cancel_file, "receipt": receipt, "worker": worker},
+        {"fail": true, "cancelFile": cancel_file, "receipt": receipt, "worker": worker}
+    ]
+    started := current_timestamp(); rejected := false
+    try { await parallel_map(cancel_jobs, cancellable_runtime_worker, 2) } except err { rejected = contains(to_string(err), "intentional-provider-failure") == 1 }
+    sleep(300)
+    check(rejected && current_timestamp() - started < 3000 && file_exists(receipt) == false, "parallel provider failure cancels in-flight process work and rejects the batch")
+}
+
 setup()
 test_catalog_and_config()
 test_full_mock_review()
@@ -387,6 +446,7 @@ test_signing_and_tamper()
 test_stop_the_line()
 test_packwrite_and_sdk_bridge()
 test_limits_and_analytics()
+test_parallel_runtime_contract()
 remove_tree(ROOT)
 
 print("")
