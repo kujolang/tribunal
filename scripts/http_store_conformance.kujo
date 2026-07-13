@@ -47,6 +47,7 @@ secondary := pull_http(profiles["SECONDARY"], run_id, version, join_path(root, "
 authenticated_publication_ok := published["ok"] == true && dict_get(published, "tenantId", "") == profiles["PRIMARY"]["tenant_id"]
 partial_upload_ok := partial["ok"] == false && dict_get(partial, "attempts", 0) == 3
 regional_failure_ok := regional_failure["ok"] == false && secondary["ok"] == true
+streamed_large_artifact_ok := large_artifact_present && published["ok"] == true && backup["ok"] == true
 checks := {
     "authenticatedPublication": authenticated_publication_ok,
     "conditionalWriteRace": race["ok"] == false,
@@ -55,7 +56,7 @@ checks := {
     "corruptionRejected": corrupt["ok"] == false,
     "backupRestore": backup["ok"] == true,
     "regionalFailure": regional_failure_ok,
-    "streamedLargeArtifact": large_artifact_present && published["ok"] == true && backup["ok"] == true
+    "streamedLargeArtifact": streamed_large_artifact_ok
 }
 certified := true
 for name in keys(checks) { if checks[name] != true { certified = false } }
