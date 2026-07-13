@@ -10,13 +10,13 @@ Run manifests are indexed under `<storage>/.index/` as atomic metadata plus 100-
 
 Every blind request is derived only from immutable context and its own seat contract. Prompts and request events are persisted in panel order; results are validated and persisted in that same order. Configuration bounds desired concurrency and provider concurrency from 1–16 and mandates cancel-on-failure.
 
-Kujo 1.0.0 `parallel_map` currently panics by starting a Tokio runtime inside the active interpreter runtime. Tribunal records requested/effective concurrency and the runtime gate in sealed events, forces effective concurrency to one, and keeps live concurrency disabled. This is the safe outcome of the evaluation—not a parallel-throughput claim. The gate can be lifted only after the runtime fixture stops panicking and isolation/order/cancellation regressions pass.
+Kujo runtime revision `f8ec5a3aa8976b65e199154374c9bb9826bad6d4` fixes nested async execution and adds bounded isolated async mappers. Tribunal uses `parallel_map` for blind seats, preserves panel order, caps work by both blind and provider limits, shares a cancellation file with live provider subprocesses, and records requested/effective concurrency. Live parallel calls remain an explicit `live_parallel_enabled` opt-in; the offline SDK fixture exercises per-process `cwd` isolation without process-global directory changes.
 
 ## Streaming and transfer budgets
 
-Bundle export/import copies files in 1 MiB `io_read_at`/`io_append_bytes` chunks and records byte, digest, and chunk descriptors. Remote artifacts larger than 1 MiB use chunk endpoints with at most 64 chunks for the 64 MiB per-artifact ceiling. Each request carries index, offset, byte count, base64 digest, idempotency key, and conditional-write semantics; completion binds the whole-file SHA-256. Download verifies every chunk and the final byte count/digest before import. Small artifacts retain the single-request compatibility path.
+Bundle export/import copies files in 1 MiB `io_read_at`/`io_append_bytes` chunks and records byte and digest descriptors. Remote artifacts use Kujo file-body upload/download primitives, retain conditional-create and idempotency headers, and verify returned byte counts plus whole-file SHA-256 before import. Transport memory is constant with respect to artifact size and has no base64 expansion.
 
-Budgets are 10,000 artifacts, 64 MiB per artifact, 1 GiB aggregate bundle bytes, 4 MiB metadata, 1 MiB working chunk, up to 64 chunk PUT/GET requests plus one completion request per large artifact, and no more than one destination copy (1x final disk) plus one temporary bundle copy (maximum 2x transfer disk amplification). AES-GCM runtime primitives remain whole-value APIs, so encrypted portable bundles retain the 64 MiB per-artifact ceiling and must not be represented as constant-memory encryption.
+Budgets are 10,000 artifacts, 64 MiB per artifact, 1 GiB aggregate bundle bytes, 4 MiB metadata, and a 1 MiB encryption/copy working chunk. Each remote artifact uses one streamed PUT and one streamed GET when restored. Framed AES-256-GCM encryption and authenticated decryption are constant-memory within the configured chunk bound. Atomic publication may temporarily require one same-filesystem output copy.
 
 ## Sustained load, contention, and recovery
 

@@ -44,7 +44,7 @@ Pass JSON configuration with `--config <path>`. Defaults are embedded in `src/co
   },
   "panels": { "catalog_path": "", "provenance_path": "", "public_key_path": "", "anchor_path": "" },
   "decision_packet": { "template_path": "", "policy_path": "", "policy_provenance_path": "", "policy_public_key_path": "", "policy_anchor_path": "" },
-  "security": { "organization_secret_patterns_path": "", "require_same_mount": false, "private_key_permission_mode": "managed-provider-required" },
+  "security": { "organization_secret_patterns_path": "", "require_same_mount": true, "private_key_permission_mode": "0600" },
   "authorization": {
     "mode": "local",
     "identity": "local-operator",
@@ -81,7 +81,7 @@ Do not store secrets here. Live credentials must use the provider environment co
 
 Unknown fields and invalid types are rejected. Limits have guarded ranges: docket/context/process output up to 64 MiB, model output up to 16 MiB, and timeouts from 1 to 600 seconds. CLI `--model-timeout-ms` overrides the configured timeout for a run.
 
-Execution concurrency fields record desired/provider bounds and mandatory cancellation, but Kujo 1.0.0 parallel execution is runtime-gated to effective concurrency one. Portable same-mount enforcement and private-key permission modes also remain fail-closed because the runtime does not expose device IDs or chmod-like primitives. Production uses managed signing.
+Execution concurrency fields record desired/provider bounds and mandatory cancellation. Mock/offline work uses bounded parallelism by default; live parallel provider calls require the explicit `live_parallel_enabled` opt-in. Same-mount enforcement compares canonical runtime device IDs. Local private keys are created through an atomic 0600 primitive and verified on the creating handle; `managed-provider-required` remains available for deployments that prohibit local private keys, and managed signing remains the production recommendation.
 
 `authorization.mode=local` is intentionally single-operator and accepts only `local-operator`. Set `mode=policy`, select an identity, and provide a default-deny policy for service or multi-user automation. CLI `--identity` and `--access-policy` provide explicit overrides.
 

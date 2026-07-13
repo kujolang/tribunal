@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Enabled bounded, isolated async blind-seat execution with stable persistence order, provider limits, cancellation hooks, and per-process SDK working directories.
+- Added runtime-backed same-device boundaries plus atomic, handle-verified 0600 private-key creation while retaining managed signing guidance.
+- Replaced whole-value portable-bundle encryption with framed constant-memory AES-256-GCM and authenticated truncation/order checks.
+- Replaced remote base64 chunk expansion with bounded binary HTTP file streaming and digest-bound atomic downloads.
+
 ## 0.7.0 - 2026-07-12
 
 - Replaced inventory rescans with an atomically written, sharded persistent run index plus verify, repair, rebuild, and cursor-bounded CLI/library contracts.

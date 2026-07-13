@@ -10,10 +10,10 @@ Tribunal 0.7.0 completes the prior application, scale, security-depth, adoption,
 
 ## P1 — Kujo runtime capability follow-through
 
-- [ ] Fix Kujo `parallel_map` nested-runtime panics upstream, then lift Tribunal's effective-concurrency gate only after isolation, stable order, provider-rate, cancellation, and live SDK cwd tests pass.
-- [ ] Add portable Kujo filesystem device-ID and restrictive-permission primitives; enable same-mount enforcement and atomically verified private-key modes without weakening managed signing guidance.
-- [ ] Add streaming authenticated-encryption primitives so encrypted bundles can maintain constant memory rather than the current bounded whole-artifact contract.
-- [ ] Add binary request/response file streaming to Kujo HTTP so remote chunk transport can remove base64 expansion while preserving digest and idempotency contracts.
+- [x] Fix Kujo `parallel_map` nested-runtime panics upstream, then lift Tribunal's effective-concurrency gate only after isolation, stable order, provider-rate, cancellation, and live SDK cwd tests pass.
+- [x] Add portable Kujo filesystem device-ID and restrictive-permission primitives; enable same-mount enforcement and atomically verified private-key modes without weakening managed signing guidance.
+- [x] Add streaming authenticated-encryption primitives so encrypted bundles can maintain constant memory rather than the current bounded whole-artifact contract.
+- [x] Add binary request/response file streaming to Kujo HTTP so remote chunk transport can remove base64 expansion while preserving digest and idempotency contracts.
 
 ## P1 — deployment and ecosystem certification
 
@@ -25,7 +25,7 @@ Tribunal 0.7.0 completes the prior application, scale, security-depth, adoption,
 
 - [ ] Perform the manual screen-reader, 400% zoom, forced-colors, and operator usability study; turn confirmed dashboard or workflow issues into deterministic fixtures where possible.
 - [ ] Activate the documentation opt-in endpoint only after privacy review, then publish cohort-suppressed Tribunal-to-Kujo arrival and first-run conversion data.
-- [ ] Evaluate whether repeated deployment demand now justifies the read-only service; retain the current no-service decision unless all authentication, tenancy, browser, TLS, rate, audit, and recovery contracts are approved first.
+- [x] Evaluate whether repeated deployment demand now justifies the read-only service; retain the current no-service decision unless all authentication, tenancy, browser, TLS, rate, audit, and recovery contracts are approved first.
 
 ## Exit criteria
 
