@@ -30,16 +30,55 @@ jobs:
           repository: kujolang/kujo
           ref: 0f7778107ee9efab09ab7559e30c0c97935a890e
           path: kujo
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - uses: actions/checkout@v4
         with:
           repository: kujolang/ai-sdk
           ref: 9177e3cbefe4d7adf5fd7c0489ab126b1bbdcaee
           path: ai-sdk
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - uses: actions/checkout@v4
         with:
           repository: kujolang/packwrite
           ref: 359f8aeba4ee3ca9825072214c25fb639df2e940
           path: packwrite
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@v4
+        with:
+          repository: kujolang/runledger
+          ref: 7d7a1b418a291faf6290be6aed642baacddaac29
+          path: runledger
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@v4
+        with:
+          repository: kujolang/casefile
+          ref: 3a221e6261dcb51e9a1acd55f9adbde3398b614b
+          path: casefile
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@v4
+        with:
+          repository: kujolang/concord
+          ref: a3004f7e140f89cc3b00da72b03fb4905bc42868
+          path: concord
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@v4
+        with:
+          repository: kujolang/spec
+          ref: 9c37073cdd5003c657b5139e6085a8be2fcab1b8
+          path: spec
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@v4
+        with:
+          repository: kujolang/eval
+          ref: db9d0c3a60b10c8bf0bba7b7909dcf96b8338937
+          path: eval
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@v4
+        with:
+          repository: kujolang/kennel
+          ref: 2fa7e5e5a06d43c4af971c403592400209f06818
+          path: kennel
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - uses: dtolnay/rust-toolchain@stable
       - name: Build pinned Kujo runtime
         working-directory: kujo
@@ -50,13 +89,31 @@ jobs:
           TRIBUNAL_HOME: ${{ github.workspace }}/tribunal
           KUJO_BIN: ${{ github.workspace }}/kujo/target/release/kujo
         run: |
+          for file in $(find . -name '*.kujo' -not -path './.git/*'); do "$KUJO_BIN" check "$file"; done
           "$KUJO_BIN" run tests/tribunal_tests.kujo --interpreter
+          "$KUJO_BIN" run tests/cli_integration.kujo --interpreter
+          "$KUJO_BIN" run tests/enterprise_tests.kujo --interpreter
           "$KUJO_BIN" run tests/property_tests.kujo --interpreter
           "$KUJO_BIN" run scripts/schema_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/drift_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/spec_gate.kujo --interpreter
           "$KUJO_BIN" run scripts/perf_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/scale_perf_gate.kujo --interpreter
           "$KUJO_BIN" run scripts/index_perf_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/load_chaos_gate.kujo --interpreter
           "$KUJO_BIN" run scripts/adversarial_gate.kujo --interpreter
           "$KUJO_BIN" run scripts/dashboard_accessibility_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/security_review_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/integration_matrix_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/gallery_gate.kujo --interpreter
+          (cd ../eval && "$KUJO_BIN" run main.kujo run "$TRIBUNAL_HOME/tests/tribunal_eval.json")
+          "$KUJO_BIN" run ../kennel/kennel.kujo --interpreter -- validate --project-dir "$TRIBUNAL_HOME"
+          ./bin/tribunal doctor --json
+          export TRIBUNAL_RELEASE_ARCHIVE_OUTPUT="${RUNNER_TEMP}/tribunal-release-archive"
+          export TRIBUNAL_SOURCE_REVISION="${GITHUB_SHA}"
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$GITHUB_SHA")"
+          rm -rf "$TRIBUNAL_RELEASE_ARCHIVE_OUTPUT"
+          "$KUJO_BIN" run scripts/release_archive.kujo --interpreter
       - name: Publish measured receipt
         working-directory: tribunal
         env:
@@ -65,7 +122,15 @@ jobs:
           TRIBUNAL_PLATFORM: ${{ matrix.platform }}
           TRIBUNAL_SOURCE_REVISION: ${{ github.sha }}
           TRIBUNAL_COMPATIBILITY_OUTPUT: ${{ runner.temp }}/compatibility-${{ matrix.platform }}.json
-        run: "$KUJO_BIN run scripts/platform_receipt.kujo --interpreter"
+          TRIBUNAL_RUNNER_IMAGE: github-hosted:${{ matrix.runner }}
+        run: |
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            export TRIBUNAL_OS_RELEASE="$(sw_vers -productName) $(sw_vers -productVersion)"
+          else
+            export TRIBUNAL_OS_RELEASE="$(. /etc/os-release && printf '%s' "$PRETTY_NAME")"
+          fi
+          export TRIBUNAL_KERNEL="$(uname -sr)"
+          "$KUJO_BIN" run scripts/platform_receipt.kujo --interpreter
       - uses: actions/upload-artifact@v4
         with:
           name: tribunal-compatibility-${{ matrix.platform }}

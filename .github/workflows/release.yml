@@ -44,6 +44,9 @@ jobs:
           "$KUJO_BIN" run scripts/security_review_gate.kujo
           "$KUJO_BIN" run scripts/integration_matrix_gate.kujo
           "$KUJO_BIN" run scripts/gallery_gate.kujo
+          (cd ../eval && "$KUJO_BIN" run main.kujo run "$TRIBUNAL_HOME/tests/tribunal_eval.json")
+          "$KUJO_BIN" run ../kennel/kennel.kujo --interpreter -- validate --project-dir "$TRIBUNAL_HOME"
+          ./bin/tribunal doctor --json
 
       - name: Create signed release evidence bundle
         env:
