@@ -24,3 +24,4 @@ Tribunal's locally achievable v0.8 runtime work is complete. The remaining work 
 
 - Every receipt must bind exact Tribunal/Kujo revisions, runtime digest, environment identity, platform/filesystem or service version, time, limitations, and verifiable provenance.
 - External blockers remain incomplete until their evidence exists; planned jobs, empty registers, and reference fixtures do not satisfy them.
+- The maintained compatibility workflow uses current `ubuntu-24.04`, `macos-15-intel`, and `macos-15` runner labels. GitHub Actions billing/spending authorization must be restored before those jobs can produce candidate receipts.
