@@ -7,10 +7,8 @@ source := join_path(home, "tribunal.spec.yml")
 name := ".tribunal-spec-gate-" + to_string(current_timestamp()) + ".spec.yml"
 target := join_path(spec_root, name)
 copy_file(source, target)
-previous := os_getcwd()
-os_chdir(spec_root)
-proc := spawn_process([join_path(spec_root, "scripts/spec"), "validate", name, "--strict", "--json"], {"inherit_env": true, "env": {"KUJO_BIN": kujo_bin}, "timeout_ms": 120000, "max_output_bytes": 1024 * 1024 * 4})
-os_chdir(previous)
+spec_cli := join_path(spec_root, "scripts/spec")
+proc := spawn_process(["/bin/sh", "-c", "cd \"$1\" && exec \"$2\" validate \"$3\" --strict --json", "tribunal-spec-gate", spec_root, spec_cli, name], {"inherit_env": true, "env": {"KUJO_BIN": kujo_bin}, "timeout_ms": 120000, "max_output_bytes": 1024 * 1024 * 4})
 delete_file(target)
 success := false
 stdout := ""
