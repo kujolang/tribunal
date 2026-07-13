@@ -15,8 +15,8 @@ Trust boundaries exist at CLI input, config/policy files, docket/context/model o
 | Revoked-key acceptance | status/validity/target trust policy | stale policy distribution |
 | Evidence tampering | byte hashes, exact file set, signed metadata, schema validation | compromised trusted key |
 | Concurrent corruption | atomic per-run locks, owner tokens, non-stealing acquisition, seal rollback journal | multi-host/NFS atomicity differs by deployment |
-| Path/symlink/namespace escape | ASCII artifact components, canonical-root containment, symlink-ancestor inspection, external-output boundaries | portable device IDs are unavailable; same-mount mode fails closed |
-| Resource exhaustion | cursor pages, 1 MiB transfer chunks, body/header/artifact/aggregate limits, timeouts, rate bounds | aggregate scheduling/capacity and whole-value encrypted artifacts |
+| Path/symlink/namespace escape | ASCII artifact components, canonical-root containment, symlink-ancestor inspection, external-output boundaries, portable device-ID comparison | deployment mount topology and administrator-selected storage roots remain trust inputs |
+| Resource exhaustion | cursor pages, 1 MiB transfer/encryption frames, body/header/artifact/aggregate limits, bounded parallelism, timeouts, rate bounds | deployment capacity, external-provider quotas, and operator-selected limits remain environment-specific |
 | Secret leakage | built-in, entropy-aware, and organization patterns; match-free findings; redaction; child environment allowlists | novel low-entropy formats and compromised runtime |
 | Malicious remote peer | shared slow/truncated/duplicate/bomb/header validation and Kujo-only provider/plugin/store/telemetry fixture server | transport/proxy behavior differs by deployment |
 | Resume/re-review substitution | sealed checkpoint and record digests, stable idempotency keys, immutable lineage, source digest recheck | provider must honor idempotency for live replay |

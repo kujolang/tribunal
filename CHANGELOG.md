@@ -6,6 +6,7 @@
 - Added runtime-backed same-device boundaries plus atomic, handle-verified 0600 private-key creation while retaining managed signing guidance.
 - Replaced whole-value portable-bundle encryption with framed constant-memory AES-256-GCM and authenticated truncation/order checks.
 - Replaced remote base64 chunk expansion with bounded binary HTTP file streaming and digest-bound atomic downloads.
+- Pinned the corrected Kujo VM parallel-map runtime and a collision-free Kennel validation adapter, with VM/interpreter parity coverage for global dependencies, stable ordering, and catchable provider rejection.
 
 ## 0.7.0 - 2026-07-12
 

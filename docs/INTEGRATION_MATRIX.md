@@ -1,6 +1,6 @@
 # Kujo ecosystem integration certification matrix
 
-The machine-readable matrix in `INTEGRATION_MATRIX.json` pins the exact adjacent revisions exercised for Tribunal 0.7.0. “Certified” means the named local contract and gate passed together; it does not certify live cloud credentials, a public registry, or a deployment not represented by that gate.
+The machine-readable matrix in `INTEGRATION_MATRIX.json` pins the exact adjacent revisions exercised for the Tribunal v0.8 development candidate. “Certified” means the named local contract and gate passed together; it does not certify live cloud credentials, a public registry, or a deployment not represented by that gate.
 
 | Integration | Version | Certified contract |
 |---|---:|---|
