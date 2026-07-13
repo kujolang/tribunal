@@ -5,7 +5,7 @@ Tribunal's locally achievable v0.8 runtime work is complete. The remaining work 
 ## P0 — independent and platform evidence
 
 - [ ] Import the independent assessor's signed, provenance-verified report and add one deterministic regression fixture for every accepted finding.
-- [ ] Publish full-gate compatibility receipts for the v0.8 Tribunal candidate and Kujo revision `afa5bd971a78d88b1fa35c6551fbc1247448e946` on maintained macOS/Linux x86_64 runners; add arm64 support only after the same gates pass there.
+- [ ] Publish full-gate compatibility receipts for the v0.8 Tribunal candidate and Kujo revision `0d145a57584d7addcbc682efe1581fe362077785` on maintained macOS/Linux x86_64 runners; add arm64 support only after the same gates pass there.
 - [ ] Run two or more real hosts against every claimed shared filesystem and publish filesystem/version/mount/contention/recovery receipts.
 
 ## P1 — organization deployment and distribution

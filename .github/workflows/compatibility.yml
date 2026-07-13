@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: kujolang/kujo
-          ref: afa5bd971a78d88b1fa35c6551fbc1247448e946
+          ref: 0d145a57584d7addcbc682efe1581fe362077785
           path: kujo
           token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - uses: actions/checkout@v4
