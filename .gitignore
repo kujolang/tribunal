@@ -124,6 +124,7 @@ eval_results/
 /data/*.db
 /data/*.db-shm
 /data/*.db-wal
+/data/*.log
 /data/backups/
 /tmp/
 /.tmp/
