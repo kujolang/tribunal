@@ -4,7 +4,7 @@ from src.common import ensure_dir, parse_args, path_within, remove_tree, safe_re
 from src.config import default_config, validate_config
 from src.tribunal import review, validate_model_output
 from src.integrity import generate_keys, seal, verify
-from src.storage import artifact_path, load_events
+from src.storage import artifact_path, load_events, load_record
 from src.contracts import validate_run_contracts
 
 mut passed := 0
@@ -57,6 +57,10 @@ insecure_url_config := default_config(); insecure_store := insecure_url_config["
 check(validate_config(insecure_url_config) != "", "remote endpoint configuration requires TLS outside loopback development")
 loopback_url_config := default_config(); loopback_store := loopback_url_config["artifact_store"]; loopback_store["provider"] := "http-immutable"; loopback_store["endpoint"] := "http://127.0.0.1:8080"; loopback_store["tenant_id"] := "test-tenant"; loopback_store["bearer_token_file"] := "/tmp/tribunal-test-token"; loopback_store["region"] := "test-region"; loopback_url_config["artifact_store"] := loopback_store
 check(validate_config(loopback_url_config) == "", "loopback HTTP remains available for local adapter development")
+control_url_config := default_config(); control_store := control_url_config["artifact_store"]; control_store["provider"] := "http-immutable"; control_store["endpoint"] := "https://artifact.example.test\nInjected: true"; control_store["tenant_id"] := "tenant"; control_store["bearer_token_file"] := "/tmp/token"; control_store["region"] := "region"; control_url_config["artifact_store"] := control_store
+check(validate_config(control_url_config) != "", "remote endpoint configuration rejects control characters")
+query_telemetry_config := default_config(); query_telemetry := query_telemetry_config["telemetry"]; query_telemetry["collector"] := "http"; query_telemetry["destination"] := "https://collector.example.test/events?token=bad"; query_telemetry_config["telemetry"] := query_telemetry
+check(validate_config(query_telemetry_config) != "", "HTTP telemetry configuration rejects query-bearing destinations")
 inside_output_config := default_config(); inside_telemetry := inside_output_config["telemetry"]; inside_telemetry["destination"] := "./tribunal-runs/run/telemetry.jsonl"; inside_output_config["telemetry"] := inside_telemetry
 check(validate_config(inside_output_config) != "", "external telemetry cannot be configured inside sealed run storage")
 response_schema := {"type": "object", "required": ["confidence", "disposition"], "properties": {"confidence": {"type": "integer", "minimum": 0, "maximum": 10}, "disposition": {"enum": ["proceed", "reject"]}}, "additionalProperties": false}
@@ -95,6 +99,11 @@ if result["ok"] == true {
     write_file(events_path, events_original + "{not-json}\n", true)
     check(len(load_events(storage, run_id)) == 0, "corrupt JSONL fails closed")
     check(validate_run_contracts(HOME, storage, run_id)["ok"] == false, "contract validation reports corrupt JSONL instead of treating it as empty")
+    record_path := artifact_path(storage, run_id, "record.json")
+    record_original := read_file(record_path)
+    write_file(record_path, repeat("x", 4194305), true)
+    check(type(load_record(storage, run_id)) != "dict", "oversized record projections fail closed")
+    write_file(record_path, record_original, true)
 }
 
 remove_tree(ROOT)

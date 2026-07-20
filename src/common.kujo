@@ -84,6 +84,19 @@ export func read_json(path) {
     return parse_json(read_file(path))
 }
 
+export func safe_existing_file(path, max_bytes, label) {
+    if type(path) != "string" || trim(path) == "" || file_exists(path) == false {
+        return {"ok": false, "error": label + " is missing."}
+    }
+    if path_is_symlink(path) || path_is_dir(path) {
+        return {"ok": false, "error": label + " is unsafe."}
+    }
+    if file_size(path) > max_bytes {
+        return {"ok": false, "error": label + " exceeds the safety limit."}
+    }
+    return {"ok": true, "path": path}
+}
+
 export func safe_run_id(id) {
     if type(id) != "string" || id == "" || len(id) > 128 || starts_with(id, ".") { return false }
     allowed := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
@@ -134,6 +147,14 @@ export func path_within(root, candidate) {
     resolved_root := normalized_absolute(root)
     resolved_candidate := normalized_absolute(candidate)
     return resolved_candidate == resolved_root || starts_with(resolved_candidate, resolved_root + "/")
+}
+
+export func safe_http_url(value) {
+    if type(value) != "string" || trim(value) != value || contains(value, " ") || contains(value, "\n") || contains(value, "\r") || contains(value, "\t") || contains(value, "@") || contains(value, "?") || contains(value, "#") { return false }
+    if starts_with(value, "https://") && len(value) > 8 && substring(value, 8, 9) != "/" { return true }
+    return value == "http://localhost" || starts_with(value, "http://localhost:") || starts_with(value, "http://localhost/") ||
+        value == "http://127.0.0.1" || starts_with(value, "http://127.0.0.1:") || starts_with(value, "http://127.0.0.1/") ||
+        value == "http://[::1]" || starts_with(value, "http://[::1]:") || starts_with(value, "http://[::1]/")
 }
 
 func symlink_ancestor(root, path) {

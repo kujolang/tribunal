@@ -1,6 +1,6 @@
 # Tribunal :: signed document provenance with externally anchored rollback resistance.
 
-from src.common import array_includes, dict_get, read_json, write_json
+from src.common import array_includes, dict_get, read_json, safe_existing_file, write_json
 
 KINDS := ["access-policy", "trust-policy", "governance-registry", "deletion-tombstone", "artifact-store-index", "panel-catalog", "organization-policy", "connector-catalog"]
 
@@ -33,7 +33,7 @@ func safe_key(path, private_key) {
 }
 
 export func verify_provenance(document_path, provenance_path, public_path, anchor_path) {
-    if file_exists(document_path) == false || path_is_symlink(document_path) || file_exists(provenance_path) == false || path_is_symlink(provenance_path) || safe_key(public_path, false) == false { return {"ok": false, "error": "Provenance inputs are missing or unsafe."} }
+    if safe_existing_file(document_path, 67108864, "Provenance document")["ok"] != true || safe_existing_file(provenance_path, 4194304, "Provenance record")["ok"] != true || safe_key(public_path, false) == false { return {"ok": false, "error": "Provenance inputs are missing or unsafe."} }
     record := null
     try { record = read_json(provenance_path) } except err { return {"ok": false, "error": "Provenance record is invalid JSON."} }
     contract := json_schema_validate(record, PROVENANCE_SCHEMA)
@@ -46,7 +46,7 @@ export func verify_provenance(document_path, provenance_path, public_path, ancho
     try { valid = rsa_verify(payload_text, record["signature"], public_key) } except err { valid = false }
     if valid != true { return {"ok": false, "error": "Provenance signature is invalid."} }
     if trim(anchor_path) != "" {
-        if file_exists(anchor_path) == false || path_is_symlink(anchor_path) { return {"ok": false, "error": "External provenance anchor is missing or unsafe."} }
+        if safe_existing_file(anchor_path, 1048576, "External provenance anchor")["ok"] != true { return {"ok": false, "error": "External provenance anchor is missing or unsafe."} }
         anchor := null
         try { anchor = read_json(anchor_path) } except err { return {"ok": false, "error": "External provenance anchor is invalid."} }
         if dict_get(anchor, "schemaVersion", "") != "1.0.0" || dict_get(anchor, "documentKind", "") != record["documentKind"] || dict_get(anchor, "minimumSequence", 0) > record["sequence"] || dict_get(anchor, "provenanceSha256", "") != sha256(read_file(provenance_path)) || dict_get(anchor, "documentSha256", "") != record["documentSha256"] { return {"ok": false, "error": "Provenance is older than or inconsistent with the external anchor."} }
@@ -56,13 +56,14 @@ export func verify_provenance(document_path, provenance_path, public_path, ancho
 
 export func sign_provenance(document_path, document_kind, sequence, previous_path, private_path, public_path, output_path, anchor_path) {
     if array_includes(KINDS, document_kind) == false || type(sequence) != "int" || sequence < 1 { return {"ok": false, "error": "Provenance kind or sequence is invalid."} }
-    if file_exists(document_path) == false || path_is_symlink(document_path) || safe_key(private_path, true) == false || safe_key(public_path, false) == false { return {"ok": false, "error": "Provenance document or key input is unsafe."} }
-    if file_exists(output_path) || path_is_dir(output_path) || file_exists(anchor_path) || path_is_dir(anchor_path) { return {"ok": false, "error": "Provenance output and external anchor must be new paths."} }
+    if safe_existing_file(document_path, 67108864, "Provenance document")["ok"] != true || safe_key(private_path, true) == false || safe_key(public_path, false) == false { return {"ok": false, "error": "Provenance document or key input is unsafe."} }
+    if trim(output_path) == "" || trim(anchor_path) == "" || file_exists(output_path) || path_is_dir(output_path) || file_exists(anchor_path) || path_is_dir(anchor_path) { return {"ok": false, "error": "Provenance output and external anchor must be new paths."} }
     public_key := read_file(public_path)
     previous_digest := repeat("0", 64)
     if sequence > 1 {
-        if file_exists(previous_path) == false || path_is_symlink(previous_path) { return {"ok": false, "error": "Previous provenance record is required."} }
-        prior := read_json(previous_path)
+        if safe_existing_file(previous_path, 4194304, "Previous provenance record")["ok"] != true { return {"ok": false, "error": "Previous provenance record is required."} }
+        prior := null
+        try { prior = read_json(previous_path) } except err { return {"ok": false, "error": "Previous provenance record is invalid JSON."} }
         if dict_get(prior, "sequence", 0) != sequence - 1 || dict_get(prior, "documentKind", "") != document_kind { return {"ok": false, "error": "Previous provenance sequence or kind is inconsistent."} }
         previous_digest = sha256(read_file(previous_path))
     } else if trim(previous_path) != "" { return {"ok": false, "error": "Sequence one cannot reference prior provenance."} }
@@ -73,9 +74,9 @@ export func sign_provenance(document_path, document_kind, sequence, previous_pat
     try { signature = rsa_sign(payload_text, read_file(private_path)) } except err { signature = null }
     if type(signature) != "string" { return {"ok": false, "error": "Unable to sign document provenance."} }
     record["signature"] := signature
-    write_json(output_path, record)
+    try { write_json(output_path, record) } except err { return {"ok": false, "error": "Unable to persist provenance record."} }
     anchor := {"schemaVersion": "1.0.0", "documentKind": document_kind, "minimumSequence": sequence, "provenanceSha256": sha256(read_file(output_path)), "documentSha256": record["documentSha256"], "keyId": record["keyId"], "anchoredAt": now_utc()}
-    write_json(anchor_path, anchor)
+    try { write_json(anchor_path, anchor) } except err { delete_file(output_path); return {"ok": false, "error": "Unable to persist external provenance anchor."} }
     checked := verify_provenance(document_path, output_path, public_path, anchor_path)
     if checked["ok"] != true { return checked }
     return {"ok": true, "provenance": record, "anchor": anchor, "path": output_path, "anchorPath": anchor_path}

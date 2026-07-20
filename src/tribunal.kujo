@@ -1,6 +1,6 @@
 # Tribunal :: Kujo-native staged adversarial decision engine
 
-from src.common import dict_get, index_by_id, redact, secret_scan, utf8_byte_length
+from src.common import dict_get, index_by_id, redact, safe_existing_file, secret_scan, utf8_byte_length
 from src.catalog import seat
 from src.panels import resolve_panel, render_seat_prompt
 from src.storage import generate_run_id, create_run, save_json, save_text, append_event, artifact_path
@@ -72,7 +72,8 @@ func docket_title(content, source) {
 }
 
 func open_docket(config, path) {
-    if path == "" || file_exists(path) == false { return {"ok": false, "error": "Missing or unreadable docket file: " + path} }
+    checked_file := safe_existing_file(path, config["limits"]["max_docket_bytes"], "Docket file")
+    if checked_file["ok"] != true { return {"ok": false, "error": "Missing, unsafe, or oversized docket file: " + path} }
     size := file_size(path)
     max_bytes := config["limits"]["max_docket_bytes"]
     if size > max_bytes { return {"ok": false, "error": "Docket exceeds the configured " + to_string(max_bytes) + " byte limit."} }
@@ -483,12 +484,14 @@ export func resume(config, prior_run_id, private_key, public_key) {
     prior_record_path := artifact_path(storage_dir, prior_run_id, "record.json")
     checkpoint_path := artifact_path(storage_dir, prior_run_id, "checkpoint.json")
     prior_docket := artifact_path(storage_dir, prior_run_id, "docket.md")
-    if file_exists(prior_record_path) == false || file_exists(checkpoint_path) == false || file_exists(prior_docket) == false { return {"ok": false, "error": "Prior run is not resumable: immutable record, docket, or checkpoint is missing."} }
-    prior := parse_json(read_file(prior_record_path))
-    checkpoint := parse_json(read_file(checkpoint_path))
-    if prior["status"] != "stopped" { return {"ok": false, "error": "Only stopped hearings may be resumed."} }
+    if safe_existing_file(prior_record_path, 4194304, "Prior record")["ok"] != true || safe_existing_file(checkpoint_path, 1048576, "Prior checkpoint")["ok"] != true || safe_existing_file(prior_docket, config["limits"]["max_docket_bytes"], "Prior docket")["ok"] != true { return {"ok": false, "error": "Prior run is not resumable: immutable record, docket, or checkpoint is missing or unsafe."} }
     integrity := verify(storage_dir, prior_run_id, "")
     if integrity["ok"] != true { return {"ok": false, "error": "Prior hearing integrity failed; resume is forbidden.", "verification": integrity} }
+    prior := null
+    checkpoint := null
+    try { prior = parse_json(read_file(prior_record_path)) } except err { return {"ok": false, "error": "Prior run record is invalid JSON."} }
+    try { checkpoint = parse_json(read_file(checkpoint_path)) } except err { return {"ok": false, "error": "Prior run checkpoint is invalid JSON."} }
+    if prior["status"] != "stopped" { return {"ok": false, "error": "Only stopped hearings may be resumed."} }
     lineage := {"schemaVersion": "1.0.0", "priorRunId": prior_run_id, "priorRecordSha256": sha256(read_file(prior_record_path)), "priorCheckpointSha256": sha256(read_file(checkpoint_path)), "resumeFromStage": checkpoint["lastCompletedStage"], "resumedAt": now_utc(), "replayPolicy": "full-stage-replay-with-stable-idempotency-keys"}
     return review_internal(config, prior_docket, prior["panel"]["id"], private_key, public_key, lineage)
 }

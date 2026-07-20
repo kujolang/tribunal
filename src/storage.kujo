@@ -1,6 +1,6 @@
 # Tribunal :: durable local run storage
 
-from src.common import dict_get, ensure_dir, remove_tree, safe_run_id, safe_relative_path, slug, write_json, write_text, read_json, relative_files
+from src.common import dict_get, ensure_dir, remove_tree, safe_existing_file, safe_run_id, safe_relative_path, slug, write_json, write_text, read_json, relative_files
 
 RUN_INDEX_PAGE_SIZE := 100
 
@@ -301,19 +301,19 @@ export func append_event(storage_dir, run_id, event) {
 
 export func load_record(storage_dir, run_id) {
     path := artifact_path(storage_dir, run_id, "record.json")
-    if path == "" || file_exists(path) == false { return null }
+    if safe_existing_file(path, 4194304, "Run record")["ok"] != true { return null }
     try { return read_json(path) } except err { return null }
 }
 
 export func load_manifest(storage_dir, run_id) {
     path := artifact_path(storage_dir, run_id, "manifest.json")
-    if path == "" || file_exists(path) == false { return null }
+    if safe_existing_file(path, 4194304, "Run manifest")["ok"] != true { return null }
     try { return read_json(path) } except err { return null }
 }
 
 export func load_events(storage_dir, run_id) {
     path := artifact_path(storage_dir, run_id, "events.jsonl")
-    if path == "" || file_exists(path) == false { return [] }
+    if safe_existing_file(path, 67108864, "Run events")["ok"] != true { return [] }
     mut events := []
     for line in split(read_file(path), "\n") {
         if trim(line) != "" {

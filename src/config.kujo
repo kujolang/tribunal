@@ -1,6 +1,6 @@
 # Tribunal :: JSON configuration with Kujo-first invariants
 
-from src.common import dict_get, truthy, array_includes, path_within, safe_run_id
+from src.common import dict_get, truthy, array_includes, path_within, safe_http_url, safe_run_id
 from src.catalog import panel
 
 export func default_config() {
@@ -145,10 +145,7 @@ func valid_positive_int(value, minimum, maximum) {
 }
 
 func secure_http_url(value) {
-    if starts_with(value, "https://") && len(value) > 8 && substring(value, 8, 9) != "/" && contains(value, " ") == false { return true }
-    return value == "http://localhost" || starts_with(value, "http://localhost:") || starts_with(value, "http://localhost/") ||
-        value == "http://127.0.0.1" || starts_with(value, "http://127.0.0.1:") || starts_with(value, "http://127.0.0.1/") ||
-        value == "http://[::1]" || starts_with(value, "http://[::1]:") || starts_with(value, "http://[::1]/")
+    return safe_http_url(value)
 }
 
 export func validate_config(config) {

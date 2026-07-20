@@ -1,6 +1,6 @@
 # Tribunal :: immutable sealed-ruling comparison and re-review workflow
 
-from src.common import dict_get, path_within, safe_run_id, write_json, write_text
+from src.common import dict_get, path_within, safe_existing_file, safe_run_id, write_json, write_text
 from src.integrity import verify
 from src.storage import artifact_path
 from src.tribunal import review
@@ -12,11 +12,13 @@ export func compare_rulings(storage_dir, base_run_id, candidate_run_id, output_p
     if trim(output_prefix) == "" || path_within(storage_dir, output_prefix) { return {"ok": false, "error": "Comparison output must be outside immutable run storage."} }
     base_path := artifact_path(storage_dir, base_run_id, "record.json")
     candidate_path := artifact_path(storage_dir, candidate_run_id, "record.json")
-    if file_exists(base_path) == false || file_exists(candidate_path) == false { return {"ok": false, "error": "Both comparison records must exist."} }
+    if safe_existing_file(base_path, 4194304, "Base comparison record")["ok"] != true || safe_existing_file(candidate_path, 4194304, "Candidate comparison record")["ok"] != true { return {"ok": false, "error": "Both comparison records must exist and be safe."} }
     base_digest := sha256(read_file(base_path)); candidate_digest := sha256(read_file(candidate_path))
     base_verified := verify(storage_dir, base_run_id, ""); candidate_verified := verify(storage_dir, candidate_run_id, "")
     if base_verified["ok"] != true || candidate_verified["ok"] != true { return {"ok": false, "error": "Both source rulings must pass sealed integrity verification."} }
-    base := parse_json(read_file(base_path)); candidate := parse_json(read_file(candidate_path))
+    base := null; candidate := null
+    try { base = parse_json(read_file(base_path)) } except err { return {"ok": false, "error": "Base comparison record is invalid JSON."} }
+    try { candidate = parse_json(read_file(candidate_path)) } except err { return {"ok": false, "error": "Candidate comparison record is invalid JSON."} }
     before := dict_get(base, "ruling", {}); after := dict_get(candidate, "ruling", {})
     changes := [
         field_change("disposition", dict_get(before, "disposition", ""), dict_get(after, "disposition", "")),

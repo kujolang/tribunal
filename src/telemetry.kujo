@@ -1,7 +1,7 @@
 # Tribunal :: external metrics and audit export without sealed-run mutation
 
 from src.analytics import collect_stats
-from src.common import dict_get, ensure_dir, parent_dir, path_within, redact, write_json
+from src.common import dict_get, ensure_dir, parent_dir, path_within, redact, safe_http_url, write_json
 from src.storage import list_runs_page, load_events
 
 func audit_event(event) {
@@ -16,10 +16,7 @@ func audit_event(event) {
 }
 
 func secure_http_destination(value) {
-    if starts_with(value, "https://") && len(value) > 8 && substring(value, 8, 9) != "/" && contains(value, " ") == false { return true }
-    return value == "http://localhost" || starts_with(value, "http://localhost:") || starts_with(value, "http://localhost/") ||
-        value == "http://127.0.0.1" || starts_with(value, "http://127.0.0.1:") || starts_with(value, "http://127.0.0.1/") ||
-        value == "http://[::1]" || starts_with(value, "http://[::1]:") || starts_with(value, "http://[::1]/")
+    return safe_http_url(value)
 }
 
 export func telemetry_payload_page(storage_dir, cursor, limit, metrics) {

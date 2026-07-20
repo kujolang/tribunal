@@ -5,7 +5,7 @@ from src.config import load_config, apply_overrides, validate_config
 from src.catalog import PANELS, SEATS
 from src.tribunal import review, resume, validate_docket
 from src.compare import compare_rulings, re_review
-from src.storage import list_runs_page, load_record, load_events, rebuild_run_index, repair_run_index, verify_run_index
+from src.storage import artifact_path, list_runs_page, load_record, load_events, rebuild_run_index, repair_run_index, verify_run_index
 from src.render import summary
 from src.integrity import generate_keys, recover_seal_transactions, seal, verify, verify_runs_page
 from src.integrations import ingest_runledger, ingest_casefile
@@ -491,8 +491,8 @@ func cmd_verify_policy(parsed, config) {
     loaded := load_trust_policy(flag(parsed, "trust-policy", ""))
     if loaded["ok"] != true { return command_error(loaded["error"], 2) }
     run_id := required_run(parsed)
-    signature_path := join_path(join_path(config["tribunal"]["storage_dir"], run_id), "signature.json")
-    if file_exists(signature_path) == false { return command_error("Signature envelope is missing.", 3) }
+    signature_path := artifact_path(config["tribunal"]["storage_dir"], run_id, "signature.json")
+    if signature_path == "" || file_exists(signature_path) == false || path_is_symlink(signature_path) || file_size(signature_path) > 4194304 { return command_error("Signature envelope is missing or unsafe.", 3) }
     envelope := null
     try { envelope = parse_json(read_file(signature_path)) } except err { return command_error("Signature envelope is invalid JSON.", 3) }
     trusted := trusted_key(loaded["policy"], dict_get(envelope, "keyId", ""), flag(parsed, "target", "verify"), current_timestamp())
