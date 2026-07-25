@@ -18,7 +18,7 @@ jobs:
       KUJO_BIN: ${{ vars.KUJO_BIN }}
       TRIBUNAL_SIGNING_PROVIDER_CONFIG: ${{ vars.TRIBUNAL_SIGNING_PROVIDER_CONFIG }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Verify release inputs
         run: |
@@ -65,7 +65,7 @@ jobs:
           "$KUJO_BIN" run scripts/release_archive.kujo --interpreter
 
       - name: Upload immutable signed evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: tribunal-${{ github.ref_name }}-signed-evidence
           path: ${{ runner.temp }}/tribunal-release-evidence
@@ -73,7 +73,7 @@ jobs:
           retention-days: 90
 
       - name: Upload reproducible release package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: tribunal-${{ github.ref_name }}-reproducible-package
           path: ${{ runner.temp }}/tribunal-release-archive
