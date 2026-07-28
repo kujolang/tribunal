@@ -1,6 +1,6 @@
 # Launch Checklist
 
-Current launch scope: `technical preview`. Tribunal has strong local/offline evidence, but this batch does not prove production-ready or enterprise-ready deployment because live provider, managed identity, shared storage, independent review, target platform, and Workcell proof are not complete.
+Current launch scope: `technical preview`. Tribunal has strong local/offline evidence and Workcell proof for this batch, but production-ready or enterprise-ready deployment remains unproven because live provider, managed identity, shared storage, independent review, target platform, and full release evidence are not complete.
 
 ## Local Gates
 
@@ -12,22 +12,21 @@ Current launch scope: `technical preview`. Tribunal has strong local/offline evi
 - [x] Schema gate executed with `$KUJO_BIN run scripts/schema_gate.kujo --interpreter`.
 - [x] Formatting checked with `git diff --check`.
 - [ ] Full release gate for all scripts/tests rerun at this exact batch commit.
-- [ ] Workcell proof checked with `workcell run --file docs/workcell-launch-gate.json --repo .`.
+- [x] Workcell proof checked with `workcell run --file docs/workcell-launch-gate.json --repo . --no-pull`.
 - [ ] Live provider and organization-specific deployment certification.
 
-## Current External Blocker
+## Workcell Proof Notes
 
-Workcell proof is blocked by the local Docker image build/pull path. The Workcell base image could not be fetched from Docker Hub because `auth.docker.io` timed out.
+Workcell proof passed after building `kujolang/workcell-base:local` with `DOCKER_BUILDKIT=0`, using the Colima Workcell Docker host, and setting `TMPDIR` to a path under `/Users/robertdevore/2026/Kujolang/kujo-repos/.workcell-host-tmp` so the disposable worktree mount was visible inside the Colima VM.
 
-Closest equivalent proof: Tribunal local/offline CLI, runtime, test, and schema gates.
-
-Safe resume command:
+Resume command:
 
 ```bash
-cd /Users/robertdevore/2026/Kujolang/kujo-repos/workcell
-DOCKER_HOST=unix:///Users/robertdevore/.colima/kujo-workcell/docker.sock docker build --tag kujolang/workcell-base:local docker/
-cd /Users/robertdevore/2026/Kujolang/kujo-repos/tribunal
-workcell run --file docs/workcell-launch-gate.json --repo .
+export DOCKER_HOST=unix:///Users/robertdevore/.colima/kujo-workcell/docker.sock
+export DOCKER_CONFIG=/tmp/kujo-next-batch-docker-config
+export TMPDIR=/Users/robertdevore/2026/Kujolang/kujo-repos/.workcell-host-tmp
+workcell run --file docs/workcell-launch-gate.json --repo . --no-pull
+workcell verify --run .workcell/runs/<run-id> --json
 ```
 
 ## Forbidden Launch Actions

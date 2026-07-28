@@ -13,7 +13,7 @@ Tribunal is also a practical showcase for [Kujo](https://github.com/kujolang/kuj
 Tribunal v0.7.0 is production-oriented and useful as a local or operator-controlled decision-evidence engine. It is not automatically “universally enterprise-ready”: managed identity/custody, the target shared filesystem, remote stores, platform receipts, and organization controls must be certified for the actual deployment before making that claim. The independent security review is commissioned, not completed.
 
 For the 2026-07-28 next launch batch, the honest scope is technical preview:
-local/offline CLI, runtime, test, and schema gates pass, but Workcell proof,
+local/offline CLI, runtime, test, schema, and Workcell proof gates pass, but
 live provider evidence, organization deployment certification, and independent
 review completion are not present for this exact batch commit. See
 [`docs/launch-checklist.md`](docs/launch-checklist.md).
