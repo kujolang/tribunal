@@ -13,8 +13,8 @@ if file_exists(kujo) == false { print("KUJO_BIN is required."); exit(2) }
 root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-archive-smoke-" + uuid_v4())
 ensure_dir(root)
 extracted := unzip(archive, root)
-stage := join_path(root, "tribunal-v" + VERSION)
-if len(extracted) == 0 || path_is_dir(stage) == false || file_exists(join_path(stage, "bin/tribunal")) == false { remove_tree(root); print("Archive does not contain the expected packaged CLI."); exit(1) }
+stage := root
+if len(extracted) == 0 || file_exists(join_path(stage, "bin/tribunal")) == false { remove_tree(root); print("Archive does not contain the expected packaged CLI."); exit(1) }
 
 invalid := join_path(root, "invalid.md"); write_text(invalid, "# Invalid docket\n")
 storage := join_path(root, "runs")
