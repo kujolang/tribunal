@@ -5,6 +5,7 @@ from src.catalog import panel
 
 export func default_config() {
     home := path_absolute(env_or("TRIBUNAL_HOME", "."))
+    kujo_bin := env_or("KUJO_BIN", env_or("KUJO", join_path(home, "../kujo/target/release/kujo")))
     return {
         "tribunal": {
             "storage_dir": "./tribunal-runs",
@@ -18,14 +19,14 @@ export func default_config() {
             "allow_direct_provider_fallback": false,
             "mock_mode": true,
             "sdk_path": join_path(home, "../ai-sdk"),
-            "kujo_bin": join_path(home, "../kujo/target/release/kujo"),
+            "kujo_bin": kujo_bin,
             "provider": "openai",
             "offline_fixture": false
         },
         "context": {
             "provider": "local",
             "packwrite_path": join_path(home, "../packwrite"),
-            "kujo_bin": join_path(home, "../kujo/target/release/kujo"),
+            "kujo_bin": kujo_bin,
             "plugin_manifest_path": "",
             "plugin_provenance_path": "",
             "plugin_public_key_path": "",
