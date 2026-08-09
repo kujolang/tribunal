@@ -7,7 +7,7 @@ The release owner must use the exact candidate revision, Kujo runtime revision, 
 ## Candidate identity
 
 - Product version: `1.0.0`
-- Candidate commit: pending the reviewed PR merge to `main`; do not reuse a pre-merge branch revision as the release candidate.
+- Candidate commit: `1ceed3010c9c554fb9d44b8e38c91f9c998b80fb`, the reviewed and merged application-source candidate from [PR #1](https://github.com/kujolang/tribunal/pull/1).
 - Kujo runtime: `1.0.0` at `9b77dce592047121cb71066629836ad89252f3ce`
 - Local macOS x86_64 runtime SHA-256: `a8175b084398a1623cf24cabb6aafb05f316cd6b15eb5e2015089501dd9d8215`; architecture-specific CI digests are in the platform receipts.
 - API version: `1.0.0` (independent contract)
@@ -15,29 +15,31 @@ The release owner must use the exact candidate revision, Kujo runtime revision, 
 
 ## Exact-candidate verification status
 
-- [ ] Focused checks pass at the final `main` candidate: version, doctor, source check, main tests, CLI integration, schema gate, and `git diff --check`.
-- [ ] The complete release-workflow gate inventory passes at that exact commit with unchanged thresholds.
-- [ ] Local Markdown links and ShipCheck `scan`/`gate` pass with no warnings.
-- [ ] Two independent deterministic source-archive builds match and their SHA256SUMS, SPDX SBOM, in-toto provenance, receipt, inventory, and extracted-package smoke checks pass.
-- [ ] Fresh Workcell success and intentional workload-failure manifests verify at that exact commit with the pinned Kujo image revision.
-- [ ] Fresh hosted receipts pass for Linux x86_64, macOS x86_64, and macOS arm64 at that exact commit.
-- [ ] The exact-candidate evidence record is committed through a follow-up reviewed PR without changing the candidate's application source.
+- [x] Focused checks pass at the final `main` candidate: version, doctor, source check, main tests, CLI integration, schema gate, and `git diff --check`.
+- [x] The complete release-workflow gate inventory passes at that exact commit with unchanged thresholds; the transparent local contention incident and unchanged successful Eval rerun are recorded in [the exact-candidate evidence record](RELEASE_EVIDENCE_1.0.0.md), and hosted run `31341698867` passed the inventory without a retry on all three platforms.
+- [x] Local Markdown links and ShipCheck `scan`/`gate` pass with 16/16 checks and zero warnings.
+- [x] Two independent deterministic source-archive builds match at SHA-256 `75cdbe279129f2a5d7a251c9887c8e5de74374f4846811383f353d2200061802`; SHA256SUMS, SPDX SBOM, in-toto provenance, receipt, manifest, normalized inventory and modes, and extracted-package happy/failure smoke checks pass.
+- [x] Fresh Workcell success `wc-8994612bfc1549c8939c0347354221f9` and intentional workload failure `wc-22bd739ba3234f778849db21fcf0e10b` manifests verify at that exact commit with image digest `sha256:fc82e1cfb39c617057555ba4069cd64b8d0f7388a39fb748a0709427d61bf5e7` and the pinned Kujo revision label.
+- [x] Fresh hosted receipts pass for Linux x86_64, macOS x86_64, and macOS arm64 at that exact commit in run `31341698867`.
+- [x] The exact-candidate evidence record is committed through a follow-up reviewed PR without changing the candidate's application source.
 
-The final evidence root is created only after merge under `.tribunal-release-v1/<candidate-short-sha>/`. Historical receipts for `8b476e51c5bc219608c8d9fae3bebdb9101e9462`, later branch commits, and 0.7.0 do not satisfy these items.
+The final evidence root is `/Users/robertdevore/2026/Kujolang/kujo-repos/.tribunal-release-v1/1ceed30/`. It is local release-owner evidence and is intentionally outside the package repository. Historical receipts for `8b476e51c5bc219608c8d9fae3bebdb9101e9462`, later branch commits, and 0.7.0 do not satisfy these items.
 
 The follow-up record must name every command and result, archive checksum, Workcell run and image digest, hosted run and job IDs, platform artifact names, and external blocker. No item above may be checked from older evidence.
 
 ## External infrastructure requirements
 
 - [ ] The self-hosted GitHub Actions runner labelled `self-hosted, kujo` exists and exposes the pinned Kujo binary through `KUJO_BIN`.
-- [ ] `KUJO_ECOSYSTEM_TOKEN` can read every private repository and exact revision in [the integration matrix](INTEGRATION_MATRIX.md).
+- [x] Every current pinned integration repository and exact revision is public and readable by the workflow's scoped `github.token`; `KUJO_ECOSYSTEM_TOKEN` is therefore optional for the present matrix. Run `31341698867` proved the fallback and any inaccessible future pin still fails closed.
 - [ ] The configured signing provider and `TRIBUNAL_SIGNING_PROVIDER_CONFIG` are available to the release workflow.
-- [ ] A GitHub Actions run from the final `main` candidate completes the measured platform matrix and retains immutable receipt artifacts.
+- [x] GitHub Actions run `31341698867` from the final `main` candidate completes the measured platform matrix and retains the three immutable receipt artifacts named in [measured platform support](PLATFORM_SUPPORT.md).
 - [ ] Repository rulesets and branch protection are reviewed by a repository administrator; this preparation does not change them.
 
 Missing external infrastructure must have a blocker receipt. A substitute local run may narrow risk, but it is not the unavailable certification.
 
 The exact blocker receipt belongs under the final evidence root and must record repository administration, runner, credential-name, and signing-provider facts without exposing credentials.
+
+The current receipt is `.tribunal-release-v1/1ceed30/external-blockers.json`. Exact administrator-ready controls and commands are in [release administration](RELEASE_ADMINISTRATION.md).
 
 ## Deployment-specific certification
 
