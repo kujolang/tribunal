@@ -1,7 +1,7 @@
 # Tribunal :: live authenticated immutable HTTP-store certification harness.
 
 from src.artifact_store import publish_http, pull_http
-from src.common import dict_get, ensure_dir, iso_now, read_json, remove_tree, write_json
+from src.common import dict_get, ensure_dir, read_json, remove_tree, write_json
 from src.config import default_config, validate_config
 from src.policy import load_trust_policy
 
@@ -27,6 +27,10 @@ for name in profile_names {
 }
 trust := load_trust_policy(trust_path)
 if storage == "" || run_id == "" || report_path == "" || trust["ok"] != true { print("Source storage, signed run, trust policy, and report path are required."); exit(2) }
+source_manifest_path := join_path(join_path(storage, run_id), "artifact-manifest.json")
+if file_exists(source_manifest_path) == false { print("Source run artifact manifest is missing."); exit(2) }
+source_manifest := read_json(source_manifest_path); large_artifact_present := false
+for artifact in source_manifest["artifacts"] { if artifact["bytes"] > 1048576 { large_artifact_present = true } }
 
 root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-http-store-conformance-" + uuid_v4())
 ensure_dir(root)
@@ -43,6 +47,7 @@ secondary := pull_http(profiles["SECONDARY"], run_id, version, join_path(root, "
 authenticated_publication_ok := published["ok"] == true && dict_get(published, "tenantId", "") == profiles["PRIMARY"]["tenant_id"]
 partial_upload_ok := partial["ok"] == false && dict_get(partial, "attempts", 0) == 3
 regional_failure_ok := regional_failure["ok"] == false && secondary["ok"] == true
+streamed_large_artifact_ok := large_artifact_present && published["ok"] == true && backup["ok"] == true
 checks := {
     "authenticatedPublication": authenticated_publication_ok,
     "conditionalWriteRace": race["ok"] == false,
@@ -50,11 +55,12 @@ checks := {
     "partialUploadCleanup": partial_upload_ok,
     "corruptionRejected": corrupt["ok"] == false,
     "backupRestore": backup["ok"] == true,
-    "regionalFailure": regional_failure_ok
+    "regionalFailure": regional_failure_ok,
+    "streamedLargeArtifact": streamed_large_artifact_ok
 }
 certified := true
 for name in keys(checks) { if checks[name] != true { certified = false } }
-report := {"schemaVersion": "1.0.0", "generatedAt": iso_now(), "provider": "authenticated-http-immutable", "runId": run_id, "version": version, "tenantId": dict_get(profiles["PRIMARY"], "tenant_id", ""), "primaryRegion": dict_get(profiles["PRIMARY"], "region", ""), "secondaryRegion": dict_get(profiles["SECONDARY"], "region", ""), "certified": certified, "checks": checks}
+report := {"schemaVersion": "1.0.0", "generatedAt": now_utc(), "provider": "authenticated-http-immutable", "runId": run_id, "version": version, "tenantId": dict_get(profiles["PRIMARY"], "tenant_id", ""), "primaryRegion": dict_get(profiles["PRIMARY"], "region", ""), "secondaryRegion": dict_get(profiles["SECONDARY"], "region", ""), "certified": certified, "checks": checks}
 ensure_dir(dirname(report_path)); write_json(report_path, report); remove_tree(root); print(to_json_pretty(report))
 if certified { exit(0) }
 exit(1)

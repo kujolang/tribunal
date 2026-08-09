@@ -1,0 +1,24 @@
+{
+  "title": "TribunalPersistentRunIndexPage",
+  "type": "object",
+  "required": ["schemaVersion", "page", "entries"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "page": { "type": "integer", "minimum": 1 },
+    "entries": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "required": ["runId", "manifestSha256", "manifest"],
+        "properties": {
+          "runId": { "type": "string", "minLength": 1, "maxLength": 128 },
+          "manifestSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "manifest": { "type": "object" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

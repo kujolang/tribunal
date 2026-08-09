@@ -84,6 +84,19 @@ export func read_json(path) {
     return parse_json(read_file(path))
 }
 
+export func safe_existing_file(path, max_bytes, label) {
+    if type(path) != "string" || trim(path) == "" || file_exists(path) == false {
+        return {"ok": false, "error": label + " is missing."}
+    }
+    if path_is_symlink(path) || path_is_dir(path) {
+        return {"ok": false, "error": label + " is unsafe."}
+    }
+    if file_size(path) > max_bytes {
+        return {"ok": false, "error": label + " exceeds the safety limit."}
+    }
+    return {"ok": true, "path": path}
+}
+
 export func safe_run_id(id) {
     if type(id) != "string" || id == "" || len(id) > 128 || starts_with(id, ".") { return false }
     allowed := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
@@ -134,6 +147,56 @@ export func path_within(root, candidate) {
     resolved_root := normalized_absolute(root)
     resolved_candidate := normalized_absolute(candidate)
     return resolved_candidate == resolved_root || starts_with(resolved_candidate, resolved_root + "/")
+}
+
+export func safe_http_url(value) {
+    if type(value) != "string" || trim(value) != value || contains(value, " ") || contains(value, "\n") || contains(value, "\r") || contains(value, "\t") || contains(value, "@") || contains(value, "?") || contains(value, "#") { return false }
+    if starts_with(value, "https://") && len(value) > 8 && substring(value, 8, 9) != "/" { return true }
+    return value == "http://localhost" || starts_with(value, "http://localhost:") || starts_with(value, "http://localhost/") ||
+        value == "http://127.0.0.1" || starts_with(value, "http://127.0.0.1:") || starts_with(value, "http://127.0.0.1/") ||
+        value == "http://[::1]" || starts_with(value, "http://[::1]:") || starts_with(value, "http://[::1]/")
+}
+
+func symlink_ancestor(root, path) {
+    lexical_root := normalized_absolute(root); absolute := normalized_absolute(path)
+    if absolute != lexical_root && starts_with(absolute, lexical_root + "/") == false { return "" }
+    relative := ""
+    if len(absolute) > len(lexical_root) { relative = substring(absolute, len(lexical_root) + 1, len(absolute)) }
+    mut current := lexical_root
+    for part in split(relative, "/") {
+        if part == "" { continue }
+        current = join_path(current, part)
+        if file_exists(current) || path_is_dir(current) { if path_is_symlink(current) { return current } }
+    }
+    return ""
+}
+
+export func inspect_path_boundary(root, candidate, require_same_mount) {
+    if type(root) != "string" || type(candidate) != "string" || file_exists(root) == false || file_exists(candidate) == false { return {"ok": false, "error": "Boundary paths must exist before canonical inspection."} }
+    ancestor := symlink_ancestor(root, candidate)
+    if ancestor != "" { return {"ok": false, "error": "Path has a symbolic-link ancestor.", "symlink": ancestor} }
+    canonical_root := path_absolute(root); canonical_candidate := path_absolute(candidate)
+    if canonical_candidate != canonical_root && starts_with(canonical_candidate, canonical_root + "/") == false { return {"ok": false, "error": "Canonical path escapes its allowed root."} }
+    mount_policy := "not-requested"
+    if require_same_mount {
+        root_metadata := io_file_metadata(canonical_root)
+        candidate_metadata := io_file_metadata(canonical_candidate)
+        root_device := dict_get(root_metadata, "device_id", "")
+        candidate_device := dict_get(candidate_metadata, "device_id", "")
+        if root_device == "" || candidate_device == "" { return {"ok": false, "error": "Filesystem device identity is unavailable; same-mount enforcement is fail-closed.", "runtimeGate": "filesystem-device-id"} }
+        if root_device != candidate_device { return {"ok": false, "error": "Canonical path crosses a filesystem device boundary.", "rootDeviceId": root_device, "candidateDeviceId": candidate_device} }
+        mount_policy = "same-device:" + root_device
+    }
+    return {"ok": true, "canonicalRoot": canonical_root, "canonicalPath": canonical_candidate, "symlinkAncestors": false, "casePolicy": "canonical-exact", "unicodePolicy": "artifact-components-ascii-only", "mountPolicy": mount_policy}
+}
+
+export func safe_join_existing(root, relative) {
+    if safe_relative_path(relative) == false { return {"ok": false, "error": "Relative path uses unsupported case, Unicode, or traversal syntax."} }
+    candidate := join_path(root, relative)
+    checked := inspect_path_boundary(root, candidate, false)
+    if checked["ok"] != true { return checked }
+    checked["path"] := checked["canonicalPath"]
+    return checked
 }
 
 export func lower_hex(value, expected_length) {
@@ -253,6 +316,48 @@ export func contains_secret(text) {
         if len(regex_find_all(value, pattern)) > 0 { return true }
     }
     return false
+}
+
+func entropy_candidate(value) {
+    if len(value) < 24 || len(value) > 512 { return false }
+    # Hyphenated identifiers and prose slugs are high-diversity but routinely
+    # public; known hyphenated token families remain covered by fixed patterns.
+    if contains(value, "-") { return false }
+    mut seen := ""; mut upper := false; mut lower := false; mut digit := false; mut symbol := false
+    mut i := 0
+    while i < len(value) {
+        ch := substring(value, i, i + 1)
+        if contains(seen, ch) == 0 { seen = seen + ch }
+        if contains("ABCDEFGHIJKLMNOPQRSTUVWXYZ", ch) { upper = true }
+        if contains("abcdefghijklmnopqrstuvwxyz", ch) { lower = true }
+        if contains("0123456789", ch) { digit = true }
+        if contains("+/_=", ch) { symbol = true }
+        i = i + 1
+    }
+    classes := 0
+    for present in [upper, lower, digit, symbol] { if present { classes = classes + 1 } }
+    return classes >= 3 && len(seen) * 100 / len(value) >= 35
+}
+
+export func secret_scan(text, organization_patterns_path) {
+    value := to_string(text)
+    mut detections := []
+    if contains_secret(value) { detections = push(detections, {"kind": "built-in-pattern"}) }
+    for candidate in regex_find_all(value, "([A-Za-z0-9]{8,}[+/_][A-Za-z0-9+/_=]{8,512}|[A-Za-z0-9]{24,510}={1,2})") {
+        if entropy_candidate(candidate) { detections = push(detections, {"kind": "high-entropy-token", "length": len(candidate), "sha256Prefix": substring(sha256(candidate), 0, 12)}) }
+    }
+    if trim(organization_patterns_path) != "" {
+        if file_exists(organization_patterns_path) == false || path_is_symlink(organization_patterns_path) || file_size(organization_patterns_path) > 1048576 { return {"ok": false, "error": "Organization secret-pattern file is missing or unsafe.", "detections": []} }
+        patterns := null
+        try { patterns = parse_json(read_file(organization_patterns_path)) } except err { return {"ok": false, "error": "Organization secret-pattern file is invalid JSON.", "detections": []} }
+        if type(patterns) != "dict" || type(dict_get(patterns, "patterns", null)) != "array" || len(patterns["patterns"]) > 64 { return {"ok": false, "error": "Organization secret-pattern contract is invalid.", "detections": []} }
+        for entry in patterns["patterns"] {
+            if type(entry) != "dict" || type(dict_get(entry, "id", null)) != "string" || type(dict_get(entry, "regex", null)) != "string" || len(entry["regex"]) > 512 { return {"ok": false, "error": "Organization secret pattern is invalid.", "detections": []} }
+            matches := regex_find_all(value, entry["regex"])
+            if len(matches) > 0 { detections = push(detections, {"kind": "organization-pattern", "id": entry["id"], "count": len(matches)}) }
+        }
+    }
+    return {"ok": true, "detected": len(detections) > 0, "detections": detections, "matchedValuesReturned": false}
 }
 
 export func safe_process_env(extra) {

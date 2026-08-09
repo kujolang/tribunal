@@ -1,0 +1,58 @@
+# Tribunal :: deterministic portable packet templates and explicit organization checks
+
+from src.common import array_includes, dict_get, read_json, safe_run_id
+from src.provenance import verify_provenance
+
+func schema(name) { return read_json(join_path(join_path(path_absolute(env_or("TRIBUNAL_HOME", ".")), "schemas"), name)) }
+
+func load_json_contract(path, schema_name, label) {
+    if trim(path) == "" { return {"ok": true, "present": false} }
+    if file_exists(path) == false || path_is_symlink(path) || file_size(path) > 1048576 { return {"ok": false, "error": label + " is missing or unsafe."} }
+    value := null
+    try { value = read_json(path) } except err { return {"ok": false, "error": label + " is invalid JSON."} }
+    checked := json_schema_validate(value, schema(schema_name))
+    if checked["valid"] != true || safe_run_id(value["id"]) == false { return {"ok": false, "error": label + " failed schema validation."} }
+    return {"ok": true, "present": true, "value": value, "sha256": sha256(read_file(path))}
+}
+
+func append_unique(base, values) {
+    mut result := base
+    for value in values { if array_includes(result, value) == false { result = push(result, value) } }
+    return result
+}
+
+export func apply_decision_contracts(config, packet, ruling) {
+    settings := config["decision_packet"]
+    template := load_json_contract(settings["template_path"], "decision-template.schema.json", "Decision packet template")
+    if template["ok"] != true { return template }
+    mut output := packet
+    template_evidence := {"present": false}
+    if template["present"] {
+        value := template["value"]
+        defaults := value["defaults"]
+        if trim(dict_get(output, "suggestedOwnerRole", "")) == "" && trim(dict_get(defaults, "suggestedOwnerRole", "")) != "" { output["suggestedOwnerRole"] := defaults["suggestedOwnerRole"] }
+        if trim(dict_get(output, "suggestedModelLevel", "")) == "" && trim(dict_get(defaults, "suggestedModelLevel", "")) != "" { output["suggestedModelLevel"] := defaults["suggestedModelLevel"] }
+        output["acceptanceCriteria"] := append_unique(output["acceptanceCriteria"], value["append"]["acceptanceCriteria"])
+        output["evidenceRequired"] := append_unique(output["evidenceRequired"], value["append"]["evidenceRequired"])
+        output["stopTheLineConditions"] := append_unique(output["stopTheLineConditions"], value["append"]["stopTheLineConditions"])
+        template_evidence = {"present": true, "id": value["id"], "sha256": template["sha256"]}
+    }
+    policy := load_json_contract(settings["policy_path"], "organization-policy.schema.json", "Organization policy")
+    if policy["ok"] != true { return policy }
+    mut checks := []
+    mut compliant := true
+    policy_evidence := {"present": false}
+    if policy["present"] {
+        provenance := verify_provenance(settings["policy_path"], settings["policy_provenance_path"], settings["policy_public_key_path"], settings["policy_anchor_path"])
+        if provenance["ok"] != true || provenance["documentKind"] != "organization-policy" { return {"ok": false, "error": "Organization policy requires valid signed provenance."} }
+        value := policy["value"]
+        for required in value["requiredEvidence"] { passed := array_includes(output["evidenceRequired"], required); checks = push(checks, {"check": "requiredEvidence", "value": required, "passed": passed}); if passed == false { compliant = false } }
+        for required in value["requiredAcceptanceCriteria"] { passed := array_includes(output["acceptanceCriteria"], required); checks = push(checks, {"check": "requiredAcceptanceCriteria", "value": required, "passed": passed}); if passed == false { compliant = false } }
+        forbidden := array_includes(value["forbiddenDispositions"], dict_get(ruling, "disposition", ""))
+        checks = push(checks, {"check": "forbiddenDisposition", "value": dict_get(ruling, "disposition", ""), "passed": forbidden == false})
+        if forbidden { compliant = false }
+        policy_evidence = {"present": true, "id": value["id"], "mode": value["mode"], "sha256": policy["sha256"], "provenance": provenance}
+        if value["mode"] == "enforce" && compliant == false { return {"ok": false, "error": "Decision packet failed enforced organization policy.", "packet": output, "checks": checks, "policy": policy_evidence} }
+    }
+    return {"ok": true, "packet": output, "report": {"schemaVersion": "1.0.0", "compliant": compliant, "template": template_evidence, "policy": policy_evidence, "checks": checks, "modelBehaviorModified": false}}
+}

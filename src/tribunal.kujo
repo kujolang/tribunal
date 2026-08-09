@@ -1,18 +1,20 @@
 # Tribunal :: Kujo-native staged adversarial decision engine
 
-from src.common import dict_get, iso_now, contains_secret, index_by_id, utf8_byte_length
-from src.catalog import panel, seats_for, seat
+from src.common import dict_get, index_by_id, redact, safe_existing_file, secret_scan, utf8_byte_length
+from src.catalog import seat
+from src.panels import resolve_panel, render_seat_prompt
 from src.storage import generate_run_id, create_run, save_json, save_text, append_event, artifact_path
 from src.model import invoke
 from src.context import build_context
 from src.render import testimony_markdown, cross_markdown, kill_markdown, ruling_markdown, packet_markdown
-from src.integrity import seal
+from src.integrity import seal, verify
 from src.locking import acquire_lock, release_lock
 from src.governance import governance_metadata
+from src.decision_contracts import apply_decision_contracts
 
 func emit(storage_dir, run_id, stage, event_type, summary, seat_id, metadata) {
     event := {
-        "timestamp": iso_now(),
+        "timestamp": now_utc(),
         "runId": run_id,
         "stageId": stage,
         "eventType": event_type,
@@ -26,6 +28,12 @@ func emit(storage_dir, run_id, stage, event_type, summary, seat_id, metadata) {
 func completed(state, stage) {
     state["stagesCompleted"] := push(state["stagesCompleted"], stage)
     return state
+}
+
+func persist_checkpoint(storage_dir, state, stage) {
+    checkpoint := {"schemaVersion": "1.0.0", "runId": state["runId"], "sequence": len(state["stagesCompleted"]), "lastCompletedStage": stage, "stagesCompleted": state["stagesCompleted"], "updatedAt": now_utc(), "idempotencyContract": "sha256(stage+seat+input+schema)"}
+    save_json(storage_dir, state["runId"], "checkpoint.json", checkpoint)
+    return checkpoint
 }
 
 func section(content, heading) {
@@ -63,24 +71,28 @@ func docket_title(content, source) {
     return basename(source)
 }
 
-func open_docket(path, max_bytes) {
-    if path == "" || file_exists(path) == false { return {"ok": false, "error": "Missing or unreadable docket file: " + path} }
+func open_docket(config, path) {
+    checked_file := safe_existing_file(path, config["limits"]["max_docket_bytes"], "Docket file")
+    if checked_file["ok"] != true { return {"ok": false, "error": "Missing, unsafe, or oversized docket file: " + path} }
     size := file_size(path)
+    max_bytes := config["limits"]["max_docket_bytes"]
     if size > max_bytes { return {"ok": false, "error": "Docket exceeds the configured " + to_string(max_bytes) + " byte limit."} }
     content := ""
     try { content = read_file(path) } except err { return {"ok": false, "error": "Missing or unreadable docket file: " + path} }
     if trim(content) == "" { return {"ok": false, "error": "Docket is empty."} }
-    if contains_secret(content) { return {"ok": false, "error": "Unsafe secret exposure detected in docket."} }
+    scan := secret_scan(content, config["security"]["organization_secret_patterns_path"])
+    if scan["ok"] != true { return {"ok": false, "error": scan["error"]} }
+    if scan["detected"] { return {"ok": false, "error": "Unsafe secret exposure detected in docket."} }
     title := docket_title(content, path)
     scope := section(content, "Scope")
     if scope == "" { scope = "Review the submitted docket without expanding its stated proposal." }
-    opened := iso_now()
+    opened := now_utc()
     hash := sha256(content)
     return {"ok": true, "docket": {"id": substring(hash, 0, 16), "title": title, "sourcePath": path_absolute(path), "content": content, "scope": scope, "nonGoals": list_section(content, "Non-goals"), "openedAt": opened, "contentSha256": hash}}
 }
 
 export func validate_docket(config, path) {
-    return open_docket(path, config["limits"]["max_docket_bytes"])
+    return open_docket(config, path)
 }
 
 export func validate_model_output(structured, schema) {
@@ -95,25 +107,20 @@ func system_prompt(seat_value, stage) {
     return "You are the " + seat_value["name"] + " seat in Tribunal. Authority: " + seat_value["authority"] + " Stay within the explicit " + stage + " contract. Return only valid JSON matching the requested schema."
 }
 
-func call_model(config, storage_dir, state, stage, seat_value, input, output_schema) {
-    run_id := state["runId"]
+func invoke_checked(config, run_id, stage, seat_value, input, output_schema) {
     system := system_prompt(seat_value, stage)
-    save_text(storage_dir, run_id, "prompts/" + stage + "-" + seat_value["id"] + ".md", "# System\n\n" + system + "\n\n# Input\n\n" + input + "\n")
-    request := {"runId": run_id, "stageId": stage, "seatId": seat_value["id"], "modelPreference": seat_value["defaultModelPreference"], "systemPrompt": system, "input": input, "outputSchema": output_schema, "timeoutMs": config["limits"]["model_timeout_ms"]}
-    emit(storage_dir, run_id, stage, "model_invocation_requested", "Model invocation requested through Kujo AI SDK boundary.", seat_value["id"], {"preference": seat_value["defaultModelPreference"]})
+    request := {"runId": run_id, "stageId": stage, "seatId": seat_value["id"], "idempotencyKey": sha256(stage + ":" + seat_value["id"] + ":" + input + ":" + to_json(output_schema)), "modelPreference": seat_value["defaultModelPreference"], "systemPrompt": system, "input": input, "outputSchema": output_schema, "timeoutMs": config["limits"]["model_timeout_ms"]}
     response := invoke(config, request)
     if dict_get(response, "ok", false) != true {
         error := dict_get(response, "error", {"code": "model_error", "message": "Model invocation failed."})
-        emit(storage_dir, run_id, stage, "model_invocation_failed", dict_get(error, "message", "Model invocation failed."), seat_value["id"], {"code": dict_get(error, "code", "model_error")})
         return {"ok": false, "error": dict_get(error, "message", "Model invocation failed."), "response": response}
     }
     content := dict_get(response, "content", "")
     if utf8_byte_length(content) > config["limits"]["max_model_output_bytes"] {
-        emit(storage_dir, run_id, stage, "model_invocation_failed", "Model output exceeded the configured safety limit.", seat_value["id"], {})
         return {"ok": false, "error": "Model output exceeded the configured safety limit.", "response": response}
     }
-    if contains_secret(content) {
-        emit(storage_dir, run_id, stage, "model_invocation_failed", "Potential secret exposure detected in model output.", seat_value["id"], {})
+    scan := secret_scan(content, config["security"]["organization_secret_patterns_path"])
+    if scan["ok"] != true || scan["detected"] {
         return {"ok": false, "error": "Potential secret exposure detected in model output.", "response": response}
     }
     structured := dict_get(response, "structured", null)
@@ -122,17 +129,70 @@ func call_model(config, storage_dir, state, stage, seat_value, input, output_sch
     }
     if type(structured) == "dict" {
         structured_text := to_json(structured)
-        if utf8_byte_length(structured_text) > config["limits"]["max_model_output_bytes"] { emit(storage_dir, run_id, stage, "model_invocation_failed", "Structured model output exceeded the configured safety limit.", seat_value["id"], {}); return {"ok": false, "error": "Structured model output exceeded the configured safety limit.", "response": response} }
-        if contains_secret(structured_text) { emit(storage_dir, run_id, stage, "model_invocation_failed", "Potential secret exposure detected in structured model output.", seat_value["id"], {}); return {"ok": false, "error": "Potential secret exposure detected in structured model output.", "response": response} }
+        if utf8_byte_length(structured_text) > config["limits"]["max_model_output_bytes"] { return {"ok": false, "error": "Structured model output exceeded the configured safety limit.", "response": response} }
+        structured_scan := secret_scan(structured_text, config["security"]["organization_secret_patterns_path"])
+        if structured_scan["ok"] != true || structured_scan["detected"] { return {"ok": false, "error": "Potential secret exposure detected in structured model output.", "response": response} }
     }
     contract_error := validate_model_output(structured, output_schema)
-    if contract_error != "" {
-        emit(storage_dir, run_id, stage, "model_invocation_failed", contract_error, seat_value["id"], {})
-        return {"ok": false, "error": contract_error, "response": response}
-    }
+    if contract_error != "" { return {"ok": false, "error": contract_error, "response": response} }
     metadata := dict_get(response, "metadata", {})
-    emit(storage_dir, run_id, stage, "model_invocation_completed", "Model invocation completed.", seat_value["id"], metadata)
     return {"ok": true, "content": content, "structured": structured, "metadata": metadata}
+}
+
+func persist_model_result(storage_dir, run_id, stage, seat_value, result) {
+    if result["ok"] == true {
+        emit(storage_dir, run_id, stage, "model_invocation_completed", "Model invocation completed.", seat_value["id"], result["metadata"])
+    } else {
+        response_error := dict_get(dict_get(result, "response", {}), "error", {})
+        emit(storage_dir, run_id, stage, "model_invocation_failed", result["error"], seat_value["id"], {"code": dict_get(response_error, "code", "model_error")})
+    }
+    return result
+}
+
+func call_model(config, storage_dir, state, stage, seat_value, input, output_schema) {
+    run_id := state["runId"]
+    system := system_prompt(seat_value, stage)
+    save_text(storage_dir, run_id, "prompts/" + stage + "-" + seat_value["id"] + ".md", "# System\n\n" + system + "\n\n# Input\n\n" + input + "\n")
+    emit(storage_dir, run_id, stage, "model_invocation_requested", "Model invocation requested through Kujo AI SDK boundary.", seat_value["id"], {"preference": seat_value["defaultModelPreference"]})
+    return persist_model_result(storage_dir, run_id, stage, seat_value, invoke_checked(config, run_id, stage, seat_value, input, output_schema))
+}
+
+async func invoke_blind_job(job) {
+    result := invoke_checked(job["config"], job["runId"], "blind-first-pass", job["seat"], job["input"], job["seat"]["requiredOutputSchema"])
+    if result["ok"] != true {
+        write_file_atomic(job["cancelFile"], "cancel")
+        return error(to_json(result))
+    }
+    return result
+}
+
+func blind_calls(config, storage_dir, state, selected_seats, context) {
+    run_id := state["runId"]
+    cancel_file := join_path(join_path(storage_dir, run_id), ".blind-cancel")
+    if file_exists(cancel_file) { delete_file(cancel_file) }
+    mut jobs := []
+    for seat_value in selected_seats {
+        input := render_seat_prompt(seat_value, context)
+        system := system_prompt(seat_value, "blind-first-pass")
+        save_text(storage_dir, run_id, "prompts/blind-first-pass-" + seat_value["id"] + ".md", "# System\n\n" + system + "\n\n# Input\n\n" + input + "\n")
+        emit(storage_dir, run_id, "blind-first-pass", "model_invocation_requested", "Model invocation requested through Kujo AI SDK boundary.", seat_value["id"], {"preference": seat_value["defaultModelPreference"]})
+        jobs = push(jobs, {"config": config, "runId": run_id, "seat": seat_value, "input": input, "cancelFile": cancel_file})
+    }
+    concurrency := config["execution"]["blind_parallelism"]
+    if config["execution"]["provider_max_concurrency"] < concurrency { concurrency = config["execution"]["provider_max_concurrency"] }
+    if len(jobs) < concurrency { concurrency = len(jobs) }
+    requested_concurrency := concurrency
+    runtime_gate := ""
+    if config["kujo_ai"]["mock_mode"] != true && config["execution"]["live_parallel_enabled"] != true {
+        concurrency = 1
+        runtime_gate = "live-parallel-opt-in"
+    }
+    mut results := []
+    mut parallel_error := ""
+    try { results = await parallel_map(jobs, invoke_blind_job, concurrency) } except err { parallel_error = redact(to_string(err)) }
+    if file_exists(cancel_file) { delete_file(cancel_file) }
+    if parallel_error != "" { return {"ok": false, "error": parallel_error, "jobs": jobs, "results": [], "concurrency": concurrency, "requestedConcurrency": requested_concurrency, "runtimeGate": runtime_gate} }
+    return {"ok": true, "jobs": jobs, "results": results, "concurrency": concurrency, "requestedConcurrency": requested_concurrency, "runtimeGate": runtime_gate}
 }
 
 func add_usage(state, call) {
@@ -162,7 +222,7 @@ func procedural_ruling(kill_pass) {
         "requiredChanges": kill_pass["requiredChanges"],
         "confidence": 7,
         "disposition": disposition,
-        "generatedAt": iso_now(),
+        "generatedAt": now_utc(),
         "metadata": {"provider": "tribunal-procedure", "model": "executioner-only-rule"}
     }
 }
@@ -179,7 +239,7 @@ func procedural_packet(docket, ruling) {
         "escalationTriggers": ["Scope growth", "New fatal flaw", "Missing owner"],
         "evidenceRequired": ["Test output", "Change summary", "Rollback evidence"],
         "stopTheLineConditions": ["Secret exposure", "Unbounded destructive action", "Corrupted evidence"],
-        "generatedAt": iso_now()
+        "generatedAt": now_utc()
     }
 }
 
@@ -201,7 +261,7 @@ func receipt(state, status, completed_at, record_hash) {
 }
 
 func artifact_paths(state) {
-    mut paths := ["docket.md", "manifest.json", "context.md", "cross-examination.md", "kill-pass.md", "ruling.md", "decision-packet.md", "record.json", "events.jsonl", "receipt.json", "artifact-manifest.json"]
+    mut paths := ["docket.md", "manifest.json", "checkpoint.json", "context.md", "cross-examination.md", "kill-pass.md", "ruling.md", "decision-packet.md", "policy-checks.json", "record.json", "events.jsonl", "receipt.json", "artifact-manifest.json"]
     for testimony in state["testimonies"] { paths = push(paths, "testimony/" + testimony["seatId"] + ".md") }
     return paths
 }
@@ -209,13 +269,14 @@ func artifact_paths(state) {
 func stop_run(config, state, reason, private_key, public_key) {
     storage_dir := config["tribunal"]["storage_dir"]
     run_id := state["runId"]
-    completed_at := iso_now()
+    completed_at := now_utc()
     emit(storage_dir, run_id, dict_get(state, "currentStage", "open-docket"), "stop_the_line_triggered", "Tribunal stopped on a fatal condition.", "", {"reason": reason})
     record := {
         "schemaVersion": "1.0.0", "runId": run_id, "status": "stopped", "startedAt": state["startedAt"], "completedAt": completed_at,
         "panel": state["panel"], "seats": state["seats"], "stagesCompleted": state["stagesCompleted"], "testimonies": state["testimonies"],
-        "crossExaminations": state["crossExaminations"], "stopReason": reason, "governance": state["governance"], "artifactPaths": ["manifest.json", "events.jsonl", "record.json", "receipt.json", "artifact-manifest.json"]
+        "crossExaminations": state["crossExaminations"], "stopReason": reason, "governance": state["governance"], "artifactPaths": ["manifest.json", "checkpoint.json", "events.jsonl", "record.json", "receipt.json", "artifact-manifest.json"]
     }
+    if type(dict_get(state, "lineage", null)) == "dict" { record["lineage"] := state["lineage"] }
     if type(dict_get(state, "docket", null)) == "dict" { record["docket"] := state["docket"] }
     if type(dict_get(state, "killPass", null)) == "dict" { record["killPass"] := state["killPass"] }
     if type(dict_get(state, "ruling", null)) == "dict" { record["ruling"] := state["ruling"] }
@@ -232,10 +293,11 @@ func stop_run(config, state, reason, private_key, public_key) {
     return {"ok": false, "runId": run_id, "runDir": state["runDir"], "error": reason, "record": record}
 }
 
-export func review(config, docket_path, panel_id, private_key, public_key) {
-    selected_panel := panel(panel_id)
-    if selected_panel == null { return {"ok": false, "error": "Invalid panel config: unknown panel '" + panel_id + "'."} }
-    selected_seats := seats_for(selected_panel)
+func review_internal(config, docket_path, panel_id, private_key, public_key, lineage) {
+    resolved := resolve_panel(config, panel_id)
+    if resolved["ok"] != true { return {"ok": false, "error": "Invalid panel config: " + resolved["error"]} }
+    selected_panel := resolved["panel"]
+    selected_seats := resolved["seats"]
     if len(selected_seats) == 0 { return {"ok": false, "error": "Invalid panel config: panel has no usable seats."} }
     storage_dir := config["tribunal"]["storage_dir"]
     placeholder_title := basename(docket_path)
@@ -247,7 +309,7 @@ export func review(config, docket_path, panel_id, private_key, public_key) {
     if locked["ok"] != true { return {"ok": false, "error": locked["error"]} }
     root := create_run(storage_dir, run_id)
     if root == "" { release_lock(storage_dir, run_id, locked["lock"]["token"]); return {"ok": false, "error": "Run storage is unsafe or unavailable."} }
-    started_at := iso_now()
+    started_at := now_utc()
     runtime := "kujo-ai-sdk"
     if config["kujo_ai"]["mock_mode"] == true { runtime = "mock-kujo" }
     state := {
@@ -255,23 +317,28 @@ export func review(config, docket_path, panel_id, private_key, public_key) {
         "stagesCompleted": [], "testimonies": [], "crossExaminations": [], "invocations": 0, "failures": 0, "totalTokens": 0, "modelRuntime": runtime, "currentStage": "open-docket",
         "lockToken": locked["lock"]["token"], "governance": governance_metadata(config, actor)
     }
-    manifest := {"schemaVersion": "1.0.0", "runId": run_id, "status": "running", "openedAt": started_at, "panelId": selected_panel["id"], "seatIds": selected_panel["seatIds"], "docketSource": docket_path, "mockMode": config["kujo_ai"]["mock_mode"], "blindFirstPassRequired": true, "sdkBoundary": "KujoModelClient", "governance": state["governance"]}
+    if type(lineage) == "dict" { state["lineage"] := lineage }
+    manifest := {"schemaVersion": "1.0.0", "runId": run_id, "status": "running", "openedAt": started_at, "panelId": selected_panel["id"], "seatIds": selected_panel["seatIds"], "panelSource": resolved["source"], "docketSource": docket_path, "mockMode": config["kujo_ai"]["mock_mode"], "blindFirstPassRequired": true, "sdkBoundary": "KujoModelClient", "governance": state["governance"]}
+    if has_key(resolved, "provenance") == 1 { manifest["panelConfigProvenance"] := resolved["provenance"] }
+    if type(lineage) == "dict" { manifest["lineage"] := lineage }
     state["manifest"] := manifest
     save_json(storage_dir, run_id, "manifest.json", manifest)
     save_text(storage_dir, run_id, "events.jsonl", "")
     emit(storage_dir, run_id, "open-docket", "run_opened", "Tribunal run opened.", "", {"panelId": panel_id})
-    opened := open_docket(docket_path, config["limits"]["max_docket_bytes"])
+    opened := open_docket(config, docket_path)
     if opened["ok"] != true { return stop_run(config, state, opened["error"], private_key, public_key) }
     docket := opened["docket"]
     state["docket"] := docket
     save_text(storage_dir, run_id, "docket.md", docket["content"])
     state = completed(state, "open-docket")
+    persist_checkpoint(storage_dir, state, "open-docket")
 
     state["currentStage"] := "validate-scope"
     emit(storage_dir, run_id, "validate-scope", "stage_started", "Scope validation started.", "", {})
     if trim(docket["scope"]) == "" { return stop_run(config, state, "Docket scope is missing.", private_key, public_key) }
     emit(storage_dir, run_id, "validate-scope", "docket_validated", "Docket scope validated.", "", {"contentSha256": docket["contentSha256"]})
     state = completed(state, "validate-scope")
+    persist_checkpoint(storage_dir, state, "validate-scope")
 
     state["currentStage"] := "build-context-pack"
     emit(storage_dir, run_id, "build-context-pack", "stage_started", "Context construction started.", "", {})
@@ -281,23 +348,30 @@ export func review(config, docket_path, panel_id, private_key, public_key) {
     if utf8_byte_length(context) > config["limits"]["max_context_bytes"] { return stop_run(config, state, "Context pack exceeds the configured safety limit.", private_key, public_key) }
     state["context"] := context
     save_text(storage_dir, run_id, "context.md", context)
-    emit(storage_dir, run_id, "build-context-pack", "context_pack_created", "Immutable context pack created.", "", {"provider": context_result["provider"], "warnings": context_result["warnings"]})
+    emit(storage_dir, run_id, "build-context-pack", "context_pack_created", "Immutable context pack created.", "", {"provider": context_result["provider"], "warnings": context_result["warnings"], "sources": dict_get(context_result, "sources", [])})
     state = completed(state, "build-context-pack")
+    persist_checkpoint(storage_dir, state, "build-context-pack")
 
     state["currentStage"] := "blind-first-pass"
     emit(storage_dir, run_id, "blind-first-pass", "stage_started", "Blind first pass started.", "", {"seatCount": len(selected_seats)})
-    # Each request is built only from immutable context + its own seat contract.
+    # Workers receive only immutable context plus their own seat contract. Results
+    # are persisted below in canonical panel order; failed-stage results are discarded.
+    blind := blind_calls(config, storage_dir, state, selected_seats, context)
+    emit(storage_dir, run_id, "blind-first-pass", "parallel_execution_evaluated", "Blind model calls completed under the runtime-safe concurrency bound.", "", {"requestedConcurrency": blind["requestedConcurrency"], "effectiveConcurrency": blind["concurrency"], "runtimeGate": blind["runtimeGate"], "deterministicPersistenceOrder": true, "providerRateLimitBound": true, "cancelOnFailure": true})
+    if blind["ok"] != true { return stop_run(config, state, blind["error"], private_key, public_key) }
+    mut blind_index := 0
     for seat_value in selected_seats {
-        input := context + "\n\n# Seat\n\n" + seat_value["name"] + "\nAuthority: " + seat_value["authority"] + "\nNo other seat testimony is available in this stage."
-        call := call_model(config, storage_dir, state, "blind-first-pass", seat_value, input, seat_value["requiredOutputSchema"])
+        call := persist_model_result(storage_dir, run_id, "blind-first-pass", seat_value, blind["results"][blind_index])
+        blind_index = blind_index + 1
         state = add_usage(state, call)
         if call["ok"] != true { return stop_run(config, state, call["error"], private_key, public_key) }
-        testimony := {"seatId": seat_value["id"], "stageId": "blind-first-pass", "capturedAt": iso_now(), "content": call["content"], "structured": call["structured"], "metadata": call["metadata"], "blind": true}
+        testimony := {"seatId": seat_value["id"], "stageId": "blind-first-pass", "capturedAt": now_utc(), "content": call["content"], "structured": call["structured"], "metadata": call["metadata"], "blind": true}
         state["testimonies"] := push(state["testimonies"], testimony)
         save_text(storage_dir, run_id, "testimony/" + seat_value["id"] + ".md", testimony_markdown(seat_value, testimony))
         emit(storage_dir, run_id, "blind-first-pass", "testimony_captured", "Blind testimony captured.", seat_value["id"], {"blind": true})
     }
     state = completed(state, "blind-first-pass")
+    persist_checkpoint(storage_dir, state, "blind-first-pass")
 
     state["currentStage"] := "cross-examination"
     emit(storage_dir, run_id, "cross-examination", "stage_started", "Cross-examination started after all blind testimony was persisted.", "", {})
@@ -307,12 +381,13 @@ export func review(config, docket_path, panel_id, private_key, public_key) {
         call := call_model(config, storage_dir, state, "cross-examination", seat_value, input, seat_value["requiredOutputSchema"])
         state = add_usage(state, call)
         if call["ok"] != true { return stop_run(config, state, call["error"], private_key, public_key) }
-        cross := {"seatId": seat_value["id"], "capturedAt": iso_now(), "content": call["content"], "structured": call["structured"], "metadata": call["metadata"]}
+        cross := {"seatId": seat_value["id"], "capturedAt": now_utc(), "content": call["content"], "structured": call["structured"], "metadata": call["metadata"]}
         state["crossExaminations"] := push(state["crossExaminations"], cross)
         emit(storage_dir, run_id, "cross-examination", "cross_examination_captured", "Cross-examination captured.", seat_value["id"], {})
     }
     save_text(storage_dir, run_id, "cross-examination.md", cross_markdown(state["crossExaminations"], index_by_id(selected_seats)))
     state = completed(state, "cross-examination")
+    persist_checkpoint(storage_dir, state, "cross-examination")
 
     state["currentStage"] := "executioner-kill-pass"
     emit(storage_dir, run_id, "executioner-kill-pass", "stage_started", "Executioner kill pass started.", "executioner", {})
@@ -323,11 +398,12 @@ export func review(config, docket_path, panel_id, private_key, public_key) {
     state = add_usage(state, kill_call)
     if kill_call["ok"] != true { return stop_run(config, state, kill_call["error"], private_key, public_key) }
     ks := kill_call["structured"]
-    kill_pass := {"seatId": "executioner", "capturedAt": iso_now(), "fatalFlaws": dict_get(ks, "fatalFlaws", []), "survivableRisks": dict_get(ks, "survivableRisks", []), "requiredChanges": dict_get(ks, "requiredChanges", []), "recommendation": dict_get(ks, "recommendation", "redesign"), "content": kill_call["content"], "metadata": kill_call["metadata"]}
+    kill_pass := {"seatId": "executioner", "capturedAt": now_utc(), "fatalFlaws": dict_get(ks, "fatalFlaws", []), "survivableRisks": dict_get(ks, "survivableRisks", []), "requiredChanges": dict_get(ks, "requiredChanges", []), "recommendation": dict_get(ks, "recommendation", "redesign"), "content": kill_call["content"], "metadata": kill_call["metadata"]}
     state["killPass"] := kill_pass
     save_text(storage_dir, run_id, "kill-pass.md", kill_markdown(kill_pass))
     emit(storage_dir, run_id, "executioner-kill-pass", "kill_pass_captured", "Executioner kill pass captured.", "executioner", {"recommendation": kill_pass["recommendation"]})
     state = completed(state, "executioner-kill-pass")
+    persist_checkpoint(storage_dir, state, "executioner-kill-pass")
 
     state["currentStage"] := "judge-ruling"
     emit(storage_dir, run_id, "judge-ruling", "stage_started", "Judge ruling started.", "judge", {})
@@ -342,13 +418,14 @@ export func review(config, docket_path, panel_id, private_key, public_key) {
         state = add_usage(state, ruling_call)
         if ruling_call["ok"] != true { return stop_run(config, state, ruling_call["error"], private_key, public_key) }
         ruling = ruling_call["structured"]
-        ruling["generatedAt"] := iso_now()
+        ruling["generatedAt"] := now_utc()
         ruling["metadata"] := ruling_call["metadata"]
     }
     state["ruling"] := ruling
     save_text(storage_dir, run_id, "ruling.md", ruling_markdown(ruling))
     emit(storage_dir, run_id, "judge-ruling", "ruling_generated", "Tribunal ruling generated.", "judge", {"disposition": ruling["disposition"], "confidence": ruling["confidence"]})
     state = completed(state, "judge-ruling")
+    persist_checkpoint(storage_dir, state, "judge-ruling")
 
     state["currentStage"] := "decision-packet"
     emit(storage_dir, run_id, "decision-packet", "stage_started", "Decision packet generation started.", "judge", {})
@@ -363,18 +440,27 @@ export func review(config, docket_path, panel_id, private_key, public_key) {
         state = add_usage(state, packet_call)
         if packet_call["ok"] != true { return stop_run(config, state, packet_call["error"], private_key, public_key) }
         packet = packet_call["structured"]
-        packet["generatedAt"] := iso_now()
+        packet["generatedAt"] := now_utc()
     }
     state["decisionPacket"] := packet
+    contracted := apply_decision_contracts(config, packet, ruling)
+    if contracted["ok"] != true { return stop_run(config, state, contracted["error"], private_key, public_key) }
+    packet = contracted["packet"]
+    state["decisionPacket"] := packet
+    state["decisionPolicy"] := contracted["report"]
+    save_json(storage_dir, run_id, "policy-checks.json", contracted["report"])
     save_text(storage_dir, run_id, "decision-packet.md", packet_markdown(packet))
     emit(storage_dir, run_id, "decision-packet", "decision_packet_generated", "Agent-readable decision packet generated.", "judge", {})
     state = completed(state, "decision-packet")
+    persist_checkpoint(storage_dir, state, "decision-packet")
 
     state["currentStage"] := "persist-record"
     emit(storage_dir, run_id, "persist-record", "stage_started", "Durable record persistence started.", "", {})
-    completed_at := iso_now()
+    completed_at := now_utc()
     state = completed(state, "persist-record")
-    record := {"schemaVersion": "1.0.0", "runId": run_id, "status": "completed", "startedAt": started_at, "completedAt": completed_at, "docket": docket, "panel": selected_panel, "seats": selected_seats, "stagesCompleted": state["stagesCompleted"], "testimonies": state["testimonies"], "crossExaminations": state["crossExaminations"], "killPass": kill_pass, "ruling": ruling, "decisionPacket": packet, "governance": state["governance"], "artifactPaths": artifact_paths(state)}
+    persist_checkpoint(storage_dir, state, "persist-record")
+    record := {"schemaVersion": "1.0.0", "runId": run_id, "status": "completed", "startedAt": started_at, "completedAt": completed_at, "docket": docket, "panel": selected_panel, "seats": selected_seats, "stagesCompleted": state["stagesCompleted"], "testimonies": state["testimonies"], "crossExaminations": state["crossExaminations"], "killPass": kill_pass, "ruling": ruling, "decisionPacket": packet, "decisionPolicy": state["decisionPolicy"], "governance": state["governance"], "artifactPaths": artifact_paths(state)}
+    if type(lineage) == "dict" { record["lineage"] := lineage }
     save_json(storage_dir, run_id, "record.json", record)
     record_hash := sha256(read_file(artifact_path(storage_dir, run_id, "record.json")))
     emit(storage_dir, run_id, "persist-record", "record_persisted", "Structured Tribunal record persisted.", "", {"recordSha256": record_hash})
@@ -387,4 +473,25 @@ export func review(config, docket_path, panel_id, private_key, public_key) {
     release_lock(storage_dir, run_id, state["lockToken"])
     if sealed["ok"] != true { return {"ok": false, "runId": run_id, "runDir": root, "error": sealed["error"], "record": record} }
     return {"ok": true, "runId": run_id, "runDir": root, "record": record}
+}
+
+export func review(config, docket_path, panel_id, private_key, public_key) {
+    return review_internal(config, docket_path, panel_id, private_key, public_key, null)
+}
+
+export func resume(config, prior_run_id, private_key, public_key) {
+    storage_dir := config["tribunal"]["storage_dir"]
+    prior_record_path := artifact_path(storage_dir, prior_run_id, "record.json")
+    checkpoint_path := artifact_path(storage_dir, prior_run_id, "checkpoint.json")
+    prior_docket := artifact_path(storage_dir, prior_run_id, "docket.md")
+    if safe_existing_file(prior_record_path, 4194304, "Prior record")["ok"] != true || safe_existing_file(checkpoint_path, 1048576, "Prior checkpoint")["ok"] != true || safe_existing_file(prior_docket, config["limits"]["max_docket_bytes"], "Prior docket")["ok"] != true { return {"ok": false, "error": "Prior run is not resumable: immutable record, docket, or checkpoint is missing or unsafe."} }
+    integrity := verify(storage_dir, prior_run_id, "")
+    if integrity["ok"] != true { return {"ok": false, "error": "Prior hearing integrity failed; resume is forbidden.", "verification": integrity} }
+    prior := null
+    checkpoint := null
+    try { prior = parse_json(read_file(prior_record_path)) } except err { return {"ok": false, "error": "Prior run record is invalid JSON."} }
+    try { checkpoint = parse_json(read_file(checkpoint_path)) } except err { return {"ok": false, "error": "Prior run checkpoint is invalid JSON."} }
+    if prior["status"] != "stopped" { return {"ok": false, "error": "Only stopped hearings may be resumed."} }
+    lineage := {"schemaVersion": "1.0.0", "priorRunId": prior_run_id, "priorRecordSha256": sha256(read_file(prior_record_path)), "priorCheckpointSha256": sha256(read_file(checkpoint_path)), "resumeFromStage": checkpoint["lastCompletedStage"], "resumedAt": now_utc(), "replayPolicy": "full-stage-replay-with-stable-idempotency-keys"}
+    return review_internal(config, prior_docket, prior["panel"]["id"], private_key, public_key, lineage)
 }

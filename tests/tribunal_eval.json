@@ -1,14 +1,16 @@
 {
   "name": "tribunal-kujo-native-gate",
   "description": "Deterministic Kujo-only checks for Tribunal's native implementation.",
-  "version": "5.0.0",
+  "version": "6.0.0",
   "output_dir": "./eval_results/tribunal",
   "snapshot_dir": "./tests/snapshots",
+  "timeout_seconds": 600,
   "stop_on_failure": true,
   "tests": [
     {
       "name": "Tribunal Kujo check passes",
       "check": "command_succeeds",
+      "timeout_seconds": 600,
       "params": {
         "command": "cd ../tribunal && ../kujo/target/release/kujo check tribunal.kujo"
       }
@@ -16,65 +18,128 @@
     {
       "name": "Tribunal Kujo test suite passes",
       "check": "command_succeeds",
+      "timeout_seconds": 600,
       "params": {
-        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run tests/tribunal_tests.kujo"
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run tests/tribunal_tests.kujo --interpreter"
       }
     },
     {
       "name": "Tribunal Kujo CLI integration passes",
       "check": "command_succeeds",
+      "timeout_seconds": 600,
       "params": {
-        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run tests/cli_integration.kujo"
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run tests/cli_integration.kujo --interpreter"
       }
     },
     {
       "name": "Tribunal enterprise trust and operations pass",
       "check": "command_succeeds",
+      "timeout_seconds": 600,
       "params": {
-        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run tests/enterprise_tests.kujo"
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run tests/enterprise_tests.kujo --interpreter"
       }
     },
     {
       "name": "Tribunal property boundary corpus passes",
       "check": "command_succeeds",
+      "timeout_seconds": 600,
       "params": {
-        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run tests/property_tests.kujo"
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run tests/property_tests.kujo --interpreter"
       }
     },
     {
       "name": "Kujo-native schema gate passes",
       "check": "command_succeeds",
+      "timeout_seconds": 600,
       "params": {
-        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/schema_gate.kujo"
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/schema_gate.kujo --interpreter"
       }
     },
     {
       "name": "Kujo-native Concord gate passes",
       "check": "command_succeeds",
+      "timeout_seconds": 600,
       "params": {
-        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/drift_gate.kujo"
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/drift_gate.kujo --interpreter"
       }
     },
     {
       "name": "Kujo-native Spec gate passes",
       "check": "command_succeeds",
+      "timeout_seconds": 600,
       "params": {
-        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/spec_gate.kujo"
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/spec_gate.kujo --interpreter"
       }
     },
     {
       "name": "Tribunal local benchmark passes",
       "check": "command_succeeds",
+      "timeout_seconds": 600,
       "params": {
-        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/perf_gate.kujo"
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/perf_gate.kujo --interpreter"
       }
     },
     {
       "name": "Tribunal scale budget passes",
       "check": "command_succeeds",
+      "timeout_seconds": 600,
       "params": {
-        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/scale_perf_gate.kujo"
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/scale_perf_gate.kujo --interpreter"
       }
+    },
+    {
+      "name": "Tribunal persistent-index budget passes",
+      "check": "command_succeeds",
+      "timeout_seconds": 600,
+      "params": { "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/index_perf_gate.kujo --interpreter" }
+    },
+    {
+      "name": "Tribunal load and chaos recovery gate passes",
+      "check": "command_succeeds",
+      "timeout_seconds": 600,
+      "params": { "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/load_chaos_gate.kujo --interpreter" }
+    },
+    {
+      "name": "Tribunal adversarial remote corpus passes",
+      "check": "command_succeeds",
+      "timeout_seconds": 600,
+      "params": { "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/adversarial_gate.kujo --interpreter" }
+    },
+    {
+      "name": "Tribunal dashboard accessibility gate passes",
+      "check": "command_succeeds",
+      "timeout_seconds": 600,
+      "params": { "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/dashboard_accessibility_gate.kujo --interpreter" }
+    },
+    {
+      "name": "Tribunal security review register gate passes",
+      "check": "command_succeeds",
+      "timeout_seconds": 600,
+      "params": { "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/security_review_gate.kujo --interpreter" }
+    },
+    {
+      "name": "Tribunal ecosystem integration matrix gate passes",
+      "check": "command_succeeds",
+      "timeout_seconds": 600,
+      "params": { "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/integration_matrix_gate.kujo --interpreter" }
+    },
+    {
+      "name": "Tribunal example gallery gate passes",
+      "check": "command_succeeds",
+      "timeout_seconds": 600,
+      "params": { "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/gallery_gate.kujo --interpreter" }
+    },
+    {
+      "name": "Tribunal v1 compatibility gate passes",
+      "check": "command_succeeds",
+      "timeout_seconds": 600,
+      "params": { "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/v1_compatibility_gate.kujo --interpreter" }
+    },
+    {
+      "name": "Tribunal Markdown link gate passes",
+      "check": "command_succeeds",
+      "timeout_seconds": 600,
+      "params": { "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/docs_link_gate.kujo --interpreter" }
     }
   ]
 }

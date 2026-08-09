@@ -1,7 +1,7 @@
 {
   "title": "TribunalConfig",
   "type": "object",
-  "required": ["tribunal", "kujo_ai", "context", "limits", "authorization", "governance", "artifact_store", "telemetry"],
+  "required": ["tribunal", "kujo_ai", "context", "limits", "execution", "panels", "decision_packet", "security", "authorization", "governance", "artifact_store", "telemetry"],
   "properties": {
     "tribunal": {
       "type": "object",
@@ -44,11 +44,15 @@
     },
     "context": {
       "type": "object",
-      "required": ["provider", "packwrite_path", "kujo_bin"],
+      "required": ["provider", "packwrite_path", "kujo_bin", "plugin_manifest_path", "plugin_provenance_path", "plugin_public_key_path", "plugin_anchor_path"],
       "properties": {
-        "provider": { "enum": ["local", "packwrite"] },
+        "provider": { "enum": ["local", "packwrite", "plugin"] },
         "packwrite_path": { "type": "string", "minLength": 1 },
-        "kujo_bin": { "type": "string", "minLength": 1 }
+        "kujo_bin": { "type": "string", "minLength": 1 },
+        "plugin_manifest_path": { "type": "string" },
+        "plugin_provenance_path": { "type": "string" },
+        "plugin_public_key_path": { "type": "string" },
+        "plugin_anchor_path": { "type": "string" }
       },
       "additionalProperties": false
     },
@@ -67,6 +71,50 @@
         "max_model_output_bytes": { "type": "integer", "minimum": 1024, "maximum": 16777216 },
         "max_process_output_bytes": { "type": "integer", "minimum": 4096, "maximum": 67108864 },
         "model_timeout_ms": { "type": "integer", "minimum": 1000, "maximum": 600000 }
+      },
+      "additionalProperties": false
+    },
+    "execution": {
+      "type": "object",
+      "required": ["blind_parallelism", "provider_max_concurrency", "cancel_on_failure", "live_parallel_enabled"],
+      "properties": {
+        "blind_parallelism": { "type": "integer", "minimum": 1, "maximum": 16 },
+        "provider_max_concurrency": { "type": "integer", "minimum": 1, "maximum": 16 },
+        "cancel_on_failure": { "const": true },
+        "live_parallel_enabled": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "panels": {
+      "type": "object",
+      "required": ["catalog_path", "provenance_path", "public_key_path", "anchor_path"],
+      "properties": {
+        "catalog_path": { "type": "string" },
+        "provenance_path": { "type": "string" },
+        "public_key_path": { "type": "string" },
+        "anchor_path": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "decision_packet": {
+      "type": "object",
+      "required": ["template_path", "policy_path", "policy_provenance_path", "policy_public_key_path", "policy_anchor_path"],
+      "properties": {
+        "template_path": { "type": "string" },
+        "policy_path": { "type": "string" },
+        "policy_provenance_path": { "type": "string" },
+        "policy_public_key_path": { "type": "string" },
+        "policy_anchor_path": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "security": {
+      "type": "object",
+      "required": ["organization_secret_patterns_path", "require_same_mount", "private_key_permission_mode"],
+      "properties": {
+        "organization_secret_patterns_path": { "type": "string" },
+        "require_same_mount": { "type": "boolean" },
+        "private_key_permission_mode": { "enum": ["0600", "managed-provider-required"] }
       },
       "additionalProperties": false
     },

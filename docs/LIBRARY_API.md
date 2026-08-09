@@ -1,0 +1,14 @@
+# Tribunal Kujo library API
+
+Import `src.lib` from another Kujo program. The public API version is `1.0.0`; additions are backward-compatible within 1.x and breaking changes require 2.0. Every call returns a schema-validated envelope with `apiVersion`, `ok`, `operation`, and either `value` or `error`.
+
+```kujo
+from src.lib import review_docket, list_hearings, verify_hearing
+
+result := review_docket(config, "decision.md", "fast-two-model", "", "")
+if result["ok"] != true { print(result["error"]); exit(1) }
+page := list_hearings(config["tribunal"]["storage_dir"], "completed", "", 25, "")
+checked := verify_hearing(config["tribunal"]["storage_dir"], result["value"]["runId"], "")
+```
+
+Public functions are `review_docket`, `resume_hearing`, `compare_sealed_rulings`, `list_hearings`, and `verify_hearing`. Storage mutation retains the same authorization, sealing, stop-the-line, path, and resource-limit rules as the CLI. The API never exposes provider credentials or a direct-provider bypass.

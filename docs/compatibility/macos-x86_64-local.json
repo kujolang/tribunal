@@ -1,0 +1,39 @@
+{
+  "claimBoundary": "This receipt covers only the named revision, pinned runtime digest, measured environment, architecture, and completed gates.",
+  "environment": {
+    "kernel": "Darwin 25.3.0",
+    "osRelease": "macOS 26.3.1",
+    "runnerImage": "local-macos-x86_64"
+  },
+  "gates": [
+    "kujo-check-all",
+    "tribunal-tests",
+    "cli-integration",
+    "enterprise-tests",
+    "property-tests",
+    "schema",
+    "concord-drift",
+    "strict-spec",
+    "eval",
+    "performance",
+    "scale-performance",
+    "index-performance",
+    "load-chaos",
+    "adversarial",
+    "dashboard-accessibility",
+    "security-review-register",
+    "integration-matrix",
+    "kennel-package",
+    "gallery",
+    "reproducible-release-archive",
+    "doctor"
+  ],
+  "kujoSha256": "212827e6389b56895d6161ddca85158dfc364fe66d5b687021fdc801bfff2bb8",
+  "kujoVersion": "1.0.0",
+  "measuredAt": "2026-07-13T01:03:03Z",
+  "platform": "macos-x86_64",
+  "result": "pass",
+  "schemaVersion": "1.1.0",
+  "sourceRevision": "1e1ad639478deb6c9ef1ed5a7899c7f5a021fa98",
+  "tribunalVersion": "0.7.0"
+}

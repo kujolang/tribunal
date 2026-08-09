@@ -1,0 +1,8 @@
+# Offline context-connector contract fixture. It receives only a request path.
+request_path := env_or("TRIBUNAL_CONNECTOR_REQUEST", "")
+if request_path == "" || file_exists(request_path) == false { print(to_json({"ok": false, "error": "missing request"})); exit(1) }
+request := parse_json(read_file(request_path))
+docket := request["docket"]
+content := "Connector evidence for " + docket["title"] + ". Source digest: " + docket["contentSha256"]
+print(to_json({"ok": true, "content": content, "sources": [{"uri": "docket-sha256:" + docket["contentSha256"], "sha256": sha256(content)}]}))
+exit(0)

@@ -23,7 +23,11 @@ Pass JSON configuration with `--config <path>`. Defaults are embedded in `src/co
   "context": {
     "provider": "local",
     "packwrite_path": "../packwrite",
-    "kujo_bin": "../kujo/target/release/kujo"
+    "kujo_bin": "../kujo/target/release/kujo",
+    "plugin_manifest_path": "",
+    "plugin_provenance_path": "",
+    "plugin_public_key_path": "",
+    "plugin_anchor_path": ""
   },
   "limits": {
     "max_docket_bytes": 1048576,
@@ -32,6 +36,15 @@ Pass JSON configuration with `--config <path>`. Defaults are embedded in `src/co
     "max_process_output_bytes": 8388608,
     "model_timeout_ms": 60000
   },
+  "execution": {
+    "blind_parallelism": 3,
+    "provider_max_concurrency": 2,
+    "cancel_on_failure": true,
+    "live_parallel_enabled": false
+  },
+  "panels": { "catalog_path": "", "provenance_path": "", "public_key_path": "", "anchor_path": "" },
+  "decision_packet": { "template_path": "", "policy_path": "", "policy_provenance_path": "", "policy_public_key_path": "", "policy_anchor_path": "" },
+  "security": { "organization_secret_patterns_path": "", "require_same_mount": true, "private_key_permission_mode": "0600" },
   "authorization": {
     "mode": "local",
     "identity": "local-operator",
@@ -46,7 +59,10 @@ Pass JSON configuration with `--config <path>`. Defaults are embedded in `src/co
   "artifact_store": {
     "provider": "local-immutable",
     "root": "./.tribunal/artifact-store",
-    "endpoint": ""
+    "endpoint": "",
+    "tenant_id": "",
+    "bearer_token_file": "",
+    "region": ""
   },
   "telemetry": {
     "collector": "jsonl",
@@ -57,11 +73,15 @@ Pass JSON configuration with `--config <path>`. Defaults are embedded in `src/co
 
 Blind first pass, decision packets, Kujo AI SDK ownership, and disabled direct-provider fallback are hard invariants. Valid provider presets are `openai`, `openrouter`, and `deepseek`.
 
-Set `context.provider` to `packwrite` to append PackWrite's deterministic, redacted repository context. No model is invoked for context enrichment.
+Set `context.provider` to `packwrite` to append PackWrite's deterministic, redacted repository context. Set it to `plugin` only with a signed and externally anchored connector manifest; adapters are Kujo files, receive a request-file path through an isolated environment, and must return bounded content plus source digests. No model is invoked for context enrichment.
+
+Custom panels likewise require a schema-valid signed catalog, fixed `{{context}}`/`{{seat}}` placeholders, and blind permission boundaries. Decision templates are deterministic post-model transforms. Organization policy is signed, evaluated explicitly, and records that model behavior was not modified.
 
 Do not store secrets here. Live credentials must use the provider environment convention documented by Kujo AI SDK.
 
 Unknown fields and invalid types are rejected. Limits have guarded ranges: docket/context/process output up to 64 MiB, model output up to 16 MiB, and timeouts from 1 to 600 seconds. CLI `--model-timeout-ms` overrides the configured timeout for a run.
+
+Execution concurrency fields record desired/provider bounds and mandatory cancellation. Mock/offline work uses bounded parallelism by default; live parallel provider calls require the explicit `live_parallel_enabled` opt-in. Same-mount enforcement compares canonical runtime device IDs. Local private keys are created through an atomic 0600 primitive and verified on the creating handle; `managed-provider-required` remains available for deployments that prohibit local private keys, and managed signing remains the production recommendation.
 
 `authorization.mode=local` is intentionally single-operator and accepts only `local-operator`. Set `mode=policy`, select an identity, and provide a default-deny policy for service or multi-user automation. CLI `--identity` and `--access-policy` provide explicit overrides.
 

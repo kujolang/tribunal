@@ -18,7 +18,11 @@
   "context": {
     "provider": "local",
     "packwrite_path": "../packwrite",
-    "kujo_bin": "../kujo/target/release/kujo"
+    "kujo_bin": "../kujo/target/release/kujo",
+    "plugin_manifest_path": "",
+    "plugin_provenance_path": "",
+    "plugin_public_key_path": "",
+    "plugin_anchor_path": ""
   },
   "limits": {
     "max_docket_bytes": 1048576,
@@ -26,6 +30,30 @@
     "max_model_output_bytes": 1048576,
     "max_process_output_bytes": 8388608,
     "model_timeout_ms": 60000
+  },
+  "execution": {
+    "blind_parallelism": 3,
+    "provider_max_concurrency": 2,
+    "cancel_on_failure": true,
+    "live_parallel_enabled": false
+  },
+  "panels": {
+    "catalog_path": "",
+    "provenance_path": "",
+    "public_key_path": "",
+    "anchor_path": ""
+  },
+  "decision_packet": {
+    "template_path": "",
+    "policy_path": "",
+    "policy_provenance_path": "",
+    "policy_public_key_path": "",
+    "policy_anchor_path": ""
+  },
+  "security": {
+    "organization_secret_patterns_path": "",
+    "require_same_mount": true,
+    "private_key_permission_mode": "0600"
   },
   "authorization": {
     "mode": "local",

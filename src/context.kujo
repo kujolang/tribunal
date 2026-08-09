@@ -1,6 +1,7 @@
 # Tribunal :: local and optional PackWrite context construction
 
 from src.common import dict_get, last_json_line, parent_dir, redact, safe_process_env
+from src.connectors import invoke_connector
 
 func repository_root(start) {
     mut current := path_absolute(start)
@@ -27,6 +28,11 @@ func local_context(docket) {
 export func build_context(config, docket) {
     base := local_context(docket)
     context_config := config["context"]
+    if context_config["provider"] == "plugin" {
+        connected := invoke_connector(config, docket)
+        if connected["ok"] != true { return connected }
+        return {"ok": true, "content": base + "\n\n# Connector context\n\n" + connected["content"], "provider": connected["provider"], "warnings": [], "sources": connected["sources"], "connectorProvenance": connected["provenance"]}
+    }
     if context_config["provider"] != "packwrite" {
         return {"ok": true, "content": base, "provider": "local", "warnings": []}
     }

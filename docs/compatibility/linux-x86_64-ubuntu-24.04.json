@@ -1,0 +1,39 @@
+{
+  "claimBoundary": "This receipt covers only the named revision, pinned runtime digest, measured environment, architecture, and completed gates.",
+  "environment": {
+    "kernel": "Linux 6.8.0-117-generic",
+    "osRelease": "Ubuntu 24.04.2 LTS",
+    "runnerImage": "ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90"
+  },
+  "gates": [
+    "kujo-check-all",
+    "tribunal-tests",
+    "cli-integration",
+    "enterprise-tests",
+    "property-tests",
+    "schema",
+    "concord-drift",
+    "strict-spec",
+    "eval",
+    "performance",
+    "scale-performance",
+    "index-performance",
+    "load-chaos",
+    "adversarial",
+    "dashboard-accessibility",
+    "security-review-register",
+    "integration-matrix",
+    "kennel-package",
+    "gallery",
+    "reproducible-release-archive",
+    "doctor"
+  ],
+  "kujoSha256": "16cc1c22b0759bf045ddcd43141b2c8b76272101a1b54508483b997322d1efb2",
+  "kujoVersion": "1.0.0",
+  "measuredAt": "2026-07-13T00:28:19Z",
+  "platform": "linux-x86_64",
+  "result": "pass",
+  "schemaVersion": "1.1.0",
+  "sourceRevision": "eeb3fb98d8c8583ecc6cd3b27d4ead94ecbeb525",
+  "tribunalVersion": "0.7.0"
+}

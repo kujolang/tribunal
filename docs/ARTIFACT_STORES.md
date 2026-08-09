@@ -15,4 +15,6 @@ The server must authenticate identities, enforce tenant/run ownership, preserve 
 
 Tribunal validates bundle metadata before downloads/copies, rejects duplicate and unsafe paths, and caps artifact count, individual size, and aggregate bundle size. The local store root must remain outside run storage.
 
+Artifacts use the v1.1 binary file-transfer contract at `/artifacts/<path>`. Upload streams the file body with conditional create, content SHA-256, content length, and an idempotency key bound to version/path. Pull streams into a same-directory temporary file, enforces the 64 MiB limit, and atomically publishes only after completion. Tribunal verifies the transfer receipt's byte count and SHA-256 against the signed bundle descriptor before trusted import. Legacy base64 chunk routes remain server-side compatibility surfaces only and are no longer emitted by the Tribunal client.
+
 Tribunal's pull path reconstructs a temporary bundle, verifies it under the target trust policy, then atomically admits the run to empty local storage.

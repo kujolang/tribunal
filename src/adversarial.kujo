@@ -1,0 +1,26 @@
+# Tribunal :: shared fail-closed validation for adversarial remote envelopes
+
+from src.common import dict_get, utf8_byte_length
+
+export func inspect_remote_envelope(surface, response, limits) {
+    elapsed := dict_get(response, "elapsedMs", 0); body := dict_get(response, "body", ""); headers := dict_get(response, "headers", {})
+    if elapsed > dict_get(limits, "timeoutMs", 60000) { return {"ok": false, "error": surface + " response exceeded its time budget.", "classification": "slow-response"} }
+    if type(headers) != "dict" || len(keys(headers)) > dict_get(limits, "maxHeaders", 64) { return {"ok": false, "error": surface + " returned too many headers.", "classification": "oversized-headers"} }
+    mut header_bytes := 0
+    for name in keys(headers) { header_bytes = header_bytes + utf8_byte_length(name) + utf8_byte_length(to_string(headers[name])) }
+    if header_bytes > dict_get(limits, "maxHeaderBytes", 16384) { return {"ok": false, "error": surface + " headers exceeded the byte budget.", "classification": "oversized-headers"} }
+    if utf8_byte_length(body) > dict_get(limits, "maxBodyBytes", 1048576) { return {"ok": false, "error": surface + " body exceeded the byte budget.", "classification": "decompression-bomb-or-oversize"} }
+    if dict_get(headers, "Content-Encoding", "") != "" { return {"ok": false, "error": surface + " returned unsupported content encoding.", "classification": "decompression-bomb"} }
+    parsed := null
+    try { parsed = parse_json(body) } except err { return {"ok": false, "error": surface + " returned truncated or invalid JSON.", "classification": "truncated-json"} }
+    # Canonical re-encoding prevents ambiguous duplicate-field documents from
+    # becoming signed evidence even when a JSON parser accepts the last value.
+    mut sensitive_fields := []
+    if surface == "store" { sensitive_fields = ["schemaVersion", "runId", "manifestSha256"] }
+    if surface == "context-plugin" { sensitive_fields = ["ok", "content", "sources"] }
+    if surface == "telemetry" { sensitive_fields = ["ok", "accepted"] }
+    for field in sensitive_fields {
+        if len(regex_find_all(body, "\"" + field + "\"\\s*:")) > 1 { return {"ok": false, "error": surface + " returned duplicate security-sensitive fields.", "classification": "duplicate-fields"} }
+    }
+    return {"ok": true, "value": parsed, "classification": "accepted"}
+}

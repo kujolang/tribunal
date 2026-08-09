@@ -2,6 +2,45 @@
 
 ## Unreleased
 
+No unreleased changes.
+
+## 1.0.0 - 2026-08-08
+
+Tribunal 1.0.0 defines the stable product as a local or operator-controlled decision-evidence engine. It does not certify every hosted, shared-filesystem, identity-provider, custody, remote-storage, regulated, or enterprise deployment; those profiles require target-environment evidence and approval.
+
+### Stable features and contracts
+
+- Declared the documented CLI commands, exit meanings, Kujo library API 1.x, configuration contract, evidence records, signed bundle import/export, and inspection of supported legacy signature envelopes as the v1 compatibility surface.
+- Enabled bounded, isolated async blind-seat execution with stable persistence order, provider limits, cancellation hooks, and per-process SDK working directories.
+- Added runtime-backed same-device boundaries plus atomic, handle-verified 0600 private-key creation while retaining managed signing guidance.
+- Replaced whole-value portable-bundle encryption with framed constant-memory AES-256-GCM and authenticated truncation/order checks.
+- Replaced remote base64 chunk expansion with bounded binary HTTP file streaming and digest-bound atomic downloads.
+- Added deterministic archives, checksums, SPDX SBOM, in-toto/SLSA-style provenance, install-from-archive smoke coverage, compatibility fixtures, local Markdown-link validation, Workcell proof, platform receipts, and pinned ecosystem gates.
+
+### Compatibility and upgrade guidance
+
+- Product and CLI version are 1.0.0. The Kujo library API remains 1.0.0, and evidence, event, signature, bundle, encryption, provenance, and other schema versions remain independent contracts rather than inheriting the product version.
+- Existing v0.7 run directories remain inspectable when their schema is supported and their exact file set and digests pass verification. Signature envelopes 1.0.0, 1.1.0, and provider envelope 1.2.0 remain verifiable; newer framed encrypted bundles do not rewrite legacy ciphertext.
+- Back up run storage, trust/governance records, policies, keys, and indexes before upgrading. Pin Tribunal and the Kujo runtime together, run `doctor`, `index-check`, compatibility/schema gates, and verify representative historical signed runs. Rollback never authorizes changing sealed evidence.
+
+### Security boundaries and known limitations
+
+- The independent security review is commissioned but not complete. The repository security-review gate validates the review register and regression-fixture rule; it is not an external assessment.
+- Mock/offline evidence proves deterministic local behavior, not live-provider correctness or the merits of a decision. Managed signing, trust-policy custody, encrypted storage, identity proofing, shared-filesystem semantics, remote-store behavior, telemetry hosting, backup/recovery, and organizational controls remain deployment responsibilities.
+- No public network API or hosted multi-tenant service is included. Windows and unmeasured architectures are unsupported. Reference Vault/HTTP-store fixtures and Workcell runs are bounded proofs, not universal deployment certification.
+
+## 0.7.0 - 2026-07-12
+
+- Replaced inventory rescans with an atomically written, sharded persistent run index plus verify, repair, rebuild, and cursor-bounded CLI/library contracts.
+- Made analytics, telemetry, dashboard, and bulk verification page-bounded; added reproducible index, load, contention, chaos-recovery, streaming-transfer, and multi-host certification gates with explicit budgets.
+- Evaluated blind-seat concurrency with isolation, deterministic persistence, provider bounds, cancellation evidence, and a fail-closed Kujo runtime gate for the current nested-runtime defect.
+- Added streamed bundle copies and a 1 MiB chunked remote artifact protocol with per-chunk idempotency, digests, request bounds, and final whole-file verification.
+- Added signed custom panel catalogs, safe templates, permission boundaries, explicit checkpoints, stable idempotency keys, resumable stopped hearings, immutable lineage, compare/re-review workflows, and the stable Kujo library API 1.0.
+- Added provenance-bound context connectors, portable decision-packet templates, signed organization policy checks, canonical filesystem inspection, entropy/organization secret detection, malicious remote-response fixtures, and an independent security-review commission/register gate.
+- Added a Kennel package, upgrade/rollback guide, six-example gallery, generated command/man/completion assets, operator recipes, an explicit no-service decision, and WCAG-oriented dashboard evaluation/gates.
+- Added reproducible source archives, SPDX SBOM, in-toto/SLSA-style provenance, pinned Kujo runtime compatibility jobs, ecosystem integration matrices, release verification instructions, and privacy-preserving opt-in adoption measurement contracts.
+- Published full-gate compatibility receipts for macOS x86_64 and Ubuntu Linux x86_64, made Spec/Eval gates portable across the measured runners, and kept unmeasured architectures explicitly unsupported.
+
 ## 0.6.0 - 2026-07-11
 
 - Added a Kujo-only Vault Transit adapter with JWT workload identity, strict provider responses, bounded retry, denial/rotation tests, audit metadata, and a live certification harness.

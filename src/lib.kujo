@@ -1,0 +1,21 @@
+# Tribunal stable embedding API for Kujo programs.
+# Compatibility: API 1.x is additive; breaking changes require API 2.0.0.
+
+from src.common import dict_get
+from src.compare import compare_rulings
+from src.integrity import verify
+from src.storage import list_runs_page
+from src.tribunal import review, resume
+
+export API_VERSION := "1.0.0"
+
+func envelope(operation, result) {
+    if dict_get(result, "ok", false) == true { return {"apiVersion": API_VERSION, "ok": true, "operation": operation, "value": result} }
+    return {"apiVersion": API_VERSION, "ok": false, "operation": operation, "error": dict_get(result, "error", "Tribunal operation failed."), "value": result}
+}
+
+export func review_docket(config, docket_path, panel_id, private_key, public_key) { return envelope("review", review(config, docket_path, panel_id, private_key, public_key)) }
+export func resume_hearing(config, prior_run_id, private_key, public_key) { return envelope("resume", resume(config, prior_run_id, private_key, public_key)) }
+export func compare_sealed_rulings(storage_dir, base_run_id, candidate_run_id, output_prefix) { return envelope("compare", compare_rulings(storage_dir, base_run_id, candidate_run_id, output_prefix)) }
+export func list_hearings(storage_dir, status, panel_id, limit, cursor) { return envelope("list", {"ok": true, "page": list_runs_page(storage_dir, status, panel_id, limit, cursor)}) }
+export func verify_hearing(storage_dir, run_id, public_key) { return envelope("verify", verify(storage_dir, run_id, public_key)) }

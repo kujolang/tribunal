@@ -2,6 +2,7 @@
 # Tribunal owns orchestration. Kujo AI SDK owns provider/model resolution and calls.
 
 from src.common import dict_get, last_json_line, redact, safe_process_env
+from src.adversarial import inspect_remote_envelope
 
 func provider_env(provider, payload) {
     values := {"KUJO_TRIBUNAL_PAYLOAD": to_json(payload)}
@@ -110,28 +111,27 @@ func live_invoke(config, request) {
     }
     started := current_timestamp()
     proc := null
-    previous_cwd := os_getcwd()
+    proc_options := {
+        "inherit_env": false,
+        "env": provider_env(ai["provider"], payload),
+        "cwd": ai["sdk_path"],
+        "timeout_ms": dict_get(request, "timeoutMs", 60000),
+        "max_output_bytes": config["limits"]["max_process_output_bytes"]
+    }
+    cancel_file := dict_get(request, "cancelFile", "")
+    if cancel_file != "" { proc_options["cancel_file"] := cancel_file }
     try {
-        os_chdir(ai["sdk_path"])
-        proc = spawn_process([kujo_bin, "run", bridge, "--interpreter"], {
-            "inherit_env": false,
-            "env": provider_env(ai["provider"], payload),
-            "timeout_ms": dict_get(request, "timeoutMs", 60000),
-            "max_output_bytes": config["limits"]["max_process_output_bytes"]
-        })
+        proc = spawn_process([kujo_bin, "run", bridge, "--interpreter"], proc_options)
     } except err {
-        os_chdir(previous_cwd)
         return {"ok": false, "content": "", "metadata": {"latencyMs": current_timestamp() - started}, "error": {"code": "kujo_ai_sdk_bridge_error", "message": redact(err), "retryable": false}}
     }
-    os_chdir(previous_cwd)
     json_line := last_json_line(proc.stdout)
     if json_line == "" {
         return {"ok": false, "content": "", "metadata": {"latencyMs": current_timestamp() - started}, "error": {"code": "kujo_ai_sdk_bridge_error", "message": redact(proc.stderr), "retryable": false}}
     }
-    sdk := null
-    try { sdk = parse_json(json_line) } except err {
-        return {"ok": false, "content": "", "metadata": {"latencyMs": current_timestamp() - started}, "error": {"code": "kujo_ai_sdk_parse_error", "message": "Kujo AI SDK returned invalid JSON.", "retryable": false}}
-    }
+    inspected := inspect_remote_envelope("provider", {"elapsedMs": current_timestamp() - started, "headers": {}, "body": json_line}, {"timeoutMs": dict_get(request, "timeoutMs", 60000), "maxHeaders": 1, "maxHeaderBytes": 128, "maxBodyBytes": config["limits"]["max_process_output_bytes"]})
+    if inspected["ok"] != true { return {"ok": false, "content": "", "metadata": {"latencyMs": current_timestamp() - started}, "error": {"code": "kujo_ai_sdk_adversarial_response", "message": inspected["error"], "retryable": false}} }
+    sdk := inspected["value"]
     content := dict_get(sdk, "output_text", "")
     structured := null
     try { structured = parse_json(content) } except err { structured = null }

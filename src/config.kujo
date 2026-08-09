@@ -1,10 +1,11 @@
 # Tribunal :: JSON configuration with Kujo-first invariants
 
-from src.common import dict_get, truthy, array_includes, path_within, safe_run_id
+from src.common import dict_get, truthy, array_includes, path_within, safe_http_url, safe_run_id
 from src.catalog import panel
 
 export func default_config() {
     home := path_absolute(env_or("TRIBUNAL_HOME", "."))
+    kujo_bin := env_or("KUJO_BIN", env_or("KUJO", join_path(home, "../kujo/target/release/kujo")))
     return {
         "tribunal": {
             "storage_dir": "./tribunal-runs",
@@ -18,14 +19,18 @@ export func default_config() {
             "allow_direct_provider_fallback": false,
             "mock_mode": true,
             "sdk_path": join_path(home, "../ai-sdk"),
-            "kujo_bin": join_path(home, "../kujo/target/release/kujo"),
+            "kujo_bin": kujo_bin,
             "provider": "openai",
             "offline_fixture": false
         },
         "context": {
             "provider": "local",
             "packwrite_path": join_path(home, "../packwrite"),
-            "kujo_bin": join_path(home, "../kujo/target/release/kujo")
+            "kujo_bin": kujo_bin,
+            "plugin_manifest_path": "",
+            "plugin_provenance_path": "",
+            "plugin_public_key_path": "",
+            "plugin_anchor_path": ""
         },
         "limits": {
             "max_docket_bytes": 1048576,
@@ -33,6 +38,30 @@ export func default_config() {
             "max_model_output_bytes": 1048576,
             "max_process_output_bytes": 8388608,
             "model_timeout_ms": 60000
+        },
+        "execution": {
+            "blind_parallelism": 3,
+            "provider_max_concurrency": 2,
+            "cancel_on_failure": true,
+            "live_parallel_enabled": false
+        },
+        "panels": {
+            "catalog_path": "",
+            "provenance_path": "",
+            "public_key_path": "",
+            "anchor_path": ""
+        },
+        "decision_packet": {
+            "template_path": "",
+            "policy_path": "",
+            "policy_provenance_path": "",
+            "policy_public_key_path": "",
+            "policy_anchor_path": ""
+        },
+        "security": {
+            "organization_secret_patterns_path": "",
+            "require_same_mount": true,
+            "private_key_permission_mode": "0600"
         },
         "authorization": {
             "mode": "local",
@@ -81,15 +110,19 @@ export func load_config(path) {
             return {"ok": false, "error": "Config is not valid JSON: " + to_string(err)}
         }
         if type(parsed) != "dict" { return {"ok": false, "error": "Config root must be an object."} }
-        top_unknown := unknown_key(parsed, ["tribunal", "kujo_ai", "context", "limits", "authorization", "governance", "artifact_store", "telemetry"])
+        top_unknown := unknown_key(parsed, ["tribunal", "kujo_ai", "context", "limits", "execution", "panels", "decision_packet", "security", "authorization", "governance", "artifact_store", "telemetry"])
         if top_unknown != "" { return {"ok": false, "error": "Unknown top-level config field: " + top_unknown} }
-        for section in ["tribunal", "kujo_ai", "context", "limits", "authorization", "governance", "artifact_store", "telemetry"] {
+        for section in ["tribunal", "kujo_ai", "context", "limits", "execution", "panels", "decision_packet", "security", "authorization", "governance", "artifact_store", "telemetry"] {
             if has_key(parsed, section) == 1 && type(parsed[section]) != "dict" { return {"ok": false, "error": "Config section '" + section + "' must be an object."} }
         }
         config["tribunal"] := merge_section(config, parsed, "tribunal")
         config["kujo_ai"] := merge_section(config, parsed, "kujo_ai")
         config["context"] := merge_section(config, parsed, "context")
         config["limits"] := merge_section(config, parsed, "limits")
+        config["execution"] := merge_section(config, parsed, "execution")
+        config["panels"] := merge_section(config, parsed, "panels")
+        config["decision_packet"] := merge_section(config, parsed, "decision_packet")
+        config["security"] := merge_section(config, parsed, "security")
         config["authorization"] := merge_section(config, parsed, "authorization")
         config["governance"] := merge_section(config, parsed, "governance")
         config["artifact_store"] := merge_section(config, parsed, "artifact_store")
@@ -113,10 +146,7 @@ func valid_positive_int(value, minimum, maximum) {
 }
 
 func secure_http_url(value) {
-    if starts_with(value, "https://") && len(value) > 8 && substring(value, 8, 9) != "/" && contains(value, " ") == false { return true }
-    return value == "http://localhost" || starts_with(value, "http://localhost:") || starts_with(value, "http://localhost/") ||
-        value == "http://127.0.0.1" || starts_with(value, "http://127.0.0.1:") || starts_with(value, "http://127.0.0.1/") ||
-        value == "http://[::1]" || starts_with(value, "http://[::1]:") || starts_with(value, "http://[::1]/")
+    return safe_http_url(value)
 }
 
 export func validate_config(config) {
@@ -124,21 +154,33 @@ export func validate_config(config) {
     ai := dict_get(config, "kujo_ai", {})
     context := dict_get(config, "context", {})
     limits := dict_get(config, "limits", {})
+    execution := dict_get(config, "execution", {})
+    panels := dict_get(config, "panels", {})
+    decision_packet := dict_get(config, "decision_packet", {})
+    security := dict_get(config, "security", {})
     authorization := dict_get(config, "authorization", {})
     governance := dict_get(config, "governance", {})
     artifact_store := dict_get(config, "artifact_store", {})
     telemetry := dict_get(config, "telemetry", {})
     if type(config) != "dict" { return "Config root must be an object." }
-    unknown := unknown_key(config, ["tribunal", "kujo_ai", "context", "limits", "authorization", "governance", "artifact_store", "telemetry"])
+    unknown := unknown_key(config, ["tribunal", "kujo_ai", "context", "limits", "execution", "panels", "decision_packet", "security", "authorization", "governance", "artifact_store", "telemetry"])
     if unknown != "" { return "Unknown top-level config field: " + unknown }
     unknown = unknown_key(tribunal, ["storage_dir", "default_panel", "require_blind_first_pass", "require_decision_packet", "stop_the_line_enabled"])
     if unknown != "" { return "Unknown tribunal config field: " + unknown }
     unknown = unknown_key(ai, ["default_runtime", "allow_direct_provider_fallback", "mock_mode", "sdk_path", "kujo_bin", "provider", "offline_fixture"])
     if unknown != "" { return "Unknown kujo_ai config field: " + unknown }
-    unknown = unknown_key(context, ["provider", "packwrite_path", "kujo_bin"])
+    unknown = unknown_key(context, ["provider", "packwrite_path", "kujo_bin", "plugin_manifest_path", "plugin_provenance_path", "plugin_public_key_path", "plugin_anchor_path"])
     if unknown != "" { return "Unknown context config field: " + unknown }
     unknown = unknown_key(limits, ["max_docket_bytes", "max_context_bytes", "max_model_output_bytes", "max_process_output_bytes", "model_timeout_ms"])
     if unknown != "" { return "Unknown limits config field: " + unknown }
+    unknown = unknown_key(execution, ["blind_parallelism", "provider_max_concurrency", "cancel_on_failure", "live_parallel_enabled"])
+    if unknown != "" { return "Unknown execution config field: " + unknown }
+    unknown = unknown_key(panels, ["catalog_path", "provenance_path", "public_key_path", "anchor_path"])
+    if unknown != "" { return "Unknown panels config field: " + unknown }
+    unknown = unknown_key(decision_packet, ["template_path", "policy_path", "policy_provenance_path", "policy_public_key_path", "policy_anchor_path"])
+    if unknown != "" { return "Unknown decision_packet config field: " + unknown }
+    unknown = unknown_key(security, ["organization_secret_patterns_path", "require_same_mount", "private_key_permission_mode"])
+    if unknown != "" { return "Unknown security config field: " + unknown }
     unknown = unknown_key(authorization, ["mode", "identity", "policy_path"])
     if unknown != "" { return "Unknown authorization config field: " + unknown }
     unknown = unknown_key(governance, ["retention_class", "retention_days", "legal_hold", "owner"])
@@ -148,7 +190,8 @@ export func validate_config(config) {
     unknown = unknown_key(telemetry, ["collector", "destination"])
     if unknown != "" { return "Unknown telemetry config field: " + unknown }
     if type(dict_get(tribunal, "storage_dir", null)) != "string" || trim(dict_get(tribunal, "storage_dir", "")) == "" { return "tribunal.storage_dir is required and must be a string." }
-    if panel(dict_get(tribunal, "default_panel", "")) == null { return "tribunal.default_panel is invalid." }
+    panel_id := dict_get(tribunal, "default_panel", "")
+    if panel(panel_id) == null && (safe_run_id(panel_id) == false || trim(dict_get(panels, "catalog_path", "")) == "") { return "tribunal.default_panel is invalid." }
     if type(dict_get(tribunal, "require_blind_first_pass", null)) != "bool" || type(dict_get(tribunal, "require_decision_packet", null)) != "bool" || type(dict_get(tribunal, "stop_the_line_enabled", null)) != "bool" { return "Tribunal invariant fields must be booleans." }
     if dict_get(tribunal, "require_blind_first_pass", false) != true { return "Blind first pass is a mandatory Tribunal invariant." }
     if dict_get(tribunal, "require_decision_packet", false) != true { return "Decision packets are mandatory." }
@@ -161,13 +204,24 @@ export func validate_config(config) {
     provider := dict_get(ai, "provider", "")
     if array_includes(["openai", "openrouter", "deepseek"], provider) == false { return "kujo_ai.provider is invalid." }
     context_provider := dict_get(context, "provider", "")
-    if array_includes(["local", "packwrite"], context_provider) == false { return "context.provider must be local or packwrite." }
+    if array_includes(["local", "packwrite", "plugin"], context_provider) == false { return "context.provider must be local, packwrite, or plugin." }
     if type(dict_get(context, "packwrite_path", null)) != "string" || type(dict_get(context, "kujo_bin", null)) != "string" { return "PackWrite path and Kujo binary must be strings." }
+    for field in ["plugin_manifest_path", "plugin_provenance_path", "plugin_public_key_path", "plugin_anchor_path"] { if type(dict_get(context, field, null)) != "string" { return "Context plugin paths must be strings." } }
+    if context_provider == "plugin" && (trim(context["plugin_manifest_path"]) == "" || trim(context["plugin_provenance_path"]) == "" || trim(context["plugin_public_key_path"]) == "" || trim(context["plugin_anchor_path"]) == "") { return "Plugin context requires signed manifest provenance, public-key, and anchor paths." }
     if valid_positive_int(dict_get(limits, "max_docket_bytes", 0), 1024, 67108864) == false { return "limits.max_docket_bytes must be between 1024 and 67108864." }
     if valid_positive_int(dict_get(limits, "max_context_bytes", 0), 4096, 67108864) == false { return "limits.max_context_bytes must be between 4096 and 67108864." }
     if valid_positive_int(dict_get(limits, "max_model_output_bytes", 0), 1024, 16777216) == false { return "limits.max_model_output_bytes must be between 1024 and 16777216." }
     if valid_positive_int(dict_get(limits, "max_process_output_bytes", 0), 4096, 67108864) == false { return "limits.max_process_output_bytes must be between 4096 and 67108864." }
     if valid_positive_int(dict_get(limits, "model_timeout_ms", 0), 1000, 600000) == false { return "limits.model_timeout_ms must be between 1000 and 600000." }
+    if valid_positive_int(dict_get(execution, "blind_parallelism", 0), 1, 16) == false || valid_positive_int(dict_get(execution, "provider_max_concurrency", 0), 1, 16) == false { return "Execution concurrency limits must be between 1 and 16." }
+    if execution["provider_max_concurrency"] > execution["blind_parallelism"] { return "execution.provider_max_concurrency cannot exceed blind_parallelism." }
+    if type(dict_get(execution, "cancel_on_failure", null)) != "bool" || execution["cancel_on_failure"] != true { return "execution.cancel_on_failure is a mandatory fail-closed invariant." }
+    if type(dict_get(execution, "live_parallel_enabled", null)) != "bool" { return "execution.live_parallel_enabled must be a boolean." }
+    for field in ["catalog_path", "provenance_path", "public_key_path", "anchor_path"] { if type(dict_get(panels, field, null)) != "string" { return "Panel catalog paths must be strings." } }
+    if trim(panels["catalog_path"]) != "" && (trim(panels["provenance_path"]) == "" || trim(panels["public_key_path"]) == "" || trim(panels["anchor_path"]) == "") { return "Custom panel catalogs require provenance, public-key, and external-anchor paths." }
+    for field in ["template_path", "policy_path", "policy_provenance_path", "policy_public_key_path", "policy_anchor_path"] { if type(dict_get(decision_packet, field, null)) != "string" { return "Decision packet contract paths must be strings." } }
+    if trim(decision_packet["policy_path"]) != "" && (trim(decision_packet["policy_provenance_path"]) == "" || trim(decision_packet["policy_public_key_path"]) == "" || trim(decision_packet["policy_anchor_path"]) == "") { return "Organization policy requires provenance, public-key, and external-anchor paths." }
+    if type(dict_get(security, "organization_secret_patterns_path", null)) != "string" || type(dict_get(security, "require_same_mount", null)) != "bool" || array_includes(["0600", "managed-provider-required"], dict_get(security, "private_key_permission_mode", "")) == false { return "security.private_key_permission_mode must be 0600 or managed-provider-required." }
     if array_includes(["local", "policy"], dict_get(authorization, "mode", "")) == false { return "authorization.mode must be local or policy." }
     if type(dict_get(authorization, "identity", null)) != "string" || trim(dict_get(authorization, "identity", "")) == "" { return "authorization.identity is required." }
     if type(dict_get(authorization, "policy_path", null)) != "string" || trim(dict_get(authorization, "policy_path", "")) == "" { return "authorization.policy_path is required." }

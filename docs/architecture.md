@@ -8,9 +8,14 @@
 tribunal.kujo
   -> src/cli.kujo
   -> src/tribunal.kujo       hearing orchestration and blindness
+  -> src/lib.kujo            stable Kujo embedding API 1.x
+  -> src/panels.kujo         signed custom panel/seat catalogs
+  -> src/compare.kujo        immutable comparison and re-review
   -> src/model.kujo          mock boundary or Kujo AI SDK bridge
-  -> src/context.kujo        local or PackWrite context
-  -> src/storage.kujo        Markdown, JSON, JSONL persistence
+  -> src/context.kujo        local, PackWrite, or signed plugin context
+  -> src/connectors.kujo     isolated connector contract and provenance
+  -> src/decision_contracts.kujo portable templates and policy checks
+  -> src/storage.kujo        persistence and sharded run index
   -> src/integrity.kujo      SHA-256 and RSA-SHA256 signing
   -> src/integrations.kujo   RunLedger and CaseFile Kujo CLIs
   -> src/diagnostics.kujo    local dependency/readiness checks
@@ -25,6 +30,7 @@ tribunal.kujo
   -> src/audit.kujo          combined integrity/contract/trust report
   -> src/telemetry.kujo      external metrics/audit projection
   -> src/dashboard.kujo      offline read-only HTML projection
+  -> src/adversarial.kujo    shared malicious-envelope validation
 ```
 
 Tribunal contains no provider-specific SDK, endpoint, transport, retry, or credential logic. In live mode `src/model.kujo` invokes `src/bridges/ai_sdk_bridge.kujo` with the same Kujo runtime while the adjacent AI SDK repository supplies `src.ai_sdk` and `src.providers`.
@@ -35,7 +41,7 @@ Blind prompts are built only from the immutable `context.md` content and the cur
 
 ## Persistence and integrity
 
-`src/storage.kujo` constrains run IDs, exclusively creates run directories, atomically replaces snapshot files, creates prompt/testimony directories, and appends one JSON event per line. Hidden operational namespaces and URL/path metacharacters cannot be addressed as run IDs. `record.json` is the complete hearing.
+`src/storage.kujo` constrains run IDs, exclusively creates run directories, atomically replaces snapshot files, creates prompt/testimony directories, and appends one JSON event per line. It maintains atomic 100-entry index shards for normal cursor-bounded projections; explicit verify/repair/rebuild operations are the only inventory-wide scans. Hidden operational namespaces and URL/path metacharacters cannot be addressed as run IDs. `record.json` is the complete hearing and `checkpoint.json` records stage progress and the idempotency contract.
 
 After persistence, `src/integrity.kujo` recursively enumerates every artifact except `artifact-manifest.json` and `signature.json`, rejects unsafe paths and symbolic links, enforces size limits, then records byte length and SHA-256. Replay requires an exact file set and matching digests.
 
@@ -45,7 +51,7 @@ External signing emits v1.2 envelopes with provider and signer-reference provena
 
 Seal replacement is journaled outside run directories. A crash leaves a recoverable transaction that restores the prior manifest/signature. Per-run atomic directory locks prevent concurrent writers. Acquisition never steals a stale-looking lock; only an explicit operator recovery command can remove one after a confirmed crash.
 
-Bundles copy exact signed artifacts into external portable directories. Local and HTTP artifact-store providers use manifest SHA-256 as the immutable version and require conditional expected-version writes. Pull/import always re-verifies against a trust policy before accepting a run.
+Bundles copy exact signed artifacts into external portable directories with 1 MiB bounded chunks. Local and HTTP artifact-store providers use manifest SHA-256 as the immutable version and require conditional expected-version writes. Large remote artifacts use indexed, digest-bound, idempotent chunks plus whole-file completion verification. Pull/import always re-verifies against a trust policy before accepting a run.
 
 Bundle and store imports validate metadata before copying, reject duplicates and unsafe paths, and enforce per-file, aggregate-byte, and artifact-count limits. Non-loopback remote endpoints require HTTPS. `src/audit.kujo` combines complete integrity, executable contracts, signature verification, and optional lifecycle trust policy into one report.
 
@@ -53,12 +59,12 @@ RunLedger and CaseFile output is written outside the sealed run so downstream op
 
 ## Failure model
 
-Each fatal result is routed through one stopped-run writer. It emits `stop_the_line_triggered`, writes the best available partial record and receipt, marks the manifest stopped, and seals an integrity manifest. The CLI returns exit code 2 for stopped hearings.
+Each fatal result is routed through one stopped-run writer. It emits `stop_the_line_triggered`, writes the best available checkpoint, partial record, and receipt, marks the manifest stopped, and seals an integrity manifest. Resume creates a distinct run and binds the prior record/checkpoint hashes; no sealed source is changed. The CLI returns exit code 2 for stopped hearings.
 
 ## Security
 
 - No config, request, event, or record contract accepts credentials.
-- Obvious key assignments, bearer headers, and private-key material stop the line before model invocation.
+- Fixed, entropy-aware, and organization secret patterns stop the line without returning detected values.
 - Provider credentials are resolved only inside Kujo AI SDK.
 - SDK and integration subprocesses receive explicit environment allowlists instead of the full parent environment.
 - Run IDs and artifact-relative paths are constrained before file access.

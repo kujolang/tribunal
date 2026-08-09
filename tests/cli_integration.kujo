@@ -42,7 +42,7 @@ write_file(DOCKET, "# CLI integration\n\n## Scope\n\nProve every user-facing Kuj
 help := cli(["help"])
 check(proc_success(help) && contains(proc_stdout(help), "tribunal review") == 1, "help exposes command contract")
 launcher := spawn_process([join_path(HOME, "bin/tribunal"), "version"], {"inherit_env": true, "env": {"KUJO_BIN": KUJO_BIN}, "timeout_ms": 60000, "max_output_bytes": 1048576})
-check(proc_success(launcher) && contains(proc_stdout(launcher), "Tribunal v0.6.0") == 1, "launcher honors the documented KUJO_BIN runtime path")
+check(proc_success(launcher) && contains(proc_stdout(launcher), "Tribunal v1.0.0") == 1, "launcher honors the documented KUJO_BIN runtime path")
 check(proc_success(cli(["panels"])), "panels command succeeds")
 check(proc_success(cli(["seats"])), "seats command succeeds")
 check(proc_success(cli(["panels", "--json"])), "panels supports JSON output")
@@ -57,6 +57,14 @@ check(proc_success(review), "review command succeeds")
 run_id := ""
 if proc_success(review) { run_id = split(trim(proc_stdout(review)), "\n")[0] }
 check(run_id != "", "review returns a run ID")
+candidate := cli(["review", DOCKET, "--panel", "executioner-only", "--storage-dir", STORAGE])
+candidate_id := ""
+if proc_success(candidate) { candidate_id = split(trim(proc_stdout(candidate)), "\n")[0] }
+comparison_prefix := join_path(ROOT, "cli-comparison")
+check(candidate_id != "" && proc_success(cli(["compare", run_id, candidate_id, "--storage-dir", STORAGE, "--output", comparison_prefix])) && file_exists(comparison_prefix + ".json"), "compare command creates an external immutable ruling comparison")
+rereview_prefix := join_path(ROOT, "cli-rereview")
+check(proc_success(cli(["re-review", run_id, DOCKET, "--panel", "executioner-only", "--storage-dir", STORAGE, "--output", rereview_prefix])) && file_exists(rereview_prefix + ".json"), "re-review command creates a new hearing and comparison")
+check(proc_success(cli(["resume", run_id, "--storage-dir", STORAGE])) == false, "resume command rejects a completed hearing")
 check(proc_success(cli(["list", "--storage-dir", STORAGE])), "list command succeeds")
 check(proc_success(cli(["list", "--storage-dir", STORAGE, "--status", "completed", "--panel", "fast-two-model", "--limit", "1", "--json"])), "list filters and JSON output succeed")
 check(proc_success(cli(["list", "--storage-dir", STORAGE, "--cursor", "missing-run", "--json"])) == false, "list rejects an unknown cursor")
@@ -69,6 +77,10 @@ check(proc_success(cli(["telemetry-export", "--storage-dir", STORAGE, "--collect
 dashboard_path := join_path(ROOT, "dashboard.html")
 check(proc_success(cli(["dashboard-export", "--storage-dir", STORAGE, "--output", dashboard_path, "--json"])) && file_exists(dashboard_path), "offline dashboard export command succeeds")
 check(proc_success(cli(["locks-recover", "--storage-dir", STORAGE, "--stale-after-ms", "1000", "--json"])), "stale-lock recovery command succeeds")
+check(proc_success(cli(["index-check", "--storage-dir", STORAGE, "--json"])), "persistent run-index verification command succeeds")
+check(proc_success(cli(["index-rebuild", "--storage-dir", STORAGE, "--json"])), "persistent run-index rebuild command succeeds")
+check(proc_success(cli(["index-repair", "--storage-dir", STORAGE, "--json"])), "persistent run-index crash-repair command succeeds")
+check(proc_success(cli(["verify-bulk", "--storage-dir", STORAGE, "--limit", "1", "--json"])), "bulk verification command processes a bounded cursor page")
 check(proc_success(cli(["legal-hold", run_id, "--storage-dir", STORAGE, "--enable", "--reason", "CLI test hold"])), "legal-hold command applies external hold")
 check(proc_success(cli(["legal-hold", run_id, "--storage-dir", STORAGE, "--release", "--reason", "CLI test release"])), "legal-hold command releases external hold with history")
 check(proc_success(cli(["list", "--storage-dir", STORAGE, "--access-policy", join_path(HOME, "examples/access-policy.json"), "--identity", "audit-reader", "--json"])), "policy-authorized auditor can list runs")
@@ -123,7 +135,7 @@ check(proc_success(cli(["bundle-import", bundle_path, "--storage-dir", import_st
 release_output := join_path(ROOT, "release-evidence")
 release_proc := spawn_process([KUJO_BIN, "run", join_path(HOME, "scripts/release_evidence.kujo")], {"inherit_env": true, "env": {"TRIBUNAL_HOME": HOME, "KUJO_BIN": KUJO_BIN, "TRIBUNAL_SIGNING_PROVIDER_CONFIG": provider_config, "TRIBUNAL_RELEASE_OUTPUT": release_output}, "timeout_ms": 120000, "max_output_bytes": 1048576})
 if proc_success(release_proc) == false { print("  Release detail: " + proc_stderr(release_proc) + proc_stdout(release_proc)) }
-check(proc_success(release_proc) && file_exists(join_path(release_output, "release-receipt.json")) && file_exists(join_path(release_output, "tribunal-v0.6.0-signed-evidence.zip")), "Kujo-only release evidence orchestration succeeds")
+check(proc_success(release_proc) && file_exists(join_path(release_output, "release-receipt.json")) && file_exists(join_path(release_output, "tribunal-v1.0.0-signed-evidence.zip")), "Kujo-only release evidence orchestration succeeds")
 
 write_file(join_path(join_path(STORAGE, run_id), "ruling.md"), "tampered\n", true)
 check(proc_success(cli(["replay", run_id, "--storage-dir", STORAGE])) == false, "replay rejects tampering")

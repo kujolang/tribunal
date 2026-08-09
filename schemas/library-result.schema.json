@@ -1,0 +1,13 @@
+{
+  "title": "TribunalLibraryResult",
+  "type": "object",
+  "required": ["apiVersion", "ok", "operation"],
+  "properties": {
+    "apiVersion": { "const": "1.0.0" },
+    "ok": { "type": "boolean" },
+    "operation": { "enum": ["review", "resume", "compare", "list", "verify"] },
+    "value": {},
+    "error": { "type": "string" }
+  },
+  "additionalProperties": false
+}

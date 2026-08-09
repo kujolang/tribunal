@@ -1,0 +1,11 @@
+from src.common import read_json
+home := path_absolute(env_or("TRIBUNAL_HOME", ".")); input := env_or("TRIBUNAL_ADOPTION_AGGREGATE", join_path(home, "examples/adoption-aggregate.json"))
+aggregate := read_json(input); schema := read_json(join_path(home, "schemas/adoption-aggregate.schema.json")); checked := json_schema_validate(aggregate, schema)
+if checked["valid"] != true { print(to_json({"ok": false, "error": "Aggregate failed privacy/schema validation."})); exit(1) }
+if aggregate["kujoDocsArrivals"] > aggregate["tribunalDocsOptIns"] || aggregate["kujoFirstRunCompletions"] > aggregate["kujoDocsArrivals"] { print(to_json({"ok": false, "error": "Aggregate funnel counts are inconsistent."})); exit(1) }
+publishable := aggregate["tribunalDocsOptIns"] >= aggregate["privacy"]["minimumCohort"]
+arrival_rate := null; completion_rate := null
+if publishable && aggregate["tribunalDocsOptIns"] > 0 { arrival_rate = aggregate["kujoDocsArrivals"] * 10000 / aggregate["tribunalDocsOptIns"] }
+if publishable && aggregate["kujoDocsArrivals"] > 0 { completion_rate = aggregate["kujoFirstRunCompletions"] * 10000 / aggregate["kujoDocsArrivals"] }
+print(to_json({"ok": true, "period": aggregate["period"], "publishable": publishable, "minimumCohort": aggregate["privacy"]["minimumCohort"], "arrivalBasisPoints": arrival_rate, "firstRunCompletionBasisPoints": completion_rate, "suppressed": publishable == false, "privacy": aggregate["privacy"]}))
+exit(0)

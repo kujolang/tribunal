@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "1.0.0",
+  "period": "2026-07",
+  "consentSurface": "explicit-documentation-link",
+  "tribunalDocsOptIns": 0,
+  "kujoDocsArrivals": 0,
+  "kujoFirstRunCompletions": 0,
+  "privacy": { "aggregateOnly": true, "runtimeTelemetry": false, "cookies": false, "rawIpRetention": false, "minimumCohort": 10 }
+}

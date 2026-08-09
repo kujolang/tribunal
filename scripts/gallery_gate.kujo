@@ -1,0 +1,20 @@
+from src.common import ensure_dir, read_json, remove_tree
+from src.config import default_config
+from src.storage import artifact_path
+from src.tribunal import review
+
+home := path_absolute(env_or("TRIBUNAL_HOME", ".")); gallery := join_path(home, "examples/gallery")
+catalog := read_json(join_path(gallery, "catalog.json")); root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-gallery-" + uuid_v4()); ensure_dir(root)
+mut failures := []; mut completed := 0
+for example in catalog["examples"] {
+    config := default_config(); tribunal := config["tribunal"]; tribunal["storage_dir"] := join_path(root, example["id"]); config["tribunal"] := tribunal
+    result := review(config, join_path(gallery, example["docket"]), example["panel"], "", "")
+    if result["ok"] != true { failures = push(failures, example["id"] + ":review"); continue }
+    if result["record"]["status"] != example["expectedStatus"] { failures = push(failures, example["id"] + ":status") }
+    for name in example["expectedArtifacts"] { if file_exists(artifact_path(tribunal["storage_dir"], result["runId"], name)) == false { failures = push(failures, example["id"] + ":" + name) } }
+    completed = completed + 1
+}
+print(to_json({"ok": len(failures) == 0, "examples": len(catalog["examples"]), "completed": completed, "failures": failures}))
+remove_tree(root)
+if len(failures) > 0 { exit(1) }
+exit(0)

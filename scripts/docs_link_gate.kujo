@@ -1,0 +1,42 @@
+# Validate local links in every tracked or untracked Markdown document without network access.
+
+home := path_absolute(env_or("TRIBUNAL_HOME", "."))
+listed := spawn_process(["git", "-C", home, "ls-files", "--cached", "--others", "--exclude-standard", "--", "*.md"], {"inherit_env": true, "timeout_ms": 30000, "max_output_bytes": 4 * 1024 * 1024})
+if listed.success != true { print("Unable to enumerate Markdown documents: " + listed.stderr); exit(1) }
+
+mut documents := []
+for line in split(listed.stdout, "\n") {
+    relative := trim(line)
+    if relative != "" { documents = push(documents, relative) }
+}
+documents = sort(documents)
+
+mut checked := 0
+mut broken := []
+for relative in documents {
+    source := join_path(home, relative)
+    if file_exists(source) == false || path_is_symlink(source) { broken = push(broken, relative + ": source document is missing or symlinked"); continue }
+    content := read_file(source)
+    for matched in regex_find_all(content, "!?\\[[^\\]]*\\]\\([^)]+\\)") {
+        marker := index_of(matched, "](")
+        if marker < 0 { continue }
+        target := trim(substring(matched, marker + 2, len(matched) - 1))
+        if starts_with(target, "<") && ends_with(target, ">") { target = substring(target, 1, len(target) - 1) }
+        if target == "" || starts_with(target, "#") || starts_with(target, "//") || starts_with(target, "http://") || starts_with(target, "https://") || starts_with(target, "mailto:") || starts_with(target, "tel:") || starts_with(target, "data:") { continue }
+        fragment := index_of(target, "#")
+        if fragment >= 0 { target = substring(target, 0, fragment) }
+        query := index_of(target, "?")
+        if query >= 0 { target = substring(target, 0, query) }
+        target = trim(target)
+        if target == "" { continue }
+        checked = checked + 1
+        candidate := ""
+        if starts_with(target, "/") { candidate = join_path(home, substring(target, 1, len(target))) } else { candidate = join_path(dirname(source), target) }
+        if file_exists(candidate) == false && path_is_dir(candidate) == false { broken = push(broken, relative + ": " + target) }
+    }
+}
+
+result := {"ok": len(broken) == 0, "markdownFiles": len(documents), "localLinks": checked, "broken": broken}
+print(to_json(result))
+if len(broken) > 0 { exit(1) }
+exit(0)

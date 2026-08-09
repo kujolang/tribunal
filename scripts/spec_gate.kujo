@@ -4,29 +4,52 @@ home := path_absolute(env_or("TRIBUNAL_HOME", "."))
 spec_root := path_absolute(env_or("SPEC_REPO", join_path(home, "../spec")))
 kujo_bin := path_absolute(env_or("KUJO_BIN", join_path(home, "../kujo/target/release/kujo")))
 source := join_path(home, "tribunal.spec.yml")
-name := ".tribunal-spec-gate-" + to_string(current_timestamp()) + ".spec.yml"
-target := join_path(spec_root, name)
-copy_file(source, target)
-previous := os_getcwd()
-os_chdir(spec_root)
-proc := spawn_process([join_path(spec_root, "scripts/spec"), "validate", name, "--strict", "--json"], {"inherit_env": true, "env": {"KUJO_BIN": kujo_bin}, "timeout_ms": 120000, "max_output_bytes": 1024 * 1024 * 4})
-os_chdir(previous)
-delete_file(target)
-success := false
-stdout := ""
-stderr := ""
-if type(proc) == "dict" {
-    success = has_key(proc, "success") == 1 && proc["success"] == true
-    if has_key(proc, "stdout") == 1 { stdout = to_string(proc["stdout"]) }
-    if has_key(proc, "stderr") == 1 { stderr = to_string(proc["stderr"]) }
+target := join_path(home, ".tribunal-spec-gate-" + to_string(current_timestamp()) + ".json")
+convert_script := join_path(join_path(spec_root, "src"), "convert.kujo")
+validate_helper := join_path(join_path(spec_root, "scripts"), "spec_helpers.py")
+options := {"inherit_env": true, "timeout_ms": 120000, "max_output_bytes": 1024 * 1024 * 4}
+
+converted := spawn_process([kujo_bin, "run", convert_script, "--input", source, "--from", "yaml", "--to", "json"], options)
+converted_ok := false
+converted_stdout := ""
+converted_stderr := ""
+if type(converted) == "dict" {
+    converted_ok = has_key(converted, "success") == 1 && converted["success"] == true
+    if has_key(converted, "stdout") == 1 { converted_stdout = to_string(converted["stdout"]) }
+    if has_key(converted, "stderr") == 1 { converted_stderr = to_string(converted["stderr"]) }
 } else {
-    try { success = proc.success == true } except err { success = false }
-    try { stdout = to_string(proc.stdout) } except err { stdout = "" }
-    try { stderr = to_string(proc.stderr) } except err { stderr = "" }
+    try { converted_ok = converted.success == true } except err { converted_ok = false }
+    try { converted_stdout = to_string(converted.stdout) } except err { converted_stdout = "" }
+    try { converted_stderr = to_string(converted.stderr) } except err { converted_stderr = "" }
 }
-if success == false {
-    print("Spec gate failed: " + stderr + stdout)
+if converted_ok == false {
+    print("Spec gate conversion failed: " + converted_stderr + converted_stdout)
     exit(1)
 }
-print("Spec gate passed: " + trim(stdout))
+try { parse_json(trim(converted_stdout)) } except err {
+    print("Spec gate conversion returned invalid JSON.")
+    exit(1)
+}
+write_file(target, trim(converted_stdout) + "\n", true)
+
+validated := spawn_process(["python3", validate_helper, "validate-quiet", target, "true"], options)
+delete_file(target)
+validated_ok := false
+validated_stdout := ""
+validated_stderr := ""
+if type(validated) == "dict" {
+    validated_ok = has_key(validated, "success") == 1 && validated["success"] == true
+    if has_key(validated, "stdout") == 1 { validated_stdout = to_string(validated["stdout"]) }
+    if has_key(validated, "stderr") == 1 { validated_stderr = to_string(validated["stderr"]) }
+} else {
+    try { validated_ok = validated.success == true } except err { validated_ok = false }
+    try { validated_stdout = to_string(validated.stdout) } except err { validated_stdout = "" }
+    try { validated_stderr = to_string(validated.stderr) } except err { validated_stderr = "" }
+}
+if validated_ok == false {
+    print("Spec gate validation failed: " + validated_stderr + validated_stdout)
+    exit(1)
+}
+
+print("Spec gate passed: pinned Spec conversion and strict validation succeeded.")
 exit(0)

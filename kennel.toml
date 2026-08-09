@@ -1,0 +1,56 @@
+[package]
+name = "tribunal"
+version = "1.0.0"
+description = "Local-first, sealed adversarial decision evidence for Kujo programs and operators."
+license = "MIT"
+authors = ["Kujolang <contact@kujolang.ai>"]
+homepage = "https://github.com/kujolang/tribunal"
+repository = "https://github.com/kujolang/tribunal"
+documentation = "https://github.com/kujolang/tribunal/tree/main/docs"
+keywords = ["kujo", "decision", "review", "evidence", "governance"]
+categories = ["developer-tools", "ai"]
+readme = "README.md"
+
+[package.status]
+stage = "production"
+stability = "stable"
+public_api = true
+notes = "The declared CLI and Kujo library API are public v1 contracts for local/operator-controlled use; hosted, shared, regulated, and target-enterprise deployments require separate certification."
+
+[kujo]
+minimum_version = "1.0.0"
+entry = "tribunal.kujo"
+sources = ["src", "."]
+includes = ["README.md", "LICENSE", "SECURITY.md", "VERSION", "bin", "completions", "docs", "examples", "man", "schemas", "scripts", "tests"]
+excludes = [".git", ".loop-engineering", ".strata-tmp", ".tribunal", "tribunal-runs", "kennel_packages", "dist", "build", "node_modules"]
+
+[build]
+command = ""
+output = "dist"
+artifacts = []
+
+[dependencies]
+
+[dev-dependencies]
+
+[scripts]
+first-run = '"$KUJO_BIN" run tribunal.kujo --interpreter -- review examples/product-decision.md --panel executioner-only --mock'
+test = '"$KUJO_BIN" run tests/tribunal_tests.kujo --interpreter'
+verify = '"$KUJO_BIN" run scripts/schema_gate.kujo --interpreter'
+doctor = '"$KUJO_BIN" run tribunal.kujo --interpreter -- doctor --json'
+
+[package.exports]
+tribunal = "src/lib.kujo"
+config = "src/config.kujo"
+contracts = "src/contracts.kujo"
+panels = "src/panels.kujo"
+compare = "src/compare.kujo"
+
+[registry]
+index = ""
+publish = ""
+
+[trust]
+checksum = ""
+signature = ""
+signing_key = ""

@@ -14,6 +14,7 @@ func remove_lock(storage_dir, run_id) {
 }
 
 export func acquire_lock(storage_dir, run_id, owner, stale_after_ms) {
+    started_ms := current_timestamp()
     if safe_run_id(run_id) == false || owner == "" { return {"ok": false, "error": "Safe run ID and lock owner are required."} }
     if (file_exists(storage_dir) && path_is_symlink(storage_dir)) || (file_exists(locks_root(storage_dir)) && path_is_symlink(locks_root(storage_dir))) { return {"ok": false, "error": "Lock storage must not be a symbolic link."} }
     ensure_dir(storage_dir)
@@ -25,13 +26,13 @@ export func acquire_lock(storage_dir, run_id, owner, stale_after_ms) {
         try { existing = read_json(owner_path(storage_dir, run_id)) } except err { existing = null }
         acquired_ms := dict_get(existing, "acquiredAtMs", 0)
         stale := stale_after_ms > 0 && acquired_ms > 0 && current_timestamp() - acquired_ms > stale_after_ms
-        return {"ok": false, "error": "Run is locked. Stale locks require explicit operator recovery.", "lock": existing, "stale": stale}
+        return {"ok": false, "error": "Run is locked. Stale locks require explicit operator recovery.", "lock": existing, "stale": stale, "metrics": {"waitMs": current_timestamp() - started_ms, "contended": true}}
     }
     try { create_dir(path) } except err { return {"ok": false, "error": "Unable to acquire atomic run lock: " + to_string(err)} }
     token := sha256(run_id + ":" + owner + ":" + to_string(current_timestamp()) + ":" + to_string(random_int(1000, 9999)))
     lock := {"schemaVersion": "1.0.0", "runId": run_id, "owner": owner, "token": token, "acquiredAt": now_utc(), "acquiredAtMs": current_timestamp()}
     try { write_json(owner_path(storage_dir, run_id), lock) } except err { remove_lock(storage_dir, run_id); return {"ok": false, "error": "Unable to persist lock ownership."} }
-    return {"ok": true, "lock": lock}
+    return {"ok": true, "lock": lock, "metrics": {"waitMs": current_timestamp() - started_ms, "contended": false}}
 }
 
 export func release_lock(storage_dir, run_id, token) {
@@ -44,10 +45,11 @@ export func release_lock(storage_dir, run_id, token) {
 }
 
 export func recover_stale_locks(storage_dir, stale_after_ms) {
+    started_ms := current_timestamp()
     root := locks_root(storage_dir)
     mut recovered := []
-    if stale_after_ms < 1000 { return {"ok": false, "error": "Stale-lock threshold must be at least 1000 ms.", "recovered": recovered} }
-    if path_is_dir(root) == false { return {"ok": true, "recovered": recovered} }
+    if stale_after_ms < 1000 { return {"ok": false, "error": "Stale-lock threshold must be at least 1000 ms.", "recovered": recovered, "recoveryMs": current_timestamp() - started_ms} }
+    if path_is_dir(root) == false { return {"ok": true, "recovered": recovered, "recoveryMs": current_timestamp() - started_ms} }
     if path_is_symlink(root) { return {"ok": false, "error": "Lock root is unsafe.", "recovered": recovered} }
     for name in list_dir(root) {
         if ends_with(name, ".lock") {
@@ -62,5 +64,5 @@ export func recover_stale_locks(storage_dir, stale_after_ms) {
             }
         }
     }
-    return {"ok": true, "recovered": recovered}
+    return {"ok": true, "recovered": recovered, "recoveryMs": current_timestamp() - started_ms}
 }

@@ -1,0 +1,9 @@
+from src.common import read_json
+storage := env_or("TRIBUNAL_SHARED_STORAGE", ""); root := join_path(storage, ".load-receipts")
+if storage == "" || path_is_dir(root) == false { print("No multi-host receipts."); exit(2) }
+mut hosts := []; mut attempts := 0; mut acquired := 0; mut contentions := 0
+for name in list_dir(root) { if ends_with(name, ".json") { receipt := read_json(join_path(root, name)); hosts = push(hosts, receipt["hostId"]); attempts = attempts + receipt["attempts"]; acquired = acquired + receipt["acquired"]; contentions = contentions + receipt["contentions"] } }
+ok := len(hosts) >= 2 && attempts > 0 && acquired > 0 && contentions > 0
+print(to_json({"schemaVersion": "1.0.0", "ok": ok, "hosts": hosts, "attempts": attempts, "acquired": acquired, "contentions": contentions, "minimumHosts": 2}))
+if ok == false { exit(1) }
+exit(0)

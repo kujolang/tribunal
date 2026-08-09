@@ -1,0 +1,16 @@
+# Run concurrently from distinct hosts against the same mounted storage.
+from src.common import ensure_dir, write_json
+from src.locking import acquire_lock, release_lock
+
+storage := env_or("TRIBUNAL_SHARED_STORAGE", ""); host := env_or("TRIBUNAL_HOST_ID", ""); duration_ms := to_int(env_or("TRIBUNAL_LOAD_DURATION_MS", "60000"))
+if storage == "" || host == "" || duration_ms < 10000 { print("Shared storage, unique host ID, and >=10s duration are required."); exit(2) }
+receipts := join_path(storage, ".load-receipts"); ensure_dir(receipts)
+started := current_timestamp(); mut attempts := 0; mut acquired := 0; mut contentions := 0; mut max_wait := 0
+while current_timestamp() - started < duration_ms {
+    lock := acquire_lock(storage, "shared-load-lock", host, 300000); attempts = attempts + 1
+    if lock["metrics"]["waitMs"] > max_wait { max_wait = lock["metrics"]["waitMs"] }
+    if lock["ok"] == true { acquired = acquired + 1; release_lock(storage, "shared-load-lock", lock["lock"]["token"]) } else { contentions = contentions + 1 }
+}
+write_json(join_path(receipts, host + ".json"), {"schemaVersion": "1.0.0", "hostId": host, "startedAtMs": started, "durationMs": current_timestamp() - started, "attempts": attempts, "acquired": acquired, "contentions": contentions, "maxWaitMs": max_wait})
+print(to_json({"ok": true, "hostId": host, "attempts": attempts, "acquired": acquired, "contentions": contentions}))
+exit(0)

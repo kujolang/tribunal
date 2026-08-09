@@ -1,0 +1,12 @@
+{
+  "title": "TribunalAcceptedSecurityFindings",
+  "type": "object",
+  "required": ["schemaVersion", "commissionId", "reviewStatus", "acceptedFindings"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "commissionId": { "type": "string", "minLength": 1 },
+    "reviewStatus": { "enum": ["commissioned", "in-review", "complete"] },
+    "acceptedFindings": { "type": "array", "items": { "type": "object", "required": ["id", "severity", "summary", "fixture"], "properties": { "id": { "type": "string", "minLength": 1 }, "severity": { "enum": ["critical", "high", "medium", "low", "informational"] }, "summary": { "type": "string", "minLength": 1 }, "fixture": { "type": "string", "minLength": 1 } }, "additionalProperties": false } }
+  },
+  "additionalProperties": false
+}

@@ -3,15 +3,17 @@
 from src.bundles import export_bundle, import_bundle, validate_bundle_metadata
 from src.common import dict_get, ensure_dir, lower_hex, read_json, redact, remove_tree, safe_run_id, utf8_byte_length, write_json
 from src.integrity import verify
+from src.adversarial import inspect_remote_envelope
 
 func request_once(url, options) {
-    response := {"ok": false, "status": 0, "body": "", "error": "request failed"}
+    response := {"ok": false, "status": 0, "body": "", "headers": {}, "error": "request failed"}
     try {
         result := http_request(url, options)
         match result {
             case Ok(value): {
                 response["status"] := dict_get(value, "_status", dict_get(value, "status", 0))
                 response["body"] := dict_get(value, "_body", dict_get(value, "body", ""))
+                response["headers"] := dict_get(value, "headers", {})
                 response["ok"] := response["status"] >= 200 && response["status"] < 300
                 response["error"] := ""
             }
@@ -23,7 +25,7 @@ func request_once(url, options) {
 
 func request(url, options) {
     mut attempt := 1
-    mut response := {"ok": false, "status": 0, "body": "", "error": "request failed", "attempts": 0}
+    mut response := {"ok": false, "status": 0, "body": "", "headers": {}, "error": "request failed", "attempts": 0}
     while attempt <= 3 {
         response = request_once(url, options)
         response["attempts"] := attempt
@@ -51,6 +53,28 @@ func merge_headers(base, extra) {
     result := base
     for name in keys(extra) { result[name] := extra[name] }
     return result
+}
+
+func descriptor_for(metadata, name) {
+    for descriptor in dict_get(metadata, "artifactDescriptors", []) { if descriptor["path"] == name { return descriptor } }
+    return null
+}
+
+func upload_file_request(url, source, headers) {
+    mut attempt := 1
+    mut last := {"ok": false, "status": 0, "error": "request failed", "attempts": 0}
+    while attempt <= 3 {
+        try {
+            result := http_upload_file(url, source, {"method": "PUT", "headers": headers, "max_response_bytes": 1048576})
+            status := dict_get(result, "status", 0)
+            succeeded := status >= 200 && status < 300
+            last = {"ok": succeeded, "status": status, "error": "", "attempts": attempt, "uploadedBytes": dict_get(result, "uploaded_bytes", 0)}
+        } except err { last = {"ok": false, "status": 0, "error": redact(to_string(err)), "attempts": attempt} }
+        if last["ok"] || (last["status"] != 0 && last["status"] != 429 && last["status"] < 500) { return last }
+        if attempt < 3 { sleep(100 * attempt) }
+        attempt = attempt + 1
+    }
+    return last
 }
 
 func local_index(root, run_id) { return join_path(join_path(root, "indexes"), run_id + ".json") }
@@ -123,6 +147,7 @@ export func publish_local(storage_dir, run_id, root, expected_version) {
 export func pull_local(root, run_id, version, storage_dir, trust_policy, target) {
     if safe_run_id(run_id) == false { return {"ok": false, "error": "Run ID is unsafe."} }
     if version != "" && lower_hex(version, 64) == false { return {"ok": false, "error": "Version must be a lowercase SHA-256 digest."} }
+    if trim(root) == "" || (file_exists(root) && path_is_symlink(root)) { return {"ok": false, "error": "Artifact-store root is unsafe."} }
     selected := version
     if selected == "" {
         loaded_index := current_index(root, run_id)
@@ -150,12 +175,7 @@ export func publish_http(storage_dir, run_id, store, expected_version) {
     version := metadata["manifestSha256"]
     for name in metadata["artifacts"] {
         source := join_path(join_path(temp, "artifacts"), name)
-        uploaded := request(endpoint + "/runs/" + run_id + "/versions/" + version + "/artifacts/" + name, {
-            "method": "PUT",
-            "_headers": merge_headers(context["headers"], {"Content-Type": "application/octet-stream", "If-None-Match": "*", "Content-SHA256": sha256_file(source)}),
-            "_body": read_file(source),
-            "timeout": 60
-        })
+        uploaded := upload_file_request(endpoint + "/runs/" + run_id + "/versions/" + version + "/artifacts/" + name, source, merge_headers(context["headers"], {"Content-Type": "application/octet-stream", "If-None-Match": "*", "Content-SHA256": sha256_file(source), "Idempotency-Key": version + ":" + name}))
         if uploaded["ok"] != true {
             request(endpoint + "/runs/" + run_id + "/versions/" + version + "/staging", {"method": "DELETE", "_headers": context["headers"], "timeout": 30})
             remove_tree(temp); return {"ok": false, "error": "Remote artifact upload failed for " + name + ": " + uploaded["error"], "status": uploaded["status"], "attempts": uploaded["attempts"]}
@@ -188,8 +208,9 @@ export func pull_http(store, run_id, version, storage_dir, trust_policy, target)
     if selected == "" { suffix = "/runs/" + run_id + "/current" }
     fetched := request(endpoint + suffix, {"method": "GET", "_headers": context["headers"], "timeout": 60})
     if fetched["ok"] != true { return {"ok": false, "error": "Remote artifact-store metadata fetch failed.", "status": fetched["status"]} }
-    metadata := null
-    try { metadata = parse_json(fetched["body"]) } except err { return {"ok": false, "error": "Remote artifact-store metadata is invalid JSON."} }
+    inspected := inspect_remote_envelope("store", {"elapsedMs": 0, "headers": fetched["headers"], "body": fetched["body"]}, {"timeoutMs": 60000, "maxHeaders": 64, "maxHeaderBytes": 16384, "maxBodyBytes": 4194304})
+    if inspected["ok"] != true { return {"ok": false, "error": inspected["error"], "classification": inspected["classification"]} }
+    metadata := inspected["value"]
     validated := validate_bundle_metadata(metadata)
     if validated["ok"] != true { return validated }
     if metadata["runId"] != run_id { return {"ok": false, "error": "Remote artifact-store metadata returned a different run ID."} }
@@ -199,12 +220,14 @@ export func pull_http(store, run_id, version, storage_dir, trust_policy, target)
     ensure_dir(join_path(temp, "artifacts"))
     write_json(join_path(temp, "bundle.json"), metadata)
     for name in dict_get(metadata, "artifacts", []) {
-        downloaded := request(endpoint + "/runs/" + run_id + "/versions/" + selected + "/artifacts/" + name, {"method": "GET", "_headers": context["headers"], "timeout": 60})
-        if downloaded["ok"] != true { remove_tree(temp); return {"ok": false, "error": "Remote artifact download failed for " + name + ".", "status": downloaded["status"]} }
-        if utf8_byte_length(downloaded["body"]) > 67108864 { remove_tree(temp); return {"ok": false, "error": "Remote artifact exceeds the per-file safety limit: " + name} }
         destination := join_path(join_path(temp, "artifacts"), name)
         ensure_dir(dirname(destination))
-        write_file(destination, downloaded["body"])
+        descriptor := descriptor_for(metadata, name)
+        if type(descriptor) != "dict" { remove_tree(temp); return {"ok": false, "error": "Remote artifact descriptor is missing for " + name + "."} }
+        downloaded := null
+        try { downloaded = http_download_file(endpoint + "/runs/" + run_id + "/versions/" + selected + "/artifacts/" + name, destination, {"headers": context["headers"], "max_bytes": 67108864, "overwrite": false}) } except err { downloaded = {"status": 0, "error": redact(to_string(err))} }
+        if type(downloaded) != "dict" || dict_get(downloaded, "status", 0) < 200 || dict_get(downloaded, "status", 0) >= 300 { remove_tree(temp); return {"ok": false, "error": "Remote artifact download failed for " + name + ".", "status": dict_get(downloaded, "status", 0)} }
+        if downloaded["bytes"] != descriptor["bytes"] || downloaded["sha256"] != descriptor["sha256"] { remove_tree(temp); return {"ok": false, "error": "Remote streamed artifact digest failed for " + name + "."} }
     }
     imported := import_bundle(temp, storage_dir, trust_policy, target)
     remove_tree(temp)

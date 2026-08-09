@@ -1,7 +1,7 @@
 # Tribunal :: retention, legal hold, and policy-driven whole-run deletion
 
-from src.common import dict_get, ensure_dir, iso_now, read_json, remove_tree, write_json
-from src.storage import artifact_path, run_dir
+from src.common import dict_get, ensure_dir, read_json, remove_tree, write_json
+from src.storage import artifact_path, remove_run_from_index, run_dir
 from src.locking import acquire_lock, release_lock
 
 export func governance_metadata(config, actor) {
@@ -15,7 +15,7 @@ export func governance_metadata(config, actor) {
         "legalHold": policy["legal_hold"],
         "owner": policy["owner"],
         "createdBy": actor,
-        "createdAt": iso_now()
+        "createdAt": now_utc()
     }
 }
 
@@ -50,7 +50,7 @@ export func set_legal_hold(storage_dir, run_id, actor, enabled, reason) {
     if file_exists(path) {
         try { history = dict_get(read_json(path), "history", []) } except err { release_lock(storage_dir, run_id, locked["lock"]["token"]); return {"ok": false, "error": "External governance record is unreadable."} }
     }
-    action := {"actor": actor, "legalHold": enabled, "reason": reason, "changedAt": iso_now()}
+    action := {"actor": actor, "legalHold": enabled, "reason": reason, "changedAt": now_utc()}
     history = push(history, action)
     record := {"schemaVersion": "1.0.0", "runId": run_id, "legalHold": enabled, "updatedAt": action["changedAt"], "updatedBy": actor, "reason": reason, "history": history}
     try { write_json(path, record) } except err { release_lock(storage_dir, run_id, locked["lock"]["token"]); return {"ok": false, "error": "Unable to persist external governance record."} }
@@ -74,7 +74,7 @@ export func delete_run(storage_dir, run_id, actor, reason, force_expired) {
         "runId": run_id,
         "actor": actor,
         "reason": reason,
-        "deletedAt": iso_now(),
+        "deletedAt": now_utc(),
         "recordSha256": sha256(read_file(artifact_path(storage_dir, run_id, "record.json"))),
         "manifestSha256": "",
         "keyId": "",
@@ -92,6 +92,7 @@ export func delete_run(storage_dir, run_id, actor, reason, force_expired) {
     try { write_json(tombstone_path, tombstone) } except err { release_lock(storage_dir, run_id, locked["lock"]["token"]); return {"ok": false, "error": "Unable to persist pre-deletion tombstone."} }
     root := run_dir(storage_dir, run_id)
     remove_tree(root)
+    remove_run_from_index(storage_dir, run_id)
     tombstone["status"] := "deleted"
     write_json(tombstone_path, tombstone)
     release_lock(storage_dir, run_id, locked["lock"]["token"])

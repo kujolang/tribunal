@@ -1,0 +1,3 @@
+# generated
+_tribunal_complete() { local cur="${COMP_WORDS[COMP_CWORD]}"; if [ "$COMP_CWORD" -eq 1 ]; then COMPREPLY=( $(compgen -W "review resume compare re-review kill validate list show replay keys seal verify verify-bulk ingest export panels seats doctor stats contracts audit seal-provider verify-policy bundle-export bundle-import bundle-encrypt bundle-decrypt bundle-rekey store-publish store-pull telemetry-export locks-recover index-check index-rebuild index-repair delete auth-check dashboard-export legal-hold provenance-sign provenance-verify version" -- "$cur") ); fi; }
+complete -F _tribunal_complete tribunal

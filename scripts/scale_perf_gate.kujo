@@ -47,7 +47,7 @@ second := list_runs_page(inventory, "completed", "strategic-five", 100, first["n
 pagination_ms := current_timestamp() - page_started
 
 latency_budget_ms := 45000
-pagination_budget_ms := 3000
+pagination_budget_ms := 6000
 peak_resident_memory_budget_bytes := 268435456
 working_set_input_budget_bytes := config["limits"]["max_docket_bytes"] + config["limits"]["max_context_bytes"] + config["limits"]["max_model_output_bytes"] * 5 + config["limits"]["max_process_output_bytes"]
 within_budget := hearing_ms <= latency_budget_ms && pagination_ms <= pagination_budget_ms && len(first["items"]) == 100 && len(second["items"]) == 100

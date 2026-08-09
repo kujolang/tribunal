@@ -2,61 +2,142 @@ name: Kujo Tribunal release
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing verified tag to publish; required only when publish_release is enabled
+        required: false
+        type: string
+      publish_release:
+        description: Publish the existing verified tag and generated artifacts to GitHub Releases
+        required: true
+        default: false
+        type: boolean
   push:
     tags:
       - "v*"
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 jobs:
-  verify-and-publish:
+  verify:
     runs-on: [self-hosted, kujo]
+    permissions:
+      contents: read
+      id-token: write
     env:
       TRIBUNAL_HOME: ${{ github.workspace }}
       KUJO_BIN: ${{ vars.KUJO_BIN }}
       TRIBUNAL_SIGNING_PROVIDER_CONFIG: ${{ vars.TRIBUNAL_SIGNING_PROVIDER_CONFIG }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
 
-      - name: Verify release inputs
+      - name: Verify release inputs and tag safety
         run: |
           test -x "$KUJO_BIN"
+          command -v python3
+          command -v unzip
           test -f "$TRIBUNAL_SIGNING_PROVIDER_CONFIG"
+          expected_tag="v$(tr -d '\r\n' < VERSION)"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            test "$GITHUB_REF_NAME" = "$expected_tag"
+            test "$(git rev-parse "$GITHUB_REF_NAME^{commit}")" = "$GITHUB_SHA"
+          fi
+          if [[ "${{ inputs.publish_release || false }}" == "true" ]]; then
+            test "${{ inputs.release_tag }}" = "$expected_tag"
+            test "$(git rev-parse "${{ inputs.release_tag }}^{commit}")" = "$GITHUB_SHA"
+          fi
 
       - name: Run Kujo release gates
         run: |
           for file in $(find . -name '*.kujo' -not -path './.git/*'); do "$KUJO_BIN" check "$file"; done
-          "$KUJO_BIN" run tests/tribunal_tests.kujo
-          "$KUJO_BIN" run tests/cli_integration.kujo
-          "$KUJO_BIN" run tests/enterprise_tests.kujo
-          "$KUJO_BIN" run tests/property_tests.kujo
-          "$KUJO_BIN" run scripts/schema_gate.kujo
-          "$KUJO_BIN" run scripts/drift_gate.kujo
-          "$KUJO_BIN" run scripts/spec_gate.kujo
-          "$KUJO_BIN" run scripts/perf_gate.kujo
-          "$KUJO_BIN" run scripts/scale_perf_gate.kujo
+          "$KUJO_BIN" run tests/tribunal_tests.kujo --interpreter
+          "$KUJO_BIN" run tests/cli_integration.kujo --interpreter
+          "$KUJO_BIN" run tests/enterprise_tests.kujo --interpreter
+          "$KUJO_BIN" run tests/property_tests.kujo --interpreter
+          "$KUJO_BIN" run scripts/schema_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/drift_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/spec_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/perf_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/scale_perf_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/index_perf_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/load_chaos_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/adversarial_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/dashboard_accessibility_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/security_review_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/integration_matrix_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/gallery_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/v1_compatibility_gate.kujo --interpreter
+          "$KUJO_BIN" run scripts/docs_link_gate.kujo --interpreter
+          (cd ../eval && "$KUJO_BIN" run main.kujo run "$TRIBUNAL_HOME/tests/tribunal_eval.json")
+          "$KUJO_BIN" run ../kennel/kennel.kujo --interpreter -- validate --project-dir "$TRIBUNAL_HOME"
+          KUJO_BIN="$KUJO_BIN" ./bin/tribunal doctor --json
+          git diff --check
 
       - name: Create signed release evidence bundle
         env:
-          TRIBUNAL_RELEASE_OUTPUT: ${{ runner.temp }}/tribunal-release-evidence
+          TRIBUNAL_RELEASE_OUTPUT: ${{ runner.temp }}/tribunal-release-evidence-${{ github.run_id }}
+          TRIBUNAL_SOURCE_REVISION: ${{ github.sha }}
         run: |
-          rm -rf "$TRIBUNAL_RELEASE_OUTPUT"
-          "$KUJO_BIN" run scripts/release_evidence.kujo
+          test ! -e "$TRIBUNAL_RELEASE_OUTPUT"
+          "$KUJO_BIN" run scripts/release_evidence.kujo --interpreter
+          test -f "$TRIBUNAL_RELEASE_OUTPUT/release-receipt.json"
+          test -f "$TRIBUNAL_RELEASE_OUTPUT/tribunal-v$(cat VERSION)-signed-evidence.zip"
+
+      - name: Create and smoke-test reproducible source archive
+        env:
+          TRIBUNAL_RELEASE_ARCHIVE_OUTPUT: ${{ runner.temp }}/tribunal-release-archive-${{ github.run_id }}
+          TRIBUNAL_SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          test ! -e "$TRIBUNAL_RELEASE_ARCHIVE_OUTPUT"
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$GITHUB_SHA")"
+          "$KUJO_BIN" run scripts/release_archive.kujo --interpreter
+          "$KUJO_BIN" run scripts/archive_smoke.kujo --interpreter "$TRIBUNAL_RELEASE_ARCHIVE_OUTPUT/tribunal-v$(cat VERSION).zip"
+          test -f "$TRIBUNAL_RELEASE_ARCHIVE_OUTPUT/release-archive-receipt.json"
 
       - name: Upload immutable signed evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: tribunal-${{ github.ref_name }}-signed-evidence
-          path: ${{ runner.temp }}/tribunal-release-evidence
+          name: tribunal-v${{ github.run_id }}-signed-evidence
+          path: ${{ runner.temp }}/tribunal-release-evidence-${{ github.run_id }}
           if-no-files-found: error
           retention-days: 90
 
-      - name: Publish tagged release asset
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload reproducible release package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tribunal-v${{ github.run_id }}-reproducible-package
+          path: ${{ runner.temp }}/tribunal-release-archive-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 90
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true
+    needs: verify
+    runs-on: ubuntu-24.04
+    environment:
+      name: release
+      url: https://github.com/kujolang/tribunal/releases/tag/${{ inputs.release_tag }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: tribunal-v${{ github.run_id }}-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/tribunal-release
+      - name: Publish verified existing tag
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1 || gh release create "${GITHUB_REF_NAME}" --verify-tag --title "Tribunal ${GITHUB_REF_NAME}" --generate-notes
-          gh release upload "${GITHUB_REF_NAME}" "$RUNNER_TEMP/tribunal-release-evidence/tribunal-v${GITHUB_REF_NAME#v}-signed-evidence.zip" --clobber
+          expected_tag="v$(tr -d '\r\n' < VERSION)"
+          test "$RELEASE_TAG" = "$expected_tag"
+          test "$(git rev-parse "$RELEASE_TAG^{commit}")" = "$GITHUB_SHA"
+          gh release view "$RELEASE_TAG" >/dev/null 2>&1 || gh release create "$RELEASE_TAG" --verify-tag --title "Tribunal $RELEASE_TAG" --generate-notes
+          gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/tribunal-release/tribunal-$RELEASE_TAG-signed-evidence.zip" "$RUNNER_TEMP/tribunal-release/tribunal-$RELEASE_TAG.zip" "$RUNNER_TEMP/tribunal-release/release-archive-receipt.json" --clobber

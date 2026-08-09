@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1.0.0",
+  "tribunalVersion": "1.0.0",
+  "certifiedAt": "2026-08-08",
+  "integrations": [
+    { "name": "Kujo Runtime", "version": "1.0.0", "revision": "9b77dce592047121cb71066629836ad89252f3ce", "path": "../kujo", "gate": "all release commands", "scope": "interpreter, VM, cryptography, filesystem, process, HTTP streaming, archive, and schema primitives" },
+    { "name": "Kujo AI SDK", "version": "1.0.0", "revision": "d3c6def0f7844f8b42bd92d3b176e80283af8e79", "path": "../ai-sdk", "gate": "tests/tribunal_tests.kujo", "scope": "real SDK bridge, provider-neutral resolution, offline provider fixture" },
+    { "name": "PackWrite", "version": "1.0.0", "revision": "0cb9487e4c02218bb4a18efe68b8a0c22998f715", "path": "../packwrite", "gate": "tests/tribunal_tests.kujo", "scope": "real repository context bridge with isolated process environment" },
+    { "name": "RunLedger", "version": "1.0.0", "revision": "5cf186c9b56b540970f75e33a06f50d3dac833a8", "path": "../runledger", "gate": "tests/tribunal_tests.kujo", "scope": "trusted signed-run ingestion and external receipt" },
+    { "name": "CaseFile", "version": "1.0.0", "revision": "6e8a6ded379a9882b2e48b0a8f0bad57e284c3bf", "path": "../casefile", "gate": "tests/tribunal_tests.kujo", "scope": "trusted signed-run capture and external receipt" },
+    { "name": "Concord", "version": "1.0.0", "revision": "d388c951b7ff0e1e03da1cd252ad5b65e25765b9", "path": "../concord", "gate": "scripts/drift_gate.kujo", "scope": "repository drift scan with blocking severity policy" },
+    { "name": "Spec", "version": "1.0.0", "revision": "11180d8f6af1ed3eea84abb3434dd736fa51293b", "path": "../spec", "gate": "scripts/spec_gate.kujo", "scope": "strict task-contract conversion and validation" },
+    { "name": "Eval", "version": "1.0.0", "revision": "dce9d030a3547803dab876b404c44c25b247dde1", "path": "../eval", "gate": "tests/tribunal_eval.json", "scope": "deterministic release evaluation" },
+    { "name": "Kennel", "version": "1.0.0", "revision": "6df043c3ba0bde4445cc8f8f7d4c01c60c9c6d7e", "path": "../kennel", "gate": "kennel validate --project-dir tribunal", "scope": "package manifest, public exports, and validation contract" },
+    { "name": "Workcell", "version": "1.0.0", "revision": "91b9f066ad32b6fffb8f456d8613c0379ac48b04", "path": "../workcell", "gate": "docs/workcell-launch-gate.json", "scope": "offline Linux container proof with source commit, image digest, logs, failure path, and receipt verification" }
+  ],
+  "excluded": [
+    { "name": "Watchdog", "version": "1.0.0", "revision": "7c46cd0bf1680d037c24506be4ed0a2405a9841f", "path": "../watchdog", "reason": "Tribunal v1 exports generic JSONL or HTTP telemetry and does not depend on a Watchdog-specific proxy, API, dashboard, or storage contract." }
+  ]
+}

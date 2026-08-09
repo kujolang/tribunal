@@ -1,7 +1,7 @@
 # Tribunal Kujo-only release evidence orchestration.
 
 from src.bundles import export_bundle
-from src.common import ensure_dir, iso_now, remove_tree, write_json, write_text
+from src.common import ensure_dir, read_json, remove_tree, write_json, write_text
 from src.config import default_config
 from src.contracts import validate_run_contracts
 from src.signing_provider import load_signing_provider, seal_with_provider
@@ -16,6 +16,14 @@ provider_path := env_or("TRIBUNAL_SIGNING_PROVIDER_CONFIG", "")
 if provider_path == "" { eprint("TRIBUNAL_SIGNING_PROVIDER_CONFIG is required."); exit(2) }
 if path_is_dir(output_root) || file_exists(output_root) { eprint("Release output already exists: " + output_root); exit(1) }
 ensure_dir(output_root)
+source_revision := env_or("TRIBUNAL_SOURCE_REVISION", "")
+if source_revision == "" {
+    source_proc := spawn_process(["git", "-C", home, "rev-parse", "HEAD"], {"inherit_env": true, "timeout_ms": 10000, "max_output_bytes": 4096})
+    if source_proc.success == true { source_revision = trim(source_proc.stdout) }
+}
+matrix := read_json(join_path(home, "docs/INTEGRATION_MATRIX.json")); runtime_revision := ""
+for integration in matrix["integrations"] { if integration["name"] == "Kujo Runtime" { runtime_revision = integration["revision"] } }
+if len(source_revision) != 40 || len(runtime_revision) != 40 { remove_tree(output_root); eprint("Release source/runtime revisions are required."); exit(2) }
 
 config := default_config()
 tribunal := config["tribunal"]
@@ -48,7 +56,7 @@ archive := zip_create(archive_path)
 if zip_add_dir(archive, bundle_path) != true || zip_close(archive) != true { remove_tree(output_root); eprint("Release evidence archive failed."); exit(1) }
 
 receipt := {
-    "schemaVersion": "1.0.0", "version": VERSION, "runId": result["runId"], "createdAt": iso_now(),
+    "schemaVersion": "1.0.0", "version": VERSION, "sourceRevision": source_revision, "runtimeRevision": runtime_revision, "runId": result["runId"], "createdAt": now_utc(),
     "manifestSha256": sealed["signature"]["manifestSha256"], "keyId": sealed["signature"]["keyId"],
     "signingProvider": sealed["signature"]["signingProvider"], "contractsValidated": contracts["validated"],
     "auditReportSha256": sha256_file(audit_path),

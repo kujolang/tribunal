@@ -54,6 +54,65 @@ func put_artifact(req, nested) {
     return http_response(201, "stored")
 }
 
+func artifact_name(req, nested) {
+    name := req["params"]["name"]
+    if nested { name = req["params"]["group"] + "/" + name }
+    return name
+}
+
+func chunk_root(run_id, version, name) { return join_path(join_path(staging(run_id, version), ".chunks"), name) }
+
+func put_chunk(req, nested) {
+    allowed := auth(req); if allowed["ok"] != true { return http_response(allowed["status"], "denied") }
+    run_id := req["params"]["run"]; version := req["params"]["version"]; name := artifact_name(req, nested)
+    index := 0
+    try { index = to_int(req["params"]["index"]) } except err { return http_response(400, "invalid chunk index") }
+    if safe_request(run_id, version) == false || safe_relative_path(name) == false || index < 0 || index >= 64 || header_value(req["headers"], "If-None-Match") != "*" { return http_response(400, "unsafe chunk") }
+    payload := null
+    try { payload = parse_json(to_string(dict_get(req, "body", ""))) } except err { return http_response(400, "invalid chunk") }
+    encoded := dict_get(payload, "dataBase64", ""); bytes := null
+    try { bytes = decode_base64(encoded) } except err { return http_response(400, "invalid chunk encoding") }
+    if dict_get(payload, "index", -1) != index || dict_get(payload, "offset", -1) != index * 1048576 || dict_get(payload, "bytes", -1) != len(bytes) || len(bytes) < 1 || len(bytes) > 1048576 || dict_get(payload, "base64Sha256", "") != sha256(encoded) { return http_response(400, "chunk contract failed") }
+    path := join_path(chunk_root(run_id, version, name), to_string(index) + ".bin")
+    if file_exists(path) { return http_response(412, "chunk already staged") }
+    ensure_dir(dirname(path)); io_write_bytes(path, bytes)
+    return http_response(201, "chunk stored")
+}
+
+func complete_chunks(req, nested) {
+    allowed := auth(req); if allowed["ok"] != true { return http_response(allowed["status"], "denied") }
+    run_id := req["params"]["run"]; version := req["params"]["version"]; name := artifact_name(req, nested)
+    descriptor := null
+    try { descriptor = parse_json(to_string(dict_get(req, "body", ""))) } except err { return http_response(400, "invalid descriptor") }
+    if safe_request(run_id, version) == false || safe_relative_path(name) == false || dict_get(descriptor, "path", "") != name || dict_get(descriptor, "chunkBytes", 0) != 1048576 || dict_get(descriptor, "chunks", 0) < 2 || descriptor["chunks"] > 64 || descriptor["bytes"] > 67108864 { return http_response(400, "descriptor contract failed") }
+    target := join_path(staging(run_id, version), name)
+    if file_exists(target) { return http_response(412, "artifact already staged") }
+    ensure_dir(dirname(target)); write_file(target, "")
+    mut index := 0
+    while index < descriptor["chunks"] {
+        path := join_path(chunk_root(run_id, version, name), to_string(index) + ".bin")
+        if file_exists(path) == false || path_is_symlink(path) || file_size(path) > 1048576 { delete_file(target); return http_response(400, "missing chunk") }
+        io_append_bytes(target, io_read_bytes(path, file_size(path))); index = index + 1
+    }
+    if file_size(target) != descriptor["bytes"] || sha256_file(target) != descriptor["sha256"] { delete_file(target); return http_response(400, "whole artifact verification failed") }
+    remove_tree(chunk_root(run_id, version, name))
+    return http_response(201, "artifact completed")
+}
+
+func get_chunk(req, nested) {
+    allowed := auth(req); if allowed["ok"] != true { return http_response(allowed["status"], "denied") }
+    name := artifact_name(req, nested); index := 0
+    try { index = to_int(req["params"]["index"]) } except err { return http_response(400, "invalid chunk index") }
+    if safe_relative_path(name) == false || index < 0 || index >= 64 { return http_response(400, "unsafe chunk") }
+    path := join_path(join_path(object_root(req["params"]["run"], req["params"]["version"]), "artifacts"), name)
+    if file_exists(path) == false { return http_response(404, "missing") }
+    offset := index * 1048576
+    if offset >= file_size(path) { return http_response(404, "missing") }
+    count := 1048576; if file_size(path) - offset < count { count = file_size(path) - offset }
+    bytes := io_read_at(path, offset, count); encoded := encode_base64(bytes)
+    return http_response(200, to_json({"schemaVersion": "1.0.0", "index": index, "offset": offset, "bytes": len(bytes), "base64Sha256": sha256(encoded), "dataBase64": encoded}))
+}
+
 func copy_version(source, destination, names) {
     ensure_dir(join_path(destination, "artifacts"))
     for name in names {
@@ -133,10 +192,16 @@ server := http_server(port)
 server = server.route("GET", "/healthz", func(req) { return http_response(200, "ok") })
 server = server.route("PUT", "/runs/:run/versions/:version/artifacts/:name", func(req) { return put_artifact(req, false) })
 server = server.route("PUT", "/runs/:run/versions/:version/artifacts/:group/:name", func(req) { return put_artifact(req, true) })
+server = server.route("PUT", "/runs/:run/versions/:version/artifacts/:name/chunks/:index", func(req) { return put_chunk(req, false) })
+server = server.route("PUT", "/runs/:run/versions/:version/artifacts/:group/:name/chunks/:index", func(req) { return put_chunk(req, true) })
+server = server.route("POST", "/runs/:run/versions/:version/artifacts/:name/complete", func(req) { return complete_chunks(req, false) })
+server = server.route("POST", "/runs/:run/versions/:version/artifacts/:group/:name/complete", func(req) { return complete_chunks(req, true) })
 server = server.route("POST", "/runs/:run/versions", func(req) { return finalize(req) })
 server = server.route("GET", "/runs/:run/current", func(req) { return get_metadata(req, true) })
 server = server.route("GET", "/runs/:run/versions/:version", func(req) { return get_metadata(req, false) })
 server = server.route("GET", "/runs/:run/versions/:version/artifacts/:name", func(req) { return get_artifact(req, false) })
 server = server.route("GET", "/runs/:run/versions/:version/artifacts/:group/:name", func(req) { return get_artifact(req, true) })
+server = server.route("GET", "/runs/:run/versions/:version/artifacts/:name/chunks/:index", func(req) { return get_chunk(req, false) })
+server = server.route("GET", "/runs/:run/versions/:version/artifacts/:group/:name/chunks/:index", func(req) { return get_chunk(req, true) })
 server = server.route("DELETE", "/runs/:run/versions/:version/staging", func(req) { return cleanup(req) })
 server.listen()
