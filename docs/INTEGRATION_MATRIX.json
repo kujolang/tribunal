@@ -12,7 +12,7 @@
     { "name": "Spec", "version": "1.0.0", "revision": "11180d8f6af1ed3eea84abb3434dd736fa51293b", "path": "../spec", "gate": "scripts/spec_gate.kujo", "scope": "strict task-contract conversion and validation" },
     { "name": "Eval", "version": "1.0.0", "revision": "dce9d030a3547803dab876b404c44c25b247dde1", "path": "../eval", "gate": "tests/tribunal_eval.json", "scope": "deterministic release evaluation" },
     { "name": "Kennel", "version": "1.0.0", "revision": "6df043c3ba0bde4445cc8f8f7d4c01c60c9c6d7e", "path": "../kennel", "gate": "kennel validate --project-dir tribunal", "scope": "package manifest, public exports, and validation contract" },
-    { "name": "Workcell", "version": "1.0.0", "revision": "28d2c4a3b8d317fedd5e20be618f98bd3859eaea", "path": "../workcell", "gate": "docs/workcell-launch-gate.json", "scope": "offline Linux container proof with source commit, image digest, logs, failure path, and receipt verification" }
+    { "name": "Workcell", "version": "1.0.0", "revision": "8c389ce58a410731cc298c469b7ebc0806f93590", "path": "../workcell", "gate": "docs/workcell-launch-gate.json", "scope": "offline Linux container proof with source commit, image digest, logs, failure path, and receipt verification" }
   ],
   "excluded": [
     { "name": "Watchdog", "version": "1.0.0", "revision": "7c46cd0bf1680d037c24506be4ed0a2405a9841f", "path": "../watchdog", "reason": "Tribunal v1 exports generic JSONL or HTTP telemetry and does not depend on a Watchdog-specific proxy, API, dashboard, or storage contract." }

@@ -1,34 +1,77 @@
-# Launch Checklist
+# Tribunal 1.0.0 release-owner checklist
 
-Current launch scope: `technical preview`. Tribunal has strong local/offline evidence and Workcell proof for this batch, but production-ready or enterprise-ready deployment remains unproven because live provider, managed identity, shared storage, independent review, target platform, and full release evidence are not complete.
+Tribunal 1.0.0 is a stable local or operator-controlled decision-evidence engine. This checklist does not certify hosted, regulated, multi-tenant, shared-filesystem, identity-provider, remote-custody, or organization-specific deployments. Those environments require their own controls and certification.
 
-## Local Gates
+The release owner must use the exact candidate revision, Kujo runtime revision, commands, evidence paths, and results recorded below. An unchecked item is not complete.
 
-- [x] CLI version checked with `./bin/tribunal version`.
-- [x] Doctor checked with `./bin/tribunal doctor --json`.
-- [x] Runtime check executed with `$KUJO_BIN check tribunal.kujo`.
-- [x] Offline tests executed with `$KUJO_BIN run tests/tribunal_tests.kujo --interpreter`.
-- [x] CLI integration executed with `$KUJO_BIN run tests/cli_integration.kujo --interpreter`.
-- [x] Schema gate executed with `$KUJO_BIN run scripts/schema_gate.kujo --interpreter`.
-- [x] Formatting checked with `git diff --check`.
-- [ ] Full release gate for all scripts/tests rerun at this exact batch commit.
-- [x] Workcell proof checked with `workcell run --file docs/workcell-launch-gate.json --repo . --no-pull`.
-- [ ] Live provider and organization-specific deployment certification.
+## Candidate identity
 
-## Workcell Proof Notes
+- Product version: `1.0.0`
+- Candidate commit: recorded in the completed verification section after the candidate is frozen
+- Kujo runtime: `1.0.0` at `9b77dce592047121cb71066629836ad89252f3ce`
+- Runtime binary digest: recorded in each platform and archive receipt
+- API version: `1.0.0` (independent contract)
+- Evidence/schema format versions: independently versioned; see [v1 compatibility](V1_COMPATIBILITY.md)
 
-Workcell proof passed after building `kujolang/workcell-base:local` with `DOCKER_BUILDKIT=0`, using the Colima Workcell Docker host, and setting `TMPDIR` to a path under `/Users/robertdevore/2026/Kujolang/kujo-repos/.workcell-host-tmp` so the disposable worktree mount was visible inside the Colima VM.
+## Completed and verified
 
-Resume command:
+- [ ] Focused checks pass at the exact candidate commit: version, doctor, source check, main tests, CLI integration, schema gate, and `git diff --check`.
+- [ ] The complete release-workflow gate inventory passes at that commit.
+- [ ] Local Markdown links pass `scripts/docs_link_gate.kujo`.
+- [ ] ShipCheck `scan` and `gate` pass; record its exact check count.
+- [ ] The reproducible `tribunal-v1.0.0.zip`, `SHA256SUMS`, SPDX SBOM, in-toto provenance, archive receipt, and install-from-archive smoke test all pass.
+- [ ] A Workcell receipt verifies representative happy and failure paths for the exact candidate and pinned runtime image.
+- [ ] Each supported platform has a passing receipt that names the exact candidate and runtime digest.
+- [ ] The working tree is clean and the release-preparation branch is pushed.
+
+The final verification record must include commands, exit codes, platform details, Workcell run ID, and absolute or repository-relative evidence paths. Historical 0.7.0 receipts do not satisfy these items.
+
+## External infrastructure requirements
+
+- [ ] The self-hosted GitHub Actions runner labelled `self-hosted, kujo` exists and exposes the pinned Kujo binary through `KUJO_BIN`.
+- [ ] `KUJO_ECOSYSTEM_TOKEN` can read every private repository and exact revision in [the integration matrix](INTEGRATION_MATRIX.md).
+- [ ] The configured signing provider and `TRIBUNAL_SIGNING_PROVIDER_CONFIG` are available to the release workflow.
+- [ ] GitHub Actions can run the measured platform matrix and retain its immutable receipt artifacts.
+- [ ] Repository rulesets and branch protection are reviewed by a repository administrator; this preparation does not change them.
+
+Missing external infrastructure must have a blocker receipt. A substitute local run may narrow risk, but it is not the unavailable certification.
+
+## Deployment-specific certification
+
+- [ ] The target operator certifies identity, authorization, storage, remote-custody, shared-filesystem, HSM/KMS, network, retention, backup, disaster recovery, observability, and incident-response controls that apply to its deployment.
+- [ ] Live-provider behavior is tested only with explicit credential authorization and target-specific data-handling controls.
+- [ ] Any platform not listed as supported in [measured platform support](PLATFORM_SUPPORT.md) is certified before use.
+
+These items are outside the general Tribunal 1.0.0 local contract and cannot be pre-completed for every deployment.
+
+## Independent review requirements
+
+- [ ] The commissioned independent security review is completed and its verifiable report or attestation is linked in the security review register.
+- [ ] Any findings are dispositioned under the published vulnerability and release policy.
+
+Until this is complete, Tribunal may be released only with the documented local/operator-controlled boundary. Do not describe the independent review as completed.
+
+## Reserved for the release owner
+
+- [ ] Confirm the candidate commit is the intended immutable release source.
+- [ ] Create the signed release-evidence bundle with the approved signing provider.
+- [ ] Create and push the `v1.0.0` tag.
+- [ ] Run the tag-triggered release workflow and validate uploaded artifacts.
+- [ ] Publish the package or public GitHub release only after verification.
+- [ ] Perform any required signing, notarization, or live-provider action under separately approved authority.
+
+No release-preparation task may create the tag, sign, notarize, publish, or use live provider credentials.
+
+## Workcell command template
 
 ```bash
 export DOCKER_HOST=unix:///Users/robertdevore/.colima/kujo-workcell/docker.sock
 export DOCKER_CONFIG=/tmp/kujo-next-batch-docker-config
 export TMPDIR=/Users/robertdevore/2026/Kujolang/kujo-repos/.workcell-host-tmp
-workcell run --file docs/workcell-launch-gate.json --repo . --no-pull
-workcell verify --run .workcell/runs/<run-id> --json
+KUJO=../kujo/target/release/kujo ../workcell/bin/workcell run \
+  --file docs/workcell-launch-gate.json --repo . --no-pull
+KUJO=../kujo/target/release/kujo ../workcell/bin/workcell verify \
+  --run .workcell/runs/<run-id> --json
 ```
 
-## Forbidden Launch Actions
-
-Publishing, tagging, hosted service deployment, live credentials, signing/notarizing, branch-protection changes, force-pushes, and production/enterprise claims without target proof remain out of scope.
+The completed record must identify the image digest and prove that its `org.opencontainers.image.revision` is the pinned Kujo revision.

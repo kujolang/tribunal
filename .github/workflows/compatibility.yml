@@ -82,7 +82,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: kujolang/workcell
-          ref: 28d2c4a3b8d317fedd5e20be618f98bd3859eaea
+          ref: 8c389ce58a410731cc298c469b7ebc0806f93590
           path: workcell
           token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
