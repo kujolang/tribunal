@@ -68,6 +68,11 @@ No release-preparation task may create the tag, sign, notarize, publish, or use 
 export DOCKER_HOST=unix:///Users/robertdevore/.colima/kujo-workcell/docker.sock
 export DOCKER_CONFIG=/tmp/kujo-next-batch-docker-config
 export TMPDIR=/Users/robertdevore/2026/Kujolang/kujo-repos/.workcell-host-tmp
+docker build --platform linux/amd64 \
+  --build-arg KUJO_BASE_IMAGE=kujolang/workcell-kujo:tribunal-v1-9b77dce \
+  --label org.opencontainers.image.revision=9b77dce592047121cb71066629836ad89252f3ce \
+  -t kujolang/workcell-kujo:tribunal-v1.0.0-9b77dce \
+  -f docs/workcell-runtime.Dockerfile .
 KUJO=../kujo/target/release/kujo ../workcell/bin/workcell run \
   --file docs/workcell-launch-gate.json --repo . --no-pull
 KUJO=../kujo/target/release/kujo ../workcell/bin/workcell verify \

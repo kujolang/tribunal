@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "tribunal-launch-gate",
-  "runtime": {"backend": "docker", "image": "kujolang/workcell-kujo:tribunal-v1-9b77dce", "build_context": ""},
+  "runtime": {"backend": "docker", "image": "kujolang/workcell-kujo:tribunal-v1.0.0-9b77dce", "build_context": ""},
   "workspace": {"strategy": "git-worktree", "mount_path": "/workspace"},
   "command": ["sh", "-lc", "set -eu; kujo --version > tribunal-workcell-proof.txt; ./bin/tribunal version >> tribunal-workcell-proof.txt; ./bin/tribunal doctor --json >> tribunal-workcell-proof.txt; ./bin/tribunal validate examples/product-decision.md --json >> tribunal-workcell-proof.txt; printf '# invalid docket\\n' > /tmp/invalid.md; if ./bin/tribunal validate /tmp/invalid.md --json >/tmp/invalid.out 2>&1; then exit 1; fi; printf 'failure-path-exit: nonzero\\n' >> tribunal-workcell-proof.txt; ./bin/tribunal review examples/product-decision.md --panel executioner-only --mock --storage-dir /tmp/tribunal-runs >> tribunal-workcell-proof.txt; test -f /tmp/tribunal-runs/*/record.json; printf 'happy-path: pass\\n' >> tribunal-workcell-proof.txt"],
   "environment": {"allow": [], "set": {}},
