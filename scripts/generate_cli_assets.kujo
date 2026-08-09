@@ -17,7 +17,7 @@ if len(commands) < 20 { print("CLI help parser found too few commands."); exit(1
 ensure_dir(join_path(home, "completions")); ensure_dir(join_path(home, "man/man1"))
 mut markdown := "# Tribunal command reference\n\nGenerated from `tribunal help`; edit the CLI help source and rerun `scripts/generate_cli_assets.kujo`.\n\n## Commands\n\n```text\n"
 for usage in usages { markdown = markdown + usage + "\n" }
-markdown = markdown + "```\n\nExit codes: `0` success, `1` runtime failure, `2` usage/configuration or stopped hearing, and `3` integrity failure. All commands accept `--config`, `--storage-dir`, `--identity`, and `--access-policy` where applicable.\n"
+markdown = markdown + "```\n\nExit codes: `0` success, `1` runtime failure, `2` usage/configuration or stopped hearing, and `3` integrity/authorization failure. All commands accept `--config`, `--storage-dir`, `--identity`, and `--access-policy` where applicable.\n"
 write_text(join_path(home, "docs/COMMAND_REFERENCE.md"), markdown)
 words := join(commands, " ")
 dollar := substring("$x", 0, 1)
@@ -27,9 +27,9 @@ write_text(join_path(home, "completions/_tribunal"), zsh)
 mut fish := "# generated\n"
 for command in commands { fish = fish + "complete -c tribunal -n '__fish_use_subcommand' -a '" + command + "'\n" }
 write_text(join_path(home, "completions/tribunal.fish"), fish)
-mut man := ".TH TRIBUNAL 1 \"2026-07-12\" \"Tribunal\" \"User Commands\"\n.SH NAME\ntribunal \\- sealed adversarial decision review in Kujo\n.SH SYNOPSIS\n.B tribunal\n.I command options\n.SH COMMANDS\n"
+mut man := ".TH TRIBUNAL 1 \"2026-08-08\" \"Tribunal 1.0.0\" \"User Commands\"\n.SH NAME\ntribunal \\- sealed adversarial decision review in Kujo\n.SH SYNOPSIS\n.B tribunal\n.I command options\n.SH COMMANDS\n"
 for usage in usages { man = man + ".TP\n.B " + replace(usage, "-", "\\-") + "\n" }
-man = man + ".SH EXIT STATUS\n0 success; 1 runtime failure; 2 usage/configuration or stopped hearing; 3 integrity failure.\n.SH SEE ALSO\nTribunal README and docs/OPERATIONS.md.\n"
+man = man + ".SH EXIT STATUS\n0 success; 1 runtime failure; 2 usage/configuration or stopped hearing; 3 integrity/authorization failure.\n.SH SEE ALSO\nTribunal README and docs/OPERATIONS.md.\n"
 write_text(join_path(home, "man/man1/tribunal.1"), man)
 print(to_json({"ok": true, "commands": len(commands), "usages": len(usages), "outputs": ["docs/COMMAND_REFERENCE.md", "completions/tribunal.bash", "completions/_tribunal", "completions/tribunal.fish", "man/man1/tribunal.1"]}))
 exit(0)

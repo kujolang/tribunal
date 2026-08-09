@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0.0",
+  "runId": "2026-08-08-v1-bundle-fixture",
+  "exportedAt": "2026-08-08T00:00:02Z",
+  "manifestSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "keyId": "00000000000000000000000000000000",
+  "artifactCount": 1,
+  "artifacts": ["record.json"],
+  "artifactDescriptors": [
+    { "path": "record.json", "bytes": 1, "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "chunkBytes": 1048576, "chunks": 1 }
+  ]
+}

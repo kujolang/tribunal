@@ -1,6 +1,6 @@
 [package]
 name = "tribunal"
-version = "0.7.0"
+version = "1.0.0"
 description = "Local-first, sealed adversarial decision evidence for Kujo programs and operators."
 license = "MIT"
 authors = ["Kujolang <contact@kujolang.ai>"]
@@ -12,16 +12,16 @@ categories = ["developer-tools", "ai"]
 readme = "README.md"
 
 [package.status]
-stage = "production-oriented"
-stability = "stable-api"
+stage = "production"
+stability = "stable"
 public_api = true
-notes = "Local/operator-controlled use is supported; shared and regulated deployments require the published certification profiles."
+notes = "The declared CLI and Kujo library API are public v1 contracts for local/operator-controlled use; hosted, shared, regulated, and target-enterprise deployments require separate certification."
 
 [kujo]
 minimum_version = "1.0.0"
 entry = "tribunal.kujo"
 sources = ["src", "."]
-includes = ["README.md", "LICENSE", "SECURITY.md", "VERSION", "docs", "examples", "schemas", "scripts", "tests"]
+includes = ["README.md", "LICENSE", "SECURITY.md", "VERSION", "bin", "completions", "docs", "examples", "man", "schemas", "scripts", "tests"]
 excludes = [".git", ".loop-engineering", ".strata-tmp", ".tribunal", "tribunal-runs", "kennel_packages", "dist", "build", "node_modules"]
 
 [build]

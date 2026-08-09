@@ -128,6 +128,18 @@
       "check": "command_succeeds",
       "timeout_seconds": 600,
       "params": { "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/gallery_gate.kujo" }
+    },
+    {
+      "name": "Tribunal v1 compatibility gate passes",
+      "check": "command_succeeds",
+      "timeout_seconds": 600,
+      "params": { "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/v1_compatibility_gate.kujo" }
+    },
+    {
+      "name": "Tribunal Markdown link gate passes",
+      "check": "command_succeeds",
+      "timeout_seconds": 600,
+      "params": { "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/docs_link_gate.kujo" }
     }
   ]
 }

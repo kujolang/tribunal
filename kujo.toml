@@ -1,7 +1,7 @@
 [project]
 name = "tribunal"
-version = "0.7.0"
-description = "Kujo-native structured adversarial decision review."
+version = "1.0.0"
+description = "Stable local-first decision evidence for Kujo programs and operators."
 
 [kujo]
 minimum_version = "1.0.0"

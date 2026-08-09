@@ -1,0 +1,41 @@
+# Freeze the stable v1 product/CLI, configuration, evidence, export, import, and library boundaries.
+
+from src.bundles import validate_bundle_metadata
+from src.common import read_json
+from src.config import validate_config
+from src.lib import API_VERSION
+from src.version import VERSION
+
+home := path_absolute(env_or("TRIBUNAL_HOME", "."))
+kujo := path_absolute(env_or("KUJO_BIN", join_path(home, "../kujo/target/release/kujo")))
+fixtures := join_path(home, "tests/fixtures/v1")
+mut failures := []
+
+config := read_json(join_path(fixtures, "config-v1.json"))
+config_schema := read_json(join_path(home, "schemas/tribunal-config.schema.json"))
+if validate_config(config) != "" || json_schema_validate(config, config_schema)["valid"] != true { failures = push(failures, "configuration") }
+
+record_schema := read_json(join_path(home, "schemas/tribunal-record.schema.json"))
+for name in ["evidence-record-v1.json", "json-export-v1.json"] {
+    if json_schema_validate(read_json(join_path(fixtures, name)), record_schema)["valid"] != true { failures = push(failures, name) }
+}
+
+bundle := read_json(join_path(fixtures, "bundle-import-v1.json"))
+bundle_schema := read_json(join_path(home, "schemas/bundle.schema.json"))
+if json_schema_validate(bundle, bundle_schema)["valid"] != true || validate_bundle_metadata(bundle)["ok"] != true { failures = push(failures, "bundle-import") }
+
+contract := read_json(join_path(fixtures, "cli-v1.json"))
+if VERSION != "1.0.0" || contract["productVersion"] != VERSION || contract["cliVersion"] != VERSION || contract["libraryApiVersion"] != API_VERSION { failures = push(failures, "version-identity") }
+if contract["recordSchemaVersion"] != "1.0.0" || contract["bundleSchemaVersion"] != "1.0.0" || len(contract["signatureEnvelopeVersions"]) != 3 { failures = push(failures, "independent-contract-versions") }
+if contract["exitCodes"]["success"] != 0 || contract["exitCodes"]["runtimeFailure"] != 1 || contract["exitCodes"]["usageConfigOrStopped"] != 2 || contract["exitCodes"]["integrityOrAuthorization"] != 3 { failures = push(failures, "exit-codes") }
+
+helped := spawn_process([kujo, "run", join_path(home, "tribunal.kujo"), "--interpreter", "--", "help"], {"inherit_env": true, "timeout_ms": 60000, "max_output_bytes": 1024 * 1024})
+versioned := spawn_process([kujo, "run", join_path(home, "tribunal.kujo"), "--interpreter", "--", "version"], {"inherit_env": true, "timeout_ms": 60000, "max_output_bytes": 1024 * 1024})
+if helped.success != true || versioned.success != true || trim(versioned.stdout) != "Tribunal v1.0.0" { failures = push(failures, "cli-execution") }
+for command in contract["commands"] {
+    if contains(helped.stdout, "tribunal " + command) == 0 { failures = push(failures, "cli-command:" + command) }
+}
+
+print(to_json({"ok": len(failures) == 0, "productVersion": VERSION, "libraryApiVersion": API_VERSION, "commands": len(contract["commands"]), "fixtures": 5, "failures": failures}))
+if len(failures) > 0 { exit(1) }
+exit(0)

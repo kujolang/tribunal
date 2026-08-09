@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0.0",
+  "runId": "2026-08-08-v1-compatibility-fixture",
+  "status": "completed",
+  "startedAt": "2026-08-08T00:00:00Z",
+  "completedAt": "2026-08-08T00:00:01Z",
+  "docket": { "title": "Compatibility fixture" },
+  "panel": { "id": "executioner-only" },
+  "seats": [{ "id": "executioner" }],
+  "stagesCompleted": ["docket-opening", "durable-persistence"],
+  "testimonies": [],
+  "crossExaminations": [],
+  "killPass": {},
+  "ruling": {},
+  "decisionPacket": {},
+  "artifactPaths": ["record.json"]
+}

@@ -1,0 +1,14 @@
+{
+  "tribunal": { "storage_dir": "./tribunal-runs", "default_panel": "fast-two-model", "require_blind_first_pass": true, "require_decision_packet": true, "stop_the_line_enabled": true },
+  "kujo_ai": { "default_runtime": "kujo-ai-sdk", "allow_direct_provider_fallback": false, "mock_mode": true, "sdk_path": "../ai-sdk", "kujo_bin": "../kujo/target/release/kujo", "provider": "openai", "offline_fixture": false },
+  "context": { "provider": "local", "packwrite_path": "../packwrite", "kujo_bin": "../kujo/target/release/kujo", "plugin_manifest_path": "", "plugin_provenance_path": "", "plugin_public_key_path": "", "plugin_anchor_path": "" },
+  "limits": { "max_docket_bytes": 1048576, "max_context_bytes": 4194304, "max_model_output_bytes": 1048576, "max_process_output_bytes": 8388608, "model_timeout_ms": 60000 },
+  "execution": { "blind_parallelism": 3, "provider_max_concurrency": 2, "cancel_on_failure": true, "live_parallel_enabled": false },
+  "panels": { "catalog_path": "", "provenance_path": "", "public_key_path": "", "anchor_path": "" },
+  "decision_packet": { "template_path": "", "policy_path": "", "policy_provenance_path": "", "policy_public_key_path": "", "policy_anchor_path": "" },
+  "security": { "organization_secret_patterns_path": "", "require_same_mount": true, "private_key_permission_mode": "0600" },
+  "authorization": { "mode": "local", "identity": "local-operator", "policy_path": "./examples/access-policy.json" },
+  "governance": { "retention_class": "standard", "retention_days": 365, "legal_hold": false, "owner": "local-operator" },
+  "artifact_store": { "provider": "local-immutable", "root": "./.tribunal/artifact-store", "endpoint": "", "tenant_id": "", "bearer_token_file": "", "region": "" },
+  "telemetry": { "collector": "jsonl", "destination": "./.tribunal/telemetry.jsonl" }
+}
