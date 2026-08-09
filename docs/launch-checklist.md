@@ -7,9 +7,9 @@ The release owner must use the exact candidate revision, Kujo runtime revision, 
 ## Candidate identity
 
 - Product version: `1.0.0`
-- Candidate commit: `8c2ae6d760dd1736a28caf571141963583219a98`
+- Candidate commit: `8b476e51c5bc219608c8d9fae3bebdb9101e9462`
 - Kujo runtime: `1.0.0` at `9b77dce592047121cb71066629836ad89252f3ce`
-- Runtime binary SHA-256: `a8175b084398a1623cf24cabb6aafb05f316cd6b15eb5e2015089501dd9d8215`
+- Local macOS x86_64 runtime SHA-256: `a8175b084398a1623cf24cabb6aafb05f316cd6b15eb5e2015089501dd9d8215`; architecture-specific CI digests are in the platform receipts.
 - API version: `1.0.0` (independent contract)
 - Evidence/schema format versions: independently versioned; see [v1 compatibility](V1_COMPATIBILITY.md)
 
@@ -19,26 +19,26 @@ The release owner must use the exact candidate revision, Kujo runtime revision, 
 - [x] The complete release-workflow gate inventory passed at that commit, including enterprise `83/0`, property `21/0`, Eval `19/19`, all performance/chaos/adversarial/security/integration/gallery/compatibility gates, Kennel validation, and doctor.
 - [x] Local Markdown links passed: `41` Markdown files, `81` local links, `0` broken.
 - [x] ShipCheck `scan` and `gate` exited `0` with `16/16` checks and `0` warnings.
-- [x] `tribunal-v1.0.0.zip`, `SHA256SUMS`, SPDX SBOM, in-toto provenance, archive receipt, and install-from-archive happy/failure smoke all passed. Two separate builds produced SHA-256 `18f9a886d9fb29bdad90400b549a2a1102018208bc02c919c2756263aafcba8f`.
-- [x] Workcell run `wc-01f0d34250fd4bcfb9f48b2e1b91d48e` verified happy and failure paths at the exact candidate with Linux/amd64 image digest `sha256:06b9499848e1dee3076a415609c74ad44552e218cadebcffb5dd89f578c8beac` and the pinned runtime revision label.
-- [x] The sole claimed platform, macOS x86_64, has a passing exact-candidate receipt. Linux/amd64 Workcell evidence is explicitly bounded and does not establish full Linux platform support.
+- [x] `tribunal-v1.0.0.zip`, `SHA256SUMS`, SPDX SBOM, in-toto provenance, archive receipt, and install-from-archive happy/failure smoke all passed. Two separate builds produced SHA-256 `c2db1254fec14a87dce6ccd071fcff01d4a628cdbffc37878d5a930bc9a917f5`.
+- [x] Workcell run `wc-d6524acbb3cc495180fe03bc911cddc7` verified happy and failure paths at the exact candidate with Linux/amd64 image digest `sha256:06b9499848e1dee3076a415609c74ad44552e218cadebcffb5dd89f578c8beac` and the pinned runtime revision label.
+- [x] Exact-candidate receipts pass for Linux x86_64, macOS x86_64, and macOS arm64. Workcell independently proves the bounded packaged-CLI paths on Linux/amd64; platform support comes from the full-gate receipts.
 - [x] The release-preparation branch is committed, pushed, and clean after the verification record commit.
 
-Evidence root: `/Users/robertdevore/2026/Kujolang/kujo-repos/.tribunal-release-v1/8c2ae6d/`. Key files are `macos-x86_64-focused-gates.log`, `macos-x86_64-full-gates.log`, `shipcheck-gate.json`, `workcell-receipt.json`, `workcell-verify.json`, `tribunal-v1.0.0-macos-x86_64.json`, `archive/release-archive-receipt.json`, and `archive-cross-build-comparison.txt`. Historical 0.7.0 receipts do not satisfy v1 items.
+Evidence root: `/Users/robertdevore/2026/Kujolang/kujo-repos/.tribunal-release-v1/8b476e5/`. Key files are `macos-x86_64-focused-gates.log`, `macos-x86_64-full-gates.log`, `shipcheck-gate.json`, `workcell-receipt.json`, `workcell-verify.json`, `tribunal-v1.0.0-macos-x86_64.json`, `github-platform-run.json`, `github-platform-jobs.json`, the receipts under `github-platform-artifacts/`, `archive/release-archive-receipt.json`, and `archive-cross-build-comparison.txt`. Historical 0.7.0 receipts do not satisfy v1 items.
 
-The focused commands were the documented `version`, `doctor --json`, `kujo check tribunal.kujo`, main/CLI/schema interpreter gates, and `git diff --check`. The full command inventory was executed in the order defined by `.github/workflows/release.yml`, followed by archive smoke, platform receipt generation, Workcell verification, and the required ShipCheck `scan`/`gate` commands. Every completed command exited `0`; the first full-suite attempt exceeded the unchanged scale pagination budget under load, and the retained clean rerun passed without changing the threshold.
+The focused commands were the documented `version`, `doctor --json`, `kujo check tribunal.kujo`, main/CLI/schema interpreter gates, and `git diff --check`. The full command inventory was executed in the order defined by `.github/workflows/release.yml`, followed by archive smoke, platform receipt generation, Workcell verification, and the required ShipCheck `scan`/`gate` commands. Every completed gate exited `0`; no threshold was changed or bypassed.
 
 ## External infrastructure requirements
 
 - [ ] The self-hosted GitHub Actions runner labelled `self-hosted, kujo` exists and exposes the pinned Kujo binary through `KUJO_BIN`.
 - [ ] `KUJO_ECOSYSTEM_TOKEN` can read every private repository and exact revision in [the integration matrix](INTEGRATION_MATRIX.md).
 - [ ] The configured signing provider and `TRIBUNAL_SIGNING_PROVIDER_CONFIG` are available to the release workflow.
-- [ ] GitHub Actions can run the measured platform matrix and retain its immutable receipt artifacts.
+- [x] GitHub Actions run `31291863267` completed the measured platform matrix for the exact candidate and retained immutable receipt artifacts.
 - [ ] Repository rulesets and branch protection are reviewed by a repository administrator; this preparation does not change them.
 
 Missing external infrastructure must have a blocker receipt. A substitute local run may narrow risk, but it is not the unavailable certification.
 
-Blocker receipt: `/Users/robertdevore/2026/Kujolang/kujo-repos/.tribunal-release-v1/8c2ae6d/external-blockers.json`.
+Blocker receipt: `/Users/robertdevore/2026/Kujolang/kujo-repos/.tribunal-release-v1/8b476e5/external-blockers.json`.
 
 ## Deployment-specific certification
 
