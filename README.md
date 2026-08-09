@@ -5,13 +5,13 @@
 [![CI](https://github.com/kujolang/tribunal/actions/workflows/compatibility.yml/badge.svg)](https://github.com/kujolang/tribunal/actions/workflows/compatibility.yml)
 [![Built with Kujo](https://img.shields.io/badge/built%20with-Kujo-6f42c1)](https://github.com/kujolang/kujo)
 
-Tribunal is a local-first decision review engine written entirely in the Kujo programming language. It turns a consequential proposal into a durable, adversarial hearing: independent specialist testimony, cross-examination, an explicit fatal-flaw pass, a ruling, and an execution-ready decision packet.
+Tribunal is a local-first decision review engine whose application runtime is written in the Kujo programming language. It turns a consequential proposal into a durable, adversarial hearing: independent specialist testimony, cross-examination, an explicit fatal-flaw pass, a ruling, and an execution-ready decision packet.
 
 The result is inspectable evidence, not a disposable chat transcript. Every run is structured, replayable, SHA-256 sealed, optionally RSA-signed, and ready for Kujo ecosystem handoff.
 
 The previous TypeScript implementation is preserved on the pushed `typescript` branch. `main` has no Node, npm, TypeScript, JavaScript, or provider-SDK runtime dependency.
 
-Tribunal is also a practical showcase for [Kujo](https://github.com/kujolang/kujo): orchestration, JSON Schema, cryptography, process isolation, HTTP, compression, filesystem safety, testing, and release evidence are implemented with Kujo language/runtime capabilities.
+Tribunal is also a practical showcase for [Kujo](https://github.com/kujolang/kujo): orchestration, JSON Schema, cryptography, process isolation, HTTP, compression, filesystem safety, testing, and release-evidence orchestration use Kujo language/runtime capabilities. Deterministic ZIP normalization uses the documented Python 3 release helper.
 
 ## Production-readiness statement
 
