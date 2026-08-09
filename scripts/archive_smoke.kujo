@@ -1,0 +1,33 @@
+# Exercise the supported launcher from a freshly extracted release archive.
+
+from src.common import ensure_dir, remove_tree, safe_process_env, write_text
+from src.version import VERSION
+
+values := args()
+if len(values) != 1 { print("Usage: archive_smoke.kujo <tribunal-release.zip>"); exit(2) }
+archive := path_absolute(values[0])
+if file_exists(archive) == false || path_is_symlink(archive) { print("Release archive is missing or unsafe."); exit(1) }
+
+kujo := path_absolute(env_or("KUJO_BIN", ""))
+if file_exists(kujo) == false { print("KUJO_BIN is required."); exit(2) }
+root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-archive-smoke-" + uuid_v4())
+ensure_dir(root)
+extracted := unzip(archive, root)
+stage := join_path(root, "tribunal-v" + VERSION)
+if len(extracted) == 0 || path_is_dir(stage) == false || file_exists(join_path(stage, "bin/tribunal")) == false { remove_tree(root); print("Archive does not contain the expected packaged CLI."); exit(1) }
+
+invalid := join_path(root, "invalid.md"); write_text(invalid, "# Invalid docket\n")
+storage := join_path(root, "runs")
+env := safe_process_env({"KUJO_BIN": kujo, "KUJO": kujo})
+options := {"inherit_env": false, "env": env, "cwd": stage, "timeout_ms": 120000, "max_output_bytes": 8 * 1024 * 1024}
+launcher := join_path(stage, "bin/tribunal")
+versioned := spawn_process([launcher, "version"], options)
+doctored := spawn_process([launcher, "doctor", "--json"], options)
+rejected := spawn_process([launcher, "validate", invalid, "--json"], options)
+reviewed := spawn_process([launcher, "review", join_path(stage, "examples/product-decision.md"), "--panel", "executioner-only", "--mock", "--storage-dir", storage], options)
+ok := versioned.success == true && trim(versioned.stdout) == "Tribunal v" + VERSION && doctored.success == true && rejected.success == false && reviewed.success == true && path_is_dir(storage)
+result := {"ok": ok, "version": VERSION, "archive": basename(archive), "versionExit": versioned.exitcode, "doctorExit": doctored.exitcode, "failurePathExit": rejected.exitcode, "reviewExit": reviewed.exitcode}
+remove_tree(root)
+print(to_json(result))
+if ok == false { exit(1) }
+exit(0)

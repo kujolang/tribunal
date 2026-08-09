@@ -1,12 +1,12 @@
 # Reproducible source archive, SBOM, and provenance generator using Kujo only.
-from src.common import ensure_dir, relative_files, remove_tree, safe_relative_path, write_json, write_text
+from src.common import ensure_dir, read_json, relative_files, remove_tree, safe_relative_path, write_json, write_text
 from src.version import VERSION
 
 home := path_absolute(env_or("TRIBUNAL_HOME", ".")); output := env_or("TRIBUNAL_RELEASE_ARCHIVE_OUTPUT", join_path(env_or("TMPDIR", "/tmp"), "tribunal-release-archive"))
 epoch := env_or("SOURCE_DATE_EPOCH", ""); revision := env_or("TRIBUNAL_SOURCE_REVISION", "")
 if epoch == "" || revision == "" || path_is_dir(output) || file_exists(output) { print("SOURCE_DATE_EPOCH, TRIBUNAL_SOURCE_REVISION, and a new output path are required."); exit(2) }
 ensure_dir(output); stage := join_path(output, "tribunal-v" + VERSION); ensure_dir(stage)
-roots := ["src", "schemas", "scripts", "tests", "examples", "docs", "completions", "man", ".github"]
+roots := ["bin", "src", "schemas", "scripts", "tests", "examples", "docs", "completions", "man", ".github"]
 files := ["tribunal.kujo", "tribunal.spec.yml", "kujo.toml", "kennel.toml", "VERSION", "README.md", "CHANGELOG.md", "CONTRIBUTING.md", "SECURITY.md", "LICENSE", ".gitignore"]
 for root in roots { for name in relative_files(join_path(home, root), "") { if path_is_symlink(join_path(join_path(home, root), name)) == false { files = push(files, root + "/" + name) } } }
 files = sort(files); mut sbom_files := []
@@ -16,9 +16,12 @@ for name in files {
     sbom_files = push(sbom_files, {"fileName": name, "checksums": [{"algorithm": "SHA256", "checksumValue": sha256_file(source)}]})
 }
 runtime := env_or("KUJO_BIN", join_path(home, "../kujo/target/release/kujo"))
+matrix := read_json(join_path(home, "docs/INTEGRATION_MATRIX.json")); runtime_revision := ""
+for integration in matrix["integrations"] { if integration["name"] == "Kujo Runtime" { runtime_revision = integration["revision"] } }
+if len(runtime_revision) != 40 { remove_tree(output); print("Pinned Kujo runtime revision is missing."); exit(1) }
 sbom := {"spdxVersion": "SPDX-2.3", "dataLicense": "CC0-1.0", "SPDXID": "SPDXRef-DOCUMENT", "name": "tribunal-v" + VERSION, "documentNamespace": "https://github.com/kujolang/tribunal/releases/v" + VERSION + "/spdx-" + revision, "creationInfo": {"createdEpoch": epoch, "creators": ["Tool: tribunal-release-archive"]}, "packages": [{"name": "tribunal", "SPDXID": "SPDXRef-Package-Tribunal", "versionInfo": VERSION, "downloadLocation": "https://github.com/kujolang/tribunal", "filesAnalyzed": true, "licenseConcluded": "MIT"}], "files": sbom_files}
 write_json(join_path(stage, "SBOM.spdx.json"), sbom)
-provenance := {"_type": "https://in-toto.io/Statement/v1", "subject": [{"name": "tribunal-v" + VERSION, "digest": {"gitCommit": revision}}], "predicateType": "https://slsa.dev/provenance/v1", "predicate": {"buildDefinition": {"buildType": "https://kujolang.ai/tribunal/reproducible-archive/v1", "externalParameters": {"version": VERSION, "sourceDateEpoch": epoch}, "resolvedDependencies": [{"uri": "git+https://github.com/kujolang/tribunal", "digest": {"gitCommit": revision}}, {"uri": "file:kujo-runtime", "digest": {"sha256": sha256_file(runtime)}}]}, "runDetails": {"builder": {"id": "https://github.com/kujolang/tribunal/.github/workflows/release.yml"}, "metadata": {"invocationId": env_or("GITHUB_RUN_ID", "local-reproducibility-gate")}}}}
+provenance := {"_type": "https://in-toto.io/Statement/v1", "subject": [{"name": "tribunal-v" + VERSION, "digest": {"gitCommit": revision}}], "predicateType": "https://slsa.dev/provenance/v1", "predicate": {"buildDefinition": {"buildType": "https://kujolang.ai/tribunal/reproducible-archive/v1", "externalParameters": {"version": VERSION, "sourceDateEpoch": epoch}, "resolvedDependencies": [{"uri": "git+https://github.com/kujolang/tribunal", "digest": {"gitCommit": revision}}, {"uri": "git+https://github.com/kujolang/kujo", "digest": {"gitCommit": runtime_revision, "sha256": sha256_file(runtime)}}]}, "runDetails": {"builder": {"id": "https://github.com/kujolang/tribunal/.github/workflows/release.yml"}, "metadata": {"invocationId": env_or("GITHUB_RUN_ID", "local-reproducibility-gate")}}}}
 write_json(join_path(stage, "provenance.intoto.json"), provenance)
 mut sums := ""
 for name in relative_files(stage, "") { sums = sums + sha256_file(join_path(stage, name)) + "  " + name + "\n" }
@@ -27,7 +30,7 @@ archive_one := join_path(output, "tribunal-v" + VERSION + ".zip"); archive_two :
 first := zip_create(archive_one); if zip_add_dir(first, stage) != true || zip_close(first) != true { remove_tree(output); exit(1) }
 second := zip_create(archive_two); if zip_add_dir(second, stage) != true || zip_close(second) != true { remove_tree(output); exit(1) }
 reproducible := sha256_file(archive_one) == sha256_file(archive_two)
-receipt := {"schemaVersion": "1.0.0", "version": VERSION, "sourceRevision": revision, "sourceDateEpoch": epoch, "archive": basename(archive_one), "archiveSha256": sha256_file(archive_one), "archiveBytes": file_size(archive_one), "rebuildSha256": sha256_file(archive_two), "reproducible": reproducible, "sbomSha256": sha256_file(join_path(stage, "SBOM.spdx.json")), "provenanceSha256": sha256_file(join_path(stage, "provenance.intoto.json")), "runtimeSha256": sha256_file(runtime), "files": len(files)}
+receipt := {"schemaVersion": "1.0.0", "version": VERSION, "sourceRevision": revision, "sourceDateEpoch": epoch, "archive": basename(archive_one), "archiveSha256": sha256_file(archive_one), "archiveBytes": file_size(archive_one), "rebuildSha256": sha256_file(archive_two), "reproducible": reproducible, "sbomSha256": sha256_file(join_path(stage, "SBOM.spdx.json")), "provenanceSha256": sha256_file(join_path(stage, "provenance.intoto.json")), "runtimeRevision": runtime_revision, "runtimeSha256": sha256_file(runtime), "files": len(files)}
 write_json(join_path(output, "release-archive-receipt.json"), receipt)
 print(to_json(receipt))
 if reproducible == false { exit(1) }
