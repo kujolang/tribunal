@@ -28,6 +28,8 @@ func check(condition, name) {
 async func bounded_runtime_worker(job) {
     marker := join_path(job["activeRoot"], to_string(job["id"]) + ".active")
     write_file_atomic(marker, "active")
+    deadline := current_timestamp() + 1000
+    while len(list_dir(job["activeRoot"])) < job["expectedConcurrency"] && current_timestamp() < deadline { await async_sleep(10) }
     active := len(list_dir(job["activeRoot"]))
     await async_sleep(job["delayMs"])
     delete_file(marker)
@@ -409,10 +411,10 @@ func test_limits_and_analytics() {
 func test_parallel_runtime_contract() {
     active_root := join_path(ROOT, "parallel-active"); ensure_dir(active_root)
     jobs := [
-        {"id": 1, "activeRoot": active_root, "delayMs": 180},
-        {"id": 2, "activeRoot": active_root, "delayMs": 140},
-        {"id": 3, "activeRoot": active_root, "delayMs": 20},
-        {"id": 4, "activeRoot": active_root, "delayMs": 10}
+        {"id": 1, "activeRoot": active_root, "delayMs": 180, "expectedConcurrency": 2},
+        {"id": 2, "activeRoot": active_root, "delayMs": 140, "expectedConcurrency": 2},
+        {"id": 3, "activeRoot": active_root, "delayMs": 20, "expectedConcurrency": 2},
+        {"id": 4, "activeRoot": active_root, "delayMs": 10, "expectedConcurrency": 2}
     ]
     ordered := await parallel_map(jobs, bounded_runtime_worker, 2)
     mut max_active := 0
