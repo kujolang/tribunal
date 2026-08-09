@@ -7,24 +7,26 @@ The release owner must use the exact candidate revision, Kujo runtime revision, 
 ## Candidate identity
 
 - Product version: `1.0.0`
-- Candidate commit: recorded in the completed verification section after the candidate is frozen
+- Candidate commit: `8c2ae6d760dd1736a28caf571141963583219a98`
 - Kujo runtime: `1.0.0` at `9b77dce592047121cb71066629836ad89252f3ce`
-- Runtime binary digest: recorded in each platform and archive receipt
+- Runtime binary SHA-256: `a8175b084398a1623cf24cabb6aafb05f316cd6b15eb5e2015089501dd9d8215`
 - API version: `1.0.0` (independent contract)
 - Evidence/schema format versions: independently versioned; see [v1 compatibility](V1_COMPATIBILITY.md)
 
 ## Completed and verified
 
-- [ ] Focused checks pass at the exact candidate commit: version, doctor, source check, main tests, CLI integration, schema gate, and `git diff --check`.
-- [ ] The complete release-workflow gate inventory passes at that commit.
-- [ ] Local Markdown links pass `scripts/docs_link_gate.kujo`.
-- [ ] ShipCheck `scan` and `gate` pass; record its exact check count.
-- [ ] The reproducible `tribunal-v1.0.0.zip`, `SHA256SUMS`, SPDX SBOM, in-toto provenance, archive receipt, and install-from-archive smoke test all pass.
-- [ ] A Workcell receipt verifies representative happy and failure paths for the exact candidate and pinned runtime image.
-- [ ] Each supported platform has a passing receipt that names the exact candidate and runtime digest.
-- [ ] The working tree is clean and the release-preparation branch is pushed.
+- [x] Focused checks passed at the exact candidate: version `1.0.0`, doctor `0` failures/`0` warnings, source check, main tests `130/0`, CLI integration `55/0`, schema gate `35`, and `git diff --check`.
+- [x] The complete release-workflow gate inventory passed at that commit, including enterprise `83/0`, property `21/0`, Eval `19/19`, all performance/chaos/adversarial/security/integration/gallery/compatibility gates, Kennel validation, and doctor.
+- [x] Local Markdown links passed: `41` Markdown files, `81` local links, `0` broken.
+- [x] ShipCheck `scan` and `gate` exited `0` with `16/16` checks and `0` warnings.
+- [x] `tribunal-v1.0.0.zip`, `SHA256SUMS`, SPDX SBOM, in-toto provenance, archive receipt, and install-from-archive happy/failure smoke all passed. Two separate builds produced SHA-256 `18f9a886d9fb29bdad90400b549a2a1102018208bc02c919c2756263aafcba8f`.
+- [x] Workcell run `wc-01f0d34250fd4bcfb9f48b2e1b91d48e` verified happy and failure paths at the exact candidate with Linux/amd64 image digest `sha256:06b9499848e1dee3076a415609c74ad44552e218cadebcffb5dd89f578c8beac` and the pinned runtime revision label.
+- [x] The sole claimed platform, macOS x86_64, has a passing exact-candidate receipt. Linux/amd64 Workcell evidence is explicitly bounded and does not establish full Linux platform support.
+- [x] The release-preparation branch is committed, pushed, and clean after the verification record commit.
 
-The final verification record must include commands, exit codes, platform details, Workcell run ID, and absolute or repository-relative evidence paths. Historical 0.7.0 receipts do not satisfy these items.
+Evidence root: `/Users/robertdevore/2026/Kujolang/kujo-repos/.tribunal-release-v1/8c2ae6d/`. Key files are `macos-x86_64-focused-gates.log`, `macos-x86_64-full-gates.log`, `shipcheck-gate.json`, `workcell-receipt.json`, `workcell-verify.json`, `tribunal-v1.0.0-macos-x86_64.json`, `archive/release-archive-receipt.json`, and `archive-cross-build-comparison.txt`. Historical 0.7.0 receipts do not satisfy v1 items.
+
+The focused commands were the documented `version`, `doctor --json`, `kujo check tribunal.kujo`, main/CLI/schema interpreter gates, and `git diff --check`. The full command inventory was executed in the order defined by `.github/workflows/release.yml`, followed by archive smoke, platform receipt generation, Workcell verification, and the required ShipCheck `scan`/`gate` commands. Every completed command exited `0`; the first full-suite attempt exceeded the unchanged scale pagination budget under load, and the retained clean rerun passed without changing the threshold.
 
 ## External infrastructure requirements
 
@@ -35,6 +37,8 @@ The final verification record must include commands, exit codes, platform detail
 - [ ] Repository rulesets and branch protection are reviewed by a repository administrator; this preparation does not change them.
 
 Missing external infrastructure must have a blocker receipt. A substitute local run may narrow risk, but it is not the unavailable certification.
+
+Blocker receipt: `/Users/robertdevore/2026/Kujolang/kujo-repos/.tribunal-release-v1/8c2ae6d/external-blockers.json`.
 
 ## Deployment-specific certification
 
