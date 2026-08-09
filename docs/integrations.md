@@ -4,7 +4,7 @@
 - **RunLedger:** trusted ingestion runs `runledger.kujo` with the Kujo runtime and records provider/model identity, usage, verdict, signed-manifest evidence, and decision-packet follow-ups.
 - **CaseFile:** trusted ingestion runs `casefile.kujo`, creates a manual case, and preserves the verified manifest, signature, ruling, packet, receipt, and ingestion receipt.
 - **PackWrite:** optional context enrichment invokes the deterministic repository-context collector through a Kujo bridge and never calls a model.
-- **Concord:** `scripts/drift_gate.kujo` runs a real Concord scan and rejects high or critical drift. `scripts/schema_gate.kujo` executes 17 schemas against policies, config, emitted evidence, bundles, telemetry, and store indexes.
+- **Concord:** `scripts/drift_gate.kujo` runs a real Concord scan and rejects high or critical drift. `scripts/schema_gate.kujo` executes every registered schema against policies, config, emitted evidence, bundles, telemetry, and store indexes.
 - **Spec/Eval:** `tribunal.spec.yml` and `tests/tribunal_eval.json` execute only Kujo runtime/tool commands.
 - **ChangeBucket:** change evidence can be attached externally by run ID and manifest digest; Tribunal does not duplicate change analysis.
 - **Muzzle:** future context compression must preserve the immutable-context digest and blindness boundary.
@@ -14,3 +14,5 @@
 - **HSM/KMS:** `src/signing_provider.kujo` defines the external Kujo signing contract with federated workload identity and opaque key references.
 - **Immutable stores:** `src/artifact_store.kujo` provides the local reference and conditional HTTP object/version contract.
 - **SIEM/observability:** `src/telemetry.kujo` exports redacted aggregate metrics and audit events through JSONL or HTTP.
+
+Exact supported revisions and intentional v1 exclusions are recorded in [the integration matrix](INTEGRATION_MATRIX.md).

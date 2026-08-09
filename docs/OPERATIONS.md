@@ -65,6 +65,6 @@ The dashboard is static, script-free, CSP-restricted, and capped at 500 rows. Tr
 
 ## Release and rollback
 
-Tag releases run all Kujo checks, four test suites, 17 schema contracts, Concord, Spec, Eval, and both benchmarks on a self-hosted Kujo runner. CI uses an external signing-provider config and publishes a signed evidence bundle. See [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md).
+Tag releases run all Kujo checks, four test suites, every executable schema, compatibility and documentation gates, Concord, Spec, Eval, performance/scale/index/load/chaos, adversarial, accessibility, security-register, integration, gallery, Kennel, doctor, and archive/package smoke gates on a self-hosted Kujo runner. CI requires an external signing-provider config and uploads a signed evidence bundle. See [release verification](RELEASE_VERIFICATION.md) and the [release checklist](launch-checklist.md).
 
-Tribunal v0.7.0 verifies signature schemas v1.0, v1.1, and v1.2. Rollback does not authorize modifying newer runs.
+Tribunal 1.0.0 verifies signature schemas v1.0, v1.1, and v1.2. These are independent evidence-envelope versions. Rollback does not authorize modifying newer runs.

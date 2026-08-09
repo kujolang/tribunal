@@ -1,13 +1,15 @@
 # Measured platform support
 
-Tribunal does not claim universal platform support. A platform is release-supported only when a committed or CI-published passing receipt identifies the exact Tribunal revision, measured environment, architecture, and pinned Kujo runtime digest.
+Tribunal does not claim universal platform support. A platform is supported for the 1.0.0 release only when a release-candidate receipt identifies the exact Tribunal commit, Kujo 1.0.0 commit and binary digest, measured OS/architecture, full gate inventory, and passing result.
 
-| Platform | Status for 0.7.0 | Evidence |
-|---|---|---|
-| macOS x86_64 | measured for 0.7.0 | The full release gate ran on macOS 26.3.1 / Darwin 25.3.0 at Tribunal `1e1ad639478deb6c9ef1ed5a7899c7f5a021fa98`; see `docs/compatibility/macos-x86_64-local.json`. |
-| macOS arm64 | not yet supported | `macos-15` remains a CI candidate; support begins only after a passing uploaded receipt for the release revision. |
-| Linux x86_64 | measured for 0.7.0 | The full release gate ran in pinned Ubuntu 24.04 on Linux 6.8.0 at Tribunal `eeb3fb98d8c8583ecc6cd3b27d4ead94ecbeb525`; see `docs/compatibility/linux-x86_64-ubuntu-24.04.json`. |
-| Linux arm64 | not yet supported | No maintained runner receipt. |
-| Windows | not supported | Filesystem, launcher, and process contracts have not been measured. |
+| Platform | Tribunal 1.0.0 status | Evidence |
+| --- | --- | --- |
+| macOS x86_64 | candidate support requires the final local full-gate receipt | `docs/compatibility/tribunal-v1.0.0-macos-x86_64.json` when generated and verified |
+| Linux x86_64 | candidate support requires the final container/runner full-gate receipt | `docs/compatibility/tribunal-v1.0.0-linux-x86_64.json` when generated and verified |
+| macOS arm64 | not supported | No passing v1 candidate receipt is available. |
+| Linux arm64 | not supported | No passing v1 candidate receipt is available. |
+| Windows | not supported | Filesystem, launcher, process, archive, and release gates have not been measured. |
 
-The preserved v0.7.0 receipts cover all Kujo checks, four test suites, schemas, Concord, strict Spec, Eval, performance/scale/index/load gates, adversarial and accessibility gates, review and integration registers, Kennel validation, the example gallery, doctor, and reproducible archive generation. They remain bound to Kujo commit `0f7778107ee9efab09ab7559e30c0c97935a890e`. The compatibility job now tests the v0.8 candidate against `0d145a57584d7addcbc682efe1581fe362077785` on `ubuntu-24.04`, `macos-15-intel`, and `macos-15`; this does not create a new supported-platform receipt until the full maintained runner publishes one. Private ecosystem checkouts require the repository secret `KUJO_ECOSYSTEM_TOKEN`; the workflow fails closed when its token cannot read a required revision. Deployment-specific HSM, store, shared-filesystem, and network certification remains separate.
+The compatibility workflow tests `ubuntu-24.04`, `macos-15-intel`, and `macos-15`, but a configured job is not evidence until it completes and publishes a receipt. Private ecosystem checkouts require `KUJO_ECOSYSTEM_TOKEN`; inaccessible pinned revisions fail closed. Deployment-specific HSM, store, shared-filesystem, identity, network, custody, and organizational certification remains separate from platform support.
+
+The existing `linux-x86_64-ubuntu-24.04.json` and `macos-x86_64-local.json` files are immutable historical 0.7.0 receipts. They do not establish 1.0.0 support and are retained only as prior-release evidence.

@@ -10,7 +10,8 @@ Tribunal is a local-first decision-evidence engine. Treat mock/offline review pr
 - `docs/ENTERPRISE_READINESS.md`
 - `docs/OPERATIONS.md`
 - `docs/launch-checklist.md`
-- Latest `docs/NEXT_SESSION_REVIEW*.md`
+- `docs/V1_COMPATIBILITY.md`
+- `docs/PLATFORM_SUPPORT.md`
 
 ## Validation
 

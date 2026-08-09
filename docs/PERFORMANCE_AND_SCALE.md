@@ -10,7 +10,7 @@ Run manifests are indexed under `<storage>/.index/` as atomic metadata plus 100-
 
 Every blind request is derived only from immutable context and its own seat contract. Prompts and request events are persisted in panel order; results are validated and persisted in that same order. Configuration bounds desired concurrency and provider concurrency from 1–16 and mandates cancel-on-failure.
 
-Kujo runtime revision `0d145a57584d7addcbc682efe1581fe362077785` fixes nested async execution and adds bounded isolated async mappers across both interpreter and VM execution. Tribunal uses `parallel_map` for blind seats, preserves panel order, caps work by both blind and provider limits, shares a cancellation file with live provider subprocesses, and records requested/effective concurrency. Live parallel calls remain an explicit `live_parallel_enabled` opt-in; the offline SDK fixture exercises per-process `cwd` isolation without process-global directory changes.
+The exact Kujo 1.0.0 runtime revision in `INTEGRATION_MATRIX.json` supplies nested async execution and bounded isolated async mappers across interpreter and VM execution. Tribunal uses `parallel_map` for blind seats, preserves panel order, caps work by both blind and provider limits, shares a cancellation file with live provider subprocesses, and records requested/effective concurrency. Live parallel calls remain an explicit `live_parallel_enabled` opt-in; the offline SDK fixture exercises per-process `cwd` isolation without process-global directory changes.
 
 ## Streaming and transfer budgets
 

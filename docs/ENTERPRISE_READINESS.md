@@ -2,7 +2,7 @@
 
 ## Current posture
 
-Tribunal v0.7.0 provides a strong production-oriented application core for enterprise decision evidence: default-deny authorization, external managed signing, trusted-key lifecycle, immutable versioned stores, concurrency/recovery, retention/legal hold/deletion, external telemetry, executable schemas, adversarial property gates, persistent sharded indexing, bounded projections, resumable lineage, custom panels, a stable Kujo library API, reproducible releases, CI compatibility receipts, a safe offline dashboard, and a combined audit command.
+Tribunal 1.0.0 provides a stable local and operator-controlled application core for decision evidence: default-deny authorization, external managed signing, trusted-key lifecycle, immutable versioned stores, concurrency/recovery, retention/legal hold/deletion, external telemetry, executable schemas, adversarial property gates, persistent sharded indexing, bounded projections, resumable lineage, custom panels, a stable Kujo library API, reproducible releases, compatibility receipts, a safe offline dashboard, and a combined audit command.
 
 That is not a universal deployment certification. Identity proofing, policy provenance/distribution, target HSM/store certification, tenant mapping, encrypted-volume custody, network controls, platform receipts, independent assessment, recovery objectives, and capacity evidence remain deployment responsibilities.
 
@@ -10,7 +10,7 @@ The repository includes Vault Transit and authenticated immutable HTTP reference
 
 ## Concrete supported deployment profile
 
-The supported 0.7.0 profile is an operator-controlled process on a platform with a passing release receipt; local non-symlinked storage on one filesystem; one active writer per run; default-deny local or policy identity; mock or Kujo AI SDK provider boundary; managed external signer for production provenance; independently distributed trust policy; external encrypted volume; local immutable or certified HTTPS artifact store; and external telemetry/dashboard outputs. Multi-host writers are supported only for a shared filesystem that passes the two-host harness and preserves its receipt.
+The supported 1.0.0 profile is an operator-controlled process on a platform with a passing v1 candidate receipt; local non-symlinked storage on one filesystem; one active writer per run; default-deny local or policy identity; mock or Kujo AI SDK provider boundary; managed external signer when managed custody is required; independently distributed trust policy; deployment-approved encrypted storage; local immutable or certified HTTPS artifact store; and external telemetry/dashboard outputs. Multi-host writers are supported only for a shared filesystem that passes the two-host harness and preserves its receipt.
 
 Explicit non-goals are a public hosted service, ambient credentials, direct provider SDK calls, hidden policy prompts, automatic stale-lock theft, local key-file custody as the production recommendation, universal filesystem/platform claims, legal advice, and claims that mock/reference evidence certifies a deployment.
 
@@ -42,9 +42,9 @@ A releasable commit must pass:
 - all four current test suites and every executable JSON Schema;
 - Concord with no high/critical drift;
 - strict Spec validation;
-- seventeen Eval checks;
+- the complete Eval release suite;
 - local, scale, index, load/chaos, adversarial, accessibility, integration, gallery, and platform gates;
 - `tribunal doctor --json` with zero failures;
 - signed release evidence plus reproducible archive/SBOM/provenance creation.
 
-See [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) and [NEXT_SESSION_REVIEW.md](NEXT_SESSION_REVIEW.md).
+See [release verification](RELEASE_VERIFICATION.md), [platform support](PLATFORM_SUPPORT.md), and the [release checklist](launch-checklist.md).

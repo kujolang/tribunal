@@ -2,7 +2,7 @@
 
 ## Decision
 
-Continue providing an authorized offline HTML export in v0.7.0; do not introduce a network API or hosted UI without an approved transport and tenancy contract.
+Continue providing an authorized offline HTML export in Tribunal 1.x; do not introduce a network API or hosted UI without an approved transport and tenancy contract.
 
 ## Rationale
 

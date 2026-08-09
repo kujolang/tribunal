@@ -1,5 +1,10 @@
 # Tribunal
 
+![Version 1.0.0](https://img.shields.io/badge/version-1.0.0-blue)
+[![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![CI](https://github.com/kujolang/tribunal/actions/workflows/compatibility.yml/badge.svg)](https://github.com/kujolang/tribunal/actions/workflows/compatibility.yml)
+[![Built with Kujo](https://img.shields.io/badge/built%20with-Kujo-6f42c1)](https://github.com/kujolang/kujo)
+
 Tribunal is a local-first decision review engine written entirely in the Kujo programming language. It turns a consequential proposal into a durable, adversarial hearing: independent specialist testimony, cross-examination, an explicit fatal-flaw pass, a ruling, and an execution-ready decision packet.
 
 The result is inspectable evidence, not a disposable chat transcript. Every run is structured, replayable, SHA-256 sealed, optionally RSA-signed, and ready for Kujo ecosystem handoff.
@@ -10,22 +15,18 @@ Tribunal is also a practical showcase for [Kujo](https://github.com/kujolang/kuj
 
 ## Production-readiness statement
 
-Tribunal v0.7.0 is production-oriented and useful as a local or operator-controlled decision-evidence engine. It is not automatically “universally enterprise-ready”: managed identity/custody, the target shared filesystem, remote stores, platform receipts, and organization controls must be certified for the actual deployment before making that claim. The independent security review is commissioned, not completed.
+Tribunal 1.0.0 is stable for local or operator-controlled decision evidence. The v1 guarantee covers the documented CLI, Kujo library API, configuration, local evidence, inspection, and portable bundle contracts on platforms with passing release receipts.
 
-For the 2026-07-28 next launch batch, the honest scope is technical preview:
-local/offline CLI, runtime, test, schema, and Workcell proof gates pass, but
-live provider evidence, organization deployment certification, and independent
-review completion are not present for this exact batch commit. See
-[`docs/launch-checklist.md`](docs/launch-checklist.md).
+This is not automatic certification for every enterprise, hosted, regulated, shared-filesystem, identity-provider, custody, or remote-storage environment. Managed identity and signing, policy/trust custody, target storage and filesystem semantics, live-provider behavior, backup/recovery, network controls, and organizational approval must be certified for the actual deployment. The independent security review is commissioned, not completed. See the [release checklist](docs/launch-checklist.md).
 
 | Use case | Posture |
 | --- | --- |
 | Offline mock review and sealed local evidence | ready and fully regression-tested |
 | Single-operator local production use | ready with documented filesystem, key, backup, and verification controls |
-| Shared service or regulated deployment | application contracts and live harnesses are ready; deployment adapters, platform receipts, independent review, and organizational controls require certification |
+| Shared service or regulated deployment | application contracts and reference harnesses are available; deployment adapters, target receipts, independent review, and organizational controls require certification |
 | Public hosted service | intentionally not provided; transport authentication and tenancy must be designed first |
 
-See [Enterprise readiness](docs/ENTERPRISE_READINESS.md), [Threat model](docs/THREAT_MODEL.md), and the [next review](docs/NEXT_SESSION_REVIEW.md) before making a production claim.
+See [Enterprise readiness](docs/ENTERPRISE_READINESS.md), [Threat model](docs/THREAT_MODEL.md), and the [release checklist](docs/launch-checklist.md) before making a deployment claim.
 
 ## Why Tribunal
 
@@ -51,18 +52,27 @@ export KUJO_BIN=../kujo/target/release/kujo
 ./bin/tribunal list --status completed --limit 5
 ```
 
-Install or build Kujo first, then place `kujo` on `PATH` or set `KUJO_BIN`/`KUJO` to its executable. Mock mode is deterministic, offline, credential-free, and the default. The launcher only resolves this repository and executes `kujo run tribunal.kujo`.
+Install Kujo 1.0.0 first, then place `kujo` on `PATH` or set `KUJO_BIN`/`KUJO` to its executable. Use the exact runtime revision in the [integration matrix](docs/INTEGRATION_MATRIX.md) for release reproduction. Mock mode is deterministic, offline, credential-free, and the default. The launcher resolves this repository and executes `kujo run tribunal.kujo`.
 
-Tribunal is also a validated [Kennel package](kennel.toml). See [installation, compatibility, upgrade, and rollback](docs/INSTALLATION.md), or import the stable [Kujo library API 1.0](docs/LIBRARY_API.md). The [example gallery](examples/gallery/README.md) covers six common decision types.
+Tribunal is also a validated [Kennel package](kennel.toml). See [installation, archive installation, compatibility, upgrade, and rollback](docs/INSTALLATION.md), or import the stable [Kujo library API 1.0](docs/LIBRARY_API.md). The [example gallery](examples/gallery/README.md) covers six common decision types.
+
+Supported release platforms are exactly those with v1 candidate receipts in [platform support](docs/PLATFORM_SUPPORT.md). Windows is not supported. For startup failures, run `./bin/tribunal doctor --json`, confirm `KUJO_BIN` is executable, confirm adjacent integrations match the pinned matrix when using them, and verify storage is writable, non-symlinked, and outside external output paths. See [operations](docs/OPERATIONS.md) and [operator recipes](docs/RECIPES.md) for recovery and common workflows.
+
+## Version and compatibility boundaries
+
+- Product version and CLI version are `1.0.0`; `tribunal version` is authoritative for the running checkout.
+- The Kujo library API is independently versioned `1.0.0`. Compatible additions may occur within API 1.x; removing or repurposing public functions or envelope fields requires API 2.0.
+- Evidence, event, signature, bundle, encryption, provenance, configuration, and other schema versions are independent contracts. Product 1.0.0 does not mechanically rename them.
+- The supported v1 CLI commands, options, exit meanings, compatibility guarantees, and breaking-change policy are defined in [the v1 compatibility contract](docs/V1_COMPATIBILITY.md). Generated command details live in [the command reference](docs/COMMAND_REFERENCE.md).
 
 ## Command surface
 
 ```text
-tribunal review <file> --panel <panel-name> [--mock|--live]
+tribunal review <file> --panel <panel-name> [--mock|--live] [--private-key <pem> --public-key <pem>]
 tribunal resume <stopped-run-id> [--private-key <pem> --public-key <pem>]
 tribunal compare <base-run-id> <candidate-run-id> --output <prefix>
 tribunal re-review <base-run-id> <file> --panel <panel-name> --output <prefix> [--mock|--live]
-tribunal kill <file> [--mock|--live]
+tribunal kill <file> [--mock|--live] [--private-key <pem> --public-key <pem>]
 tribunal validate <file> [--json]
 tribunal list [--status <status> --panel <panel> --limit <n> --cursor <run-id> --json]
 tribunal show <run-id> [--json]
@@ -88,21 +98,21 @@ tribunal bundle-decrypt <directory> --recipient-private-key <pem> --trust-policy
 tribunal bundle-rekey <directory> --recipient-private-key <pem> --recipient-public-key <pem>
 tribunal store-publish <run-id> [--expected-version <sha256>]
 tribunal store-pull <run-id> [--version <sha256>] --trust-policy <json>
-tribunal telemetry-export [--collector jsonl|http --destination <path|url>]
-tribunal dashboard-export --output <html>
+tribunal telemetry-export [--collector jsonl|http --destination <path|url> --json]
+tribunal dashboard-export --output <html> [--json]
 tribunal legal-hold <run-id> --enable|--release --reason <text>
 tribunal delete <run-id> --reason <text> [--force-expired]
-tribunal provenance-sign <document> --kind <kind> --sequence <n> --private-key <pem> --public-key <pem> --output <json> --anchor <json>
+tribunal provenance-sign <document> --kind <kind> --sequence <n> --private-key <pem> --public-key <pem> --output <json> --anchor <json> [--previous <json>]
 tribunal provenance-verify <document> --provenance <json> --public-key <pem> --anchor <json>
-tribunal locks-recover [--stale-after-ms <n>]
+tribunal locks-recover [--stale-after-ms <n> --json]
 tribunal index-check [--json]
 tribunal index-rebuild [--json]
 tribunal index-repair [--json]
-tribunal auth-check --permission <permission>
+tribunal auth-check --permission <permission> [--json]
 tribunal version
 ```
 
-Exit codes are stable: `0` success, `1` runtime failure, `2` usage/configuration error, and `3` integrity failure. Unknown, duplicate, missing-value, and conflicting options are rejected.
+Exit codes are stable: `0` success, `1` runtime failure, `2` usage/configuration error or stopped hearing, and `3` integrity/authorization failure. Unknown, duplicate, missing-value, and conflicting options are rejected.
 
 ## Hearing and evidence
 
@@ -184,7 +194,7 @@ Optional PackWrite context enrichment is deterministic and redacted:
 
 ## Enterprise controls
 
-Tribunal v0.7.0 includes:
+Tribunal 1.0.0 includes:
 
 - default-deny service/user identity and role authorization;
 - external HSM/KMS signing-provider contracts and v1.2 signer provenance;
@@ -238,6 +248,8 @@ done
 "$KUJO_BIN" run scripts/security_review_gate.kujo
 "$KUJO_BIN" run scripts/integration_matrix_gate.kujo
 "$KUJO_BIN" run scripts/gallery_gate.kujo
+"$KUJO_BIN" run scripts/v1_compatibility_gate.kujo
+"$KUJO_BIN" run scripts/docs_link_gate.kujo
 (cd ../eval && "$KUJO_BIN" run main.kujo run "$TRIBUNAL_HOME/tests/tribunal_eval.json")
 ```
 
@@ -258,25 +270,23 @@ Application logic lives under [`src/`](src/). The only root Kujo files are the t
 - [Artifact stores and bundles](docs/ARTIFACT_STORES.md)
 - [Vault Transit certification](docs/VAULT_TRANSIT.md)
 - [HTTP store certification](docs/HTTP_STORE_CERTIFICATION.md)
-- [Evidence encryption](docs/EVIDENCE_ENCRYPTION.md)
+- [Artifact stores and encrypted evidence](docs/ARTIFACT_STORES.md)
 - [Signed governance provenance](docs/PROVENANCE.md)
 - [Cryptographic migration](docs/CRYPTOGRAPHIC_MIGRATION.md)
-- [Release evidence](docs/RELEASE_EVIDENCE.md)
+- [Release verification](docs/RELEASE_VERIFICATION.md)
 - [Performance and scale](docs/PERFORMANCE_AND_SCALE.md)
 - [Library API](docs/LIBRARY_API.md)
 - [Installation and rollback](docs/INSTALLATION.md)
 - [Platform support](docs/PLATFORM_SUPPORT.md)
 - [Ecosystem integration matrix](docs/INTEGRATION_MATRIX.md)
 - [Command reference](docs/COMMAND_REFERENCE.md)
+- [v1 compatibility contract](docs/V1_COMPATIBILITY.md)
 - [Operator recipes](docs/RECIPES.md)
 - [Service decision](docs/SERVICE_DECISION.md)
 - [Adoption measurement](docs/ADOPTION_MEASUREMENT.md)
 - [Read-only UI evaluation](docs/UI_EVALUATION.md)
 - [Integrations](docs/integrations.md)
-- [Completed v0.4 enterprise review](docs/COMPLETED_V0.4_REVIEW.md)
-- [Completed v0.7 review checklist](docs/NEXT_SESSION_REVIEW.md)
-- [Next-session review beyond v0.7](docs/NEXT_SESSION_REVIEW_V0.8.md)
-- [v0.4 deployment handoff](docs/NEXT_SESSION_HANDOFF.md)
+- [Release checklist](docs/launch-checklist.md)
 - [Changelog](CHANGELOG.md)
 
 ## Boundaries

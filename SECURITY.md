@@ -1,8 +1,8 @@
 # Security policy
 
-## Supported version
+## Supported versions
 
-Security fixes are applied to the latest release on `main`. The `typescript` branch is historical and is not supported for security updates.
+Security fixes are applied to the current Tribunal 1.x release line on `main`. The `typescript` branch and pre-1.0 product releases are historical and are not supported for security updates. Supported legacy evidence formats remain readable as described in [the v1 compatibility contract](docs/V1_COMPATIBILITY.md); that does not make the old executable releases supported.
 
 ## Reporting
 
@@ -18,7 +18,7 @@ An unsigned SHA-256 manifest proves internal consistency, not provenance. A sign
 
 - Generate 4096-bit keys by default; 2048-bit keys exist for compatibility and fast local tests.
 - Store private keys outside the repository and run storage.
-- Kujo 1.0.0 does not expose a portable restrictive permission API. Treat local key generation as development-only unless an external launcher atomically applies and verifies the target platform's permissions; production uses managed signing.
+- Tribunal verifies atomic 0600 private-key creation on the current pinned Kujo runtime. Local key files still depend on host account, backup, volume, and incident controls; deployments requiring managed custody use an external signer.
 - Rotate and revoke keys through independently distributed trust policy. Tribunal validates lifecycle state but does not distribute or protect that policy for you.
 - Never accept a public key copied from the same untrusted evidence bundle as its trust anchor.
 
