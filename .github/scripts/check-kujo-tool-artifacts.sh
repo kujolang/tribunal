@@ -8,6 +8,7 @@ artifact_ignore_file="${ARTIFACT_IGNORE_FILE:-config/kujo-tool-artifacts.gitigno
 repo_gitignore_file="${REPO_GITIGNORE_FILE:-.gitignore}"
 base_sha="${1:-${BASE_SHA:-}}"
 head_sha="${2:-${HEAD_SHA:-HEAD}}"
+scan_mode="${ARTIFACT_SCAN_MODE:-history}"
 
 if [[ ! -f "$artifact_ignore_file" ]]; then
   echo "[tool-artifacts] ERROR: missing artifact ignore source: $artifact_ignore_file"
@@ -47,6 +48,10 @@ if ! git rev-parse --verify "$head_sha^{commit}" >/dev/null 2>&1; then
   echo "[tool-artifacts] ERROR: head SHA is not available locally: $head_sha"
   exit 1
 fi
+if [[ "$scan_mode" != "history" && "$scan_mode" != "final-tree" ]]; then
+  echo "[tool-artifacts] ERROR: ARTIFACT_SCAN_MODE must be history or final-tree"
+  exit 1
+fi
 
 matcher_dir="$(mktemp -d)"
 trap 'rm -rf "$matcher_dir"' EXIT
@@ -58,17 +63,19 @@ while IFS= read -r -d '' changed_path; do
   if match="$(git -C "$matcher_dir" check-ignore --no-index -v -- "$changed_path" 2>/dev/null)"; then
     violations+=("$changed_path ($match)")
   fi
-done < <(
+done < <(if [[ "$scan_mode" == "final-tree" ]]; then
+  git ls-tree -r --name-only -z "$head_sha"
+else
   git log --format='%H' "$base_sha..$head_sha" |
     while IFS= read -r commit; do
       git diff-tree --root --no-commit-id --name-only -r -m -z "$commit"
     done
-)
+fi)
 
 if (( ${#violations[@]} > 0 )); then
-  echo "[tool-artifacts] ERROR: pushed commits contain ignored Kujo tool artifacts"
+  echo "[tool-artifacts] ERROR: $scan_mode scan found ignored Kujo tool artifacts"
   printf '[tool-artifacts] Artifact path: %s\n' "${violations[@]}"
   exit 1
 fi
 
-echo "[tool-artifacts] OK: all source rules are present and no pushed commit contains a listed artifact"
+echo "[tool-artifacts] OK: all source rules are present and the $scan_mode scan found no listed artifact"
