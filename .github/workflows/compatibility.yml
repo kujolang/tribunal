@@ -101,6 +101,8 @@ jobs:
           TRIBUNAL_HOME: ${{ github.workspace }}/tribunal
           KUJO_BIN: ${{ github.workspace }}/kujo/target/release/kujo
         run: |
+          command -v python3
+          command -v unzip
           for file in $(find . -name '*.kujo' -not -path './.git/*'); do "$KUJO_BIN" check "$file"; done
           "$KUJO_BIN" run tests/tribunal_tests.kujo --interpreter
           "$KUJO_BIN" run tests/cli_integration.kujo --interpreter

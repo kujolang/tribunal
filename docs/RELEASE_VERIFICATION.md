@@ -6,4 +6,4 @@
 4. Use `tribunal bundle-import` or `tribunal audit` with `--trust-policy`, the intended target, and `--require-signature`. The public key embedded beside release evidence is not itself a trust anchor.
 5. Reject mutable tags, mismatched digests, missing provenance/SBOM, untrusted signer status, unexpected files, or a release whose platform compatibility receipt does not cover the target.
 
-`scripts/release_archive.kujo` requires `SOURCE_DATE_EPOCH` and `TRIBUNAL_SOURCE_REVISION`, produces two independent ZIP builds, and fails unless their SHA-256 digests match.
+`scripts/release_archive.kujo` requires `SOURCE_DATE_EPOCH`, `TRIBUNAL_SOURCE_REVISION`, Python 3, and `unzip` for the packaged-launcher smoke gate. It produces two independent ZIP builds with normalized timestamps, paths, compression, and modes, and fails unless their SHA-256 digests match.

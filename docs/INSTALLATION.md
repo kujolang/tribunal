@@ -2,7 +2,7 @@
 
 ## Requirements
 
-Tribunal 1.0.0 requires Kujo 1.0.0. Release reproduction pins Kujo commit `9b77dce592047121cb71066629836ad89252f3ce`; use the runtime digest in the candidate platform or archive receipt. Put `kujo` on `PATH` or set `KUJO_BIN`/`KUJO` to the absolute executable path. Supported platforms are limited to the v1 receipts in [PLATFORM_SUPPORT.md](PLATFORM_SUPPORT.md).
+Tribunal 1.0.0 requires Kujo 1.0.0 and Bash for the packaged `bin/tribunal` launcher. Release reproduction pins Kujo commit `9b77dce592047121cb71066629836ad89252f3ce`; use the runtime digest in the candidate platform or archive receipt. Put `kujo` on `PATH` or set `KUJO_BIN`/`KUJO` to the absolute executable path. Rebuilding and smoke-testing the release ZIP also requires Python 3 and `unzip`. Supported platforms are limited to the v1 receipts in [PLATFORM_SUPPORT.md](PLATFORM_SUPPORT.md).
 
 ## Source checkout
 

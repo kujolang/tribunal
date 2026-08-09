@@ -1,4 +1,4 @@
-# Reproducible source archive, SBOM, and provenance generator using Kujo only.
+# Kujo-orchestrated reproducible source archive, SBOM, and provenance generator.
 from src.common import ensure_dir, read_json, relative_files, remove_tree, safe_relative_path, write_json, write_text
 from src.version import VERSION
 
@@ -27,10 +27,13 @@ mut sums := ""
 for name in relative_files(stage, "") { sums = sums + sha256_file(join_path(stage, name)) + "  " + name + "\n" }
 write_text(join_path(stage, "SHA256SUMS"), sums)
 archive_one := join_path(output, "tribunal-v" + VERSION + ".zip"); archive_two := join_path(output, "tribunal-v" + VERSION + ".rebuild.zip")
-first := zip_create(archive_one); if zip_add_dir(first, stage) != true || zip_close(first) != true { remove_tree(output); exit(1) }
-second := zip_create(archive_two); if zip_add_dir(second, stage) != true || zip_close(second) != true { remove_tree(output); exit(1) }
+python := env_or("PYTHON_BIN", "python3"); zipper := join_path(home, "scripts/deterministic_zip.py")
+zip_options := {"inherit_env": true, "timeout_ms": 120000, "max_output_bytes": 1048576}
+first := spawn_process([python, zipper, "--source", stage, "--output", archive_one, "--epoch", epoch], zip_options)
+second := spawn_process([python, zipper, "--source", stage, "--output", archive_two, "--epoch", epoch], zip_options)
+if first.success != true || second.success != true { remove_tree(output); print("Deterministic archive generation failed."); exit(1) }
 reproducible := sha256_file(archive_one) == sha256_file(archive_two)
-receipt := {"schemaVersion": "1.0.0", "version": VERSION, "sourceRevision": revision, "sourceDateEpoch": epoch, "archive": basename(archive_one), "archiveSha256": sha256_file(archive_one), "archiveBytes": file_size(archive_one), "rebuildSha256": sha256_file(archive_two), "reproducible": reproducible, "sbomSha256": sha256_file(join_path(stage, "SBOM.spdx.json")), "provenanceSha256": sha256_file(join_path(stage, "provenance.intoto.json")), "runtimeRevision": runtime_revision, "runtimeSha256": sha256_file(runtime), "files": len(files)}
+receipt := {"schemaVersion": "1.0.0", "version": VERSION, "sourceRevision": revision, "sourceDateEpoch": epoch, "archive": basename(archive_one), "archiveBuilder": "scripts/deterministic_zip.py", "archiveSha256": sha256_file(archive_one), "archiveBytes": file_size(archive_one), "rebuildSha256": sha256_file(archive_two), "reproducible": reproducible, "sbomSha256": sha256_file(join_path(stage, "SBOM.spdx.json")), "provenanceSha256": sha256_file(join_path(stage, "provenance.intoto.json")), "runtimeRevision": runtime_revision, "runtimeSha256": sha256_file(runtime), "files": len(files)}
 write_json(join_path(output, "release-archive-receipt.json"), receipt)
 print(to_json(receipt))
 if reproducible == false { exit(1) }

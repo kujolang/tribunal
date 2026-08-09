@@ -37,6 +37,8 @@ jobs:
       - name: Verify release inputs and tag safety
         run: |
           test -x "$KUJO_BIN"
+          command -v python3
+          command -v unzip
           test -f "$TRIBUNAL_SIGNING_PROVIDER_CONFIG"
           expected_tag="v$(tr -d '\r\n' < VERSION)"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
