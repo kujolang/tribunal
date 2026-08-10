@@ -9,7 +9,7 @@
 - Evidence follow-up: [#2](https://github.com/kujolang/tribunal/pull/2), documentation and release-owner record only; it does not change the candidate's application source
 - Local evidence root: `/Users/robertdevore/2026/Kujolang/kujo-repos/.tribunal-release-v1/1ceed30/`
 
-The verdict applies only to the documented stable local or operator-controlled engine. No tag, release, public asset, signature, live provider credential, independent-review completion, or deployment-specific certification was created or claimed.
+The application-source verdict applies only to the documented stable local or operator-controlled engine. The later reviewed release-policy merge makes signing optional without changing application logic. No signer-backed provenance, live provider credential, independent-review completion, or deployment-specific certification is claimed.
 
 ## Local command record
 
@@ -112,8 +112,8 @@ From ShipCheck at version 1.0.0:
 
 Version 1.0.0 remains consistent across product metadata, CLI, README, changelog, package manifests, installer and archive behavior, compatibility policy, and release notes. API, evidence, event, signature, encryption, bundle, and other schema versions remain independent.
 
-Inspection found no branch protection, ruleset, release environment, self-hosted runner, repository Actions secret, or repository Actions variable. Those facts and reserved human actions are in `external-blockers.json`; administrator-ready controls are in [release administration](RELEASE_ADMINISTRATION.md). The public integration matrix does not currently require `KUJO_ECOSYSTEM_TOKEN`, as run `31341698867` proved the scoped `github.token` fallback. Runner provisioning, `KUJO_BIN`, authorized provider configuration, real signing, repository governance, independent-review completion, tag creation, tag-workflow verification, and publication remain human-authorized actions.
+Branch protection, the human-reviewed `release` environment, self-hosted `kujo` runner, pinned integration worktrees, and `KUJO_BIN` were subsequently configured with release-owner approval. The public integration matrix does not currently require `KUJO_ECOSYSTEM_TOKEN`, as run `31341698867` proved the scoped `github.token` fallback. Release signing is optional; this local/operator-controlled release proceeds without signer-backed provenance. Independent-review completion remains outside the release claim, while tag creation, tag-workflow verification, and publication are release-owner actions.
 
 ## Verdict
 
-**READY FOR RELEASE-OWNER TAGGING** at candidate `1ceed3010c9c554fb9d44b8e38c91f9c998b80fb`, once the release owner completes the explicitly reserved administration, runner, signing, approval, tag, verification, and publication actions. No further application-source change is required.
+**READY FOR RELEASE-OWNER TAGGING** after the reviewed optional-signing policy merge lands on `main`. Application source remains candidate `1ceed3010c9c554fb9d44b8e38c91f9c998b80fb`; the tag source adds only release automation and documentation. The release owner must verify the tag workflow's reproducible archive and receipt before publication. No further application-source change is required.

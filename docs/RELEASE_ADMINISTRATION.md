@@ -1,6 +1,6 @@
 # Tribunal 1.0.0 release administration
 
-This is an administrator-ready plan, not a record of applied repository governance. Inspection on 2026-08-09 found no `main` branch protection, repository ruleset, Actions environment, repository Actions secret, repository Actions variable, or self-hosted runner. Applying these controls requires explicit approval under [AGENTS.md](../AGENTS.md).
+The release administration described here was applied with release-owner approval on 2026-08-09/10. `main` is protected, the `release` environment requires human review, and self-hosted runner `tribunal-robertdevore-mac` is online with the `kujo` label and pinned `KUJO_BIN` repository variable.
 
 ## Main protection
 
@@ -52,7 +52,7 @@ where `/tmp/tribunal-main-protection.json` contains:
 }
 ```
 
-The administrator must inspect the returned protection document and run a normal test PR before treating the policy as proven.
+The returned protection document was inspected. The optional-signing release-policy change is the normal protected PR used to prove the policy before tagging.
 
 ## Release environment
 
@@ -72,12 +72,12 @@ Verify with `gh api repos/kujolang/tribunal/environments/release` and an intenti
 
 ## Runner and credentials
 
-The tag-triggered release workflow requires a self-hosted runner with labels `self-hosted` and `kujo`, plus a `KUJO_BIN` repository variable or runner environment value that resolves to the pinned Kujo 1.0.0 binary. No such runner or variable existed at inspection time.
+The tag-triggered release workflow uses self-hosted runner `tribunal-robertdevore-mac` with labels `self-hosted` and `kujo`. `KUJO_BIN` resolves to the pinned Kujo 1.0.0 binary, and the workflow's adjacent integration worktrees are provisioned at the exact matrix revisions.
 
 `KUJO_ECOSYSTEM_TOKEN` is optional while every pinned integration repository remains public and readable by the scoped `github.token`. Exact-candidate hosted run `31341698867` proved that fallback. Configure the secret only if a pinned repository becomes inaccessible to the workflow token, and grant read-only access to the minimum repository set.
 
-`TRIBUNAL_SIGNING_PROVIDER_CONFIG` remains required for the approved release-signing provider. No value was inspected, created, or used during preparation. The release owner must provision it under separate credential and signing authority, then verify the provider-specific public-key identity before publishing.
+`TRIBUNAL_SIGNING_PROVIDER_CONFIG` is optional. When it names an approved provider config, the workflow creates and publishes signed evidence. When absent, the workflow still runs every release gate and publishes the reproducible archive, checksums, SBOM, provenance, smoke evidence, and archive receipt. An unsigned release must not claim signer-backed provenance.
 
 ## Reserved release-owner sequence
 
-After the controls above are approved and verified, the release owner must confirm candidate `1ceed3010c9c554fb9d44b8e38c91f9c998b80fb`, create `v1.0.0`, approve the `release` environment deployment, inspect all tag-workflow artifacts and signatures, and only then publish. This preparation does not authorize or perform those actions.
+Application source remains candidate `1ceed3010c9c554fb9d44b8e38c91f9c998b80fb`. The reviewed optional-signing policy merge on `main` becomes the `v1.0.0` tag source without changing application logic. The release owner must inspect the tag-workflow archive and receipt, approve the `release` deployment, and only then publish; signatures are inspected only when signed evidence is present.

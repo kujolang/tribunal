@@ -25,7 +25,7 @@ Trust boundaries exist at CLI input, config/policy files, docket/context/model o
 | Telemetry mutation | external-only redacted projection | collector compromise or retention failure |
 | Store replay/race | validated bounded metadata, expected-version conditional finalization, immutable objects, HTTPS outside loopback | incorrect HTTP adapter semantics |
 | UI injection | HTML escaping, no scripts, restrictive CSP | unsafe third-party hosting transformations |
-| Supply-chain release | full gates and externally signed CI evidence | runner/action/adaptor compromise |
+| Supply-chain release | full gates, reproducible archive, checksums, SBOM, provenance, receipts, and optional externally signed CI evidence | release-channel compromise; unsigned releases rely on GitHub repository governance and independently checked archive digests |
 | Package/runtime substitution | pinned Kennel/runtime revisions, reproducible archive, SBOM, provenance, platform receipts | trust-policy and release-channel compromise |
 
 ## Security invariants

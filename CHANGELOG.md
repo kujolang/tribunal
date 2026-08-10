@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-No unreleased changes.
+- Made release-evidence signing optional while retaining mandatory full gates, reproducible archive creation, checksums, SBOM, provenance, smoke verification, and release receipts.
 
 ## 1.0.0 - 2026-08-08
 
