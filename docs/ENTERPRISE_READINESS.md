@@ -45,6 +45,6 @@ A releasable commit must pass:
 - the complete Eval release suite;
 - local, scale, index, load/chaos, adversarial, accessibility, integration, gallery, and platform gates;
 - `tribunal doctor --json` with zero failures;
-- signed release evidence plus reproducible archive/SBOM/provenance creation.
+- reproducible archive/SBOM/provenance creation, with signed release evidence when an approved signing provider is configured.
 
 See [release verification](RELEASE_VERIFICATION.md), [platform support](PLATFORM_SUPPORT.md), and the [release checklist](launch-checklist.md).

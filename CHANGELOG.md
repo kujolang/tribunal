@@ -10,6 +10,7 @@ Tribunal 1.0.0 defines the stable product as a local or operator-controlled deci
 
 ### Stable features and contracts
 
+- Made release-evidence signing optional while retaining mandatory full gates, reproducible archive creation, checksums, SBOM, provenance, smoke verification, and release receipts.
 - Declared the documented CLI commands, exit meanings, Kujo library API 1.x, configuration contract, evidence records, signed bundle import/export, and inspection of supported legacy signature envelopes as the v1 compatibility surface.
 - Enabled bounded, isolated async blind-seat execution with stable persistence order, provider limits, cancellation hooks, and per-process SDK working directories.
 - Added runtime-backed same-device boundaries plus atomic, handle-verified 0600 private-key creation while retaining managed signing guidance.

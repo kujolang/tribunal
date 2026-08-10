@@ -7,7 +7,7 @@ The release owner must use the exact candidate revision, Kujo runtime revision, 
 ## Candidate identity
 
 - Product version: `1.0.0`
-- Candidate commit: `1ceed3010c9c554fb9d44b8e38c91f9c998b80fb`, the reviewed and merged application-source candidate from [PR #1](https://github.com/kujolang/tribunal/pull/1).
+- Application-source candidate: `1ceed3010c9c554fb9d44b8e38c91f9c998b80fb`, reviewed and merged in [PR #1](https://github.com/kujolang/tribunal/pull/1). The `v1.0.0` tag points to the later reviewed release-policy merge on `main`, which changes release automation and documentation but not application logic.
 - Kujo runtime: `1.0.0` at `9b77dce592047121cb71066629836ad89252f3ce`
 - Local macOS x86_64 runtime SHA-256: `a8175b084398a1623cf24cabb6aafb05f316cd6b15eb5e2015089501dd9d8215`; architecture-specific CI digests are in the platform receipts.
 - API version: `1.0.0` (independent contract)
@@ -29,11 +29,11 @@ The follow-up record must name every command and result, archive checksum, Workc
 
 ## External infrastructure requirements
 
-- [ ] The self-hosted GitHub Actions runner labelled `self-hosted, kujo` exists and exposes the pinned Kujo binary through `KUJO_BIN`.
+- [x] The self-hosted GitHub Actions runner labelled `self-hosted, kujo` exists and exposes the pinned Kujo binary through `KUJO_BIN`.
 - [x] Every current pinned integration repository and exact revision is public and readable by the workflow's scoped `github.token`; `KUJO_ECOSYSTEM_TOKEN` is therefore optional for the present matrix. Run `31341698867` proved the fallback and any inaccessible future pin still fails closed.
-- [ ] The configured signing provider and `TRIBUNAL_SIGNING_PROVIDER_CONFIG` are available to the release workflow.
+- [x] Release signing is optional: a configured `TRIBUNAL_SIGNING_PROVIDER_CONFIG` adds signed evidence, while an absent provider preserves the required reproducible package, checksums, SBOM, provenance, smoke verification, and receipt.
 - [x] GitHub Actions run `31341698867` from the final `main` candidate completes the measured platform matrix and retains the three immutable receipt artifacts named in [measured platform support](PLATFORM_SUPPORT.md).
-- [ ] Repository rulesets and branch protection are reviewed by a repository administrator; this preparation does not change them.
+- [x] `main` branch protection and the human-reviewed `release` environment are configured and verified by a repository administrator.
 
 Missing external infrastructure must have a blocker receipt. A substitute local run may narrow risk, but it is not the unavailable certification.
 
@@ -59,11 +59,11 @@ Until this is complete, Tribunal may be released only with the documented local/
 ## Reserved for the release owner
 
 - [ ] Confirm the candidate commit is the intended immutable release source.
-- [ ] Create the signed release-evidence bundle with the approved signing provider.
+- [x] Decide the signing posture: this local/operator-controlled release proceeds without optional signed evidence and makes no signer-backed provenance claim.
 - [ ] Create and push the `v1.0.0` tag.
 - [ ] Run the tag-triggered release workflow and validate uploaded artifacts.
 - [ ] Publish the package or public GitHub release only after verification.
-- [ ] Perform any required signing, notarization, or live-provider action under separately approved authority.
+- [x] No signing, notarization, or live-provider action is required for the documented local/operator-controlled release profile.
 
 No release-preparation task may create the tag, sign, notarize, publish, or use live provider credentials.
 

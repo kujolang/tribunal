@@ -39,7 +39,9 @@ jobs:
           test -x "$KUJO_BIN"
           command -v python3
           command -v unzip
-          test -f "$TRIBUNAL_SIGNING_PROVIDER_CONFIG"
+          if [[ -n "$TRIBUNAL_SIGNING_PROVIDER_CONFIG" ]]; then
+            test -f "$TRIBUNAL_SIGNING_PROVIDER_CONFIG"
+          fi
           expected_tag="v$(tr -d '\r\n' < VERSION)"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             test "$GITHUB_REF_NAME" = "$expected_tag"
@@ -77,6 +79,7 @@ jobs:
           git diff --check
 
       - name: Create signed release evidence bundle
+        if: ${{ env.TRIBUNAL_SIGNING_PROVIDER_CONFIG != '' }}
         env:
           TRIBUNAL_RELEASE_OUTPUT: ${{ runner.temp }}/tribunal-release-evidence-${{ github.run_id }}
           TRIBUNAL_SOURCE_REVISION: ${{ github.sha }}
@@ -98,6 +101,7 @@ jobs:
           test -f "$TRIBUNAL_RELEASE_ARCHIVE_OUTPUT/release-archive-receipt.json"
 
       - name: Upload immutable signed evidence
+        if: ${{ env.TRIBUNAL_SIGNING_PROVIDER_CONFIG != '' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: tribunal-v${{ github.run_id }}-signed-evidence
@@ -140,4 +144,12 @@ jobs:
           test "$RELEASE_TAG" = "$expected_tag"
           test "$(git rev-parse "$RELEASE_TAG^{commit}")" = "$GITHUB_SHA"
           gh release view "$RELEASE_TAG" >/dev/null 2>&1 || gh release create "$RELEASE_TAG" --verify-tag --title "Tribunal $RELEASE_TAG" --generate-notes
-          gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/tribunal-release/tribunal-$RELEASE_TAG-signed-evidence.zip" "$RUNNER_TEMP/tribunal-release/tribunal-$RELEASE_TAG.zip" "$RUNNER_TEMP/tribunal-release/release-archive-receipt.json" --clobber
+          assets=(
+            "$RUNNER_TEMP/tribunal-release/tribunal-$RELEASE_TAG.zip"
+            "$RUNNER_TEMP/tribunal-release/release-archive-receipt.json"
+          )
+          signed_evidence="$RUNNER_TEMP/tribunal-release/tribunal-$RELEASE_TAG-signed-evidence.zip"
+          if [[ -f "$signed_evidence" ]]; then
+            assets+=("$signed_evidence")
+          fi
+          gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
