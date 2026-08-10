@@ -27,7 +27,7 @@ func check(condition, name) {
 
 async func bounded_runtime_worker(job) {
     marker := join_path(job["activeRoot"], to_string(job["id"]) + ".active")
-    write_file_atomic(marker, "active")
+    write_file(marker, "active")
     deadline := current_timestamp() + 1000
     while len(list_dir(job["activeRoot"])) < job["expectedConcurrency"] && current_timestamp() < deadline { await async_sleep(10) }
     active := len(list_dir(job["activeRoot"]))
