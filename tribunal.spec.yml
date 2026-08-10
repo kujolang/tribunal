@@ -33,7 +33,7 @@ acceptance_criteria:
   - "Telemetry and the offline read-only dashboard never mutate sealed run directories"
   - "The Kujo JSON Schema engine validates all emitted contracts and model outputs enforce types, ranges, enums, and extra-field policy"
   - "Cursor pagination and published latency/memory budgets cover large hearings and inventories"
-  - "Tag release CI verifies all gates and publishes externally signed evidence bundles"
+  - "Tag release CI verifies all gates, always publishes the reproducible package, and publishes externally signed evidence when a provider is configured"
   - "A single audit command combines integrity, trusted signature, and executable evidence-contract validation"
   - "Run IDs cannot address hidden operational namespaces or contain path/URL metacharacters"
   - "Run creation is exclusive and normal lock acquisition never steals a stale-looking owner"

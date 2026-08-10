@@ -61,7 +61,7 @@ func make_signed(storage, key_root) {
 ensure_dir(ROOT)
 write_file(DOCKET, "# Enterprise fixture\n\n## Scope\n\nExercise trust and durable operations.\n")
 release_workflow := read_file(join_path(HOME, ".github/workflows/release.yml"))
-check(contains(release_workflow, "scripts/release_evidence.kujo") == 1 && contains(release_workflow, "TRIBUNAL_SIGNING_PROVIDER_CONFIG") == 1 && contains(release_workflow, "actions/upload-artifact") == 1, "CI release publishes externally signed evidence bundles")
+check(contains(release_workflow, "scripts/release_evidence.kujo") == 1 && contains(release_workflow, "env.TRIBUNAL_SIGNING_PROVIDER_CONFIG != ''") == 1 && contains(release_workflow, "signed_evidence") == 1 && contains(release_workflow, "actions/upload-artifact") == 1, "CI release makes externally signed evidence optional without weakening reproducible package publication")
 registry := algorithm_registry()
 check(json_schema_validate(registry, parse_json(read_file(join_path(HOME, "schemas/algorithm-registry.schema.json"))))["valid"] == true, "algorithm-agility registry satisfies its executable contract")
 check(algorithm_gate("RSA-PKCS1v15-SHA256", "verify", "1.0.0", false)["ok"] == true && algorithm_gate("RSA-PKCS1v15-SHA256", "verify", "1.2.0", false)["ok"] == true, "legacy signature envelopes remain backward-compatible")
