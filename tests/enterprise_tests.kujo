@@ -7,7 +7,7 @@ from src.integrity import begin_seal_transaction, generate_keys, recover_seal_tr
 from src.signing_provider import load_signing_provider, seal_with_provider
 from src.policy import authorize, load_access_policy, load_trust_policy, trusted_key
 from src.locking import acquire_lock, release_lock, recover_stale_locks
-from src.governance import delete_run, set_legal_hold
+from src.governance import delete_run, deletion_eligibility, set_legal_hold
 from src.telemetry import export_telemetry, telemetry_payload_page
 from src.contracts import validate_run_contracts
 from src.bundles import export_bundle, export_encrypted_bundle, import_bundle, import_encrypted_bundle, rotate_encrypted_bundle_key, verify_encrypted_bundle_integrity
@@ -88,6 +88,10 @@ next_anchor := join_path(ROOT, "access-policy.anchor.2.json")
 signed_next := sign_provenance(rollback_document, "access-policy", 2, rollback_provenance, provenance_key["privateKey"], provenance_key["publicKey"], next_provenance, next_anchor)
 check(signed_next["ok"] == true && verify_provenance(rollback_document, rollback_provenance, provenance_key["publicKey"], next_anchor)["ok"] == false, "external anchor rejects a signed policy rollback")
 check(sign_provenance(rollback_document, "access-policy", 3, next_provenance, provenance_key["privateKey"], provenance_key["publicKey"], "", join_path(ROOT, "missing-output.anchor.json"))["ok"] == false, "provenance signing rejects missing output paths without partial writes")
+tampered_prior := join_path(ROOT, "tampered-prior.json"); tampered_prior_value := parse_json(read_file(next_provenance)); tampered_prior_value["signature"] := repeat("a", 64); write_json(tampered_prior, tampered_prior_value)
+check(sign_provenance(rollback_document, "access-policy", 3, tampered_prior, provenance_key["privateKey"], provenance_key["publicKey"], join_path(ROOT, "tampered-next.json"), join_path(ROOT, "tampered-next.anchor.json"))["ok"] == false, "provenance chains reject an unverified prior signature")
+colliding_output := join_path(ROOT, "colliding-provenance.json")
+check(sign_provenance(rollback_document, "access-policy", 1, "", provenance_key["privateKey"], provenance_key["publicKey"], colliding_output, colliding_output)["ok"] == false && file_exists(colliding_output) == false, "provenance output and anchor paths must be distinct and leave no partial file")
 
 vault_config_path := join_path(ROOT, "vault-signing-provider.json")
 write_json(vault_config_path, {"schemaVersion": "1.0.0", "provider": "vault-transit", "protocol": "vault-transit-jwt-v1", "command": join_path(HOME, "src/bridges/vault_transit_signing_adapter.kujo"), "keyReference": "tribunal-signing", "kujoBin": KUJO_BIN, "timeoutMs": 60000, "endpoint": "https://vault.example.test", "jwtRole": "tribunal", "jwtAuthPath": "jwt", "transitPath": "transit", "namespace": "", "audience": "tribunal", "maxAttempts": 2, "baseDelayMs": 10})
@@ -164,6 +168,8 @@ if signed["ok"] == true {
     trust_path := join_path(ROOT, "trust.json"); write_json(trust_path, trust)
     loaded_trust := load_trust_policy(trust_path)
     check(loaded_trust["ok"] == true, "trust policy loader validates lifecycle and key fingerprint inputs")
+    invalid_rotation := trust; invalid_rotation_keys := invalid_rotation["keys"]; invalid_rotation_key := invalid_rotation_keys[0]; invalid_rotation_key["status"] := "rotating"; invalid_rotation_key["rotatesTo"] := "11111111111111111111111111111111"; invalid_rotation_keys[0] := invalid_rotation_key; invalid_rotation["keys"] := invalid_rotation_keys; invalid_rotation_path := join_path(ROOT, "invalid-rotation-trust.json"); write_json(invalid_rotation_path, invalid_rotation)
+    check(load_trust_policy(invalid_rotation_path)["ok"] == false, "trust policy rejects a rotating key whose successor is absent")
     check(trusted_key(trust, signed["keyId"], "verify", current_timestamp())["ok"] == true, "active trusted key and target are accepted")
     check(trusted_key(trust, signed["keyId"], "runledger", current_timestamp())["ok"] == false, "trusted key target restriction is enforced")
     rotating := trust; rotating_keys := rotating["keys"]; rotating_key := rotating_keys[0]; rotating_key["status"] := "rotating"; rotating_key["rotatesTo"] := "11111111111111111111111111111111"; rotating_keys[0] := rotating_key; rotating["keys"] := rotating_keys
@@ -181,6 +187,8 @@ if signed["ok"] == true {
     check(telemetry["ok"] == true && telemetry["events"] > 0 && file_exists(telemetry_path), "structured metrics and audit events export externally")
     check(export_telemetry(storage, "http", "http://collector.example.test/events")["ok"] == false, "telemetry CLI overrides cannot downgrade remote transport security")
     check(file_exists(join_path(join_path(storage, run_id), "telemetry.jsonl")) == false, "telemetry export does not mutate sealed runs")
+    telemetry_symlink_target := join_path(ROOT, "telemetry-symlink-target.jsonl"); write_file(telemetry_symlink_target, ""); telemetry_symlink := join_path(ROOT, "telemetry-symlink.jsonl"); spawn_process(["ln", "-s", telemetry_symlink_target, telemetry_symlink], {"inherit_env": false, "timeout_ms": 10000, "max_output_bytes": 1048576})
+    check(export_telemetry(storage, "jsonl", telemetry_symlink)["ok"] == false, "telemetry export rejects a symbolic-link destination")
     dashboard_path := join_path(ROOT, "dashboard/index.html")
     dashboard := export_dashboard(storage, dashboard_path)
     check(dashboard["ok"] == true && contains(read_file(dashboard_path), "Content-Security-Policy") == 1, "offline read-only dashboard exports with restrictive CSP")
@@ -203,6 +211,9 @@ if signed["ok"] == true {
     check(recipient["ok"] == true && recovery["ok"] == true && successor["ok"] == true && encrypted["ok"] == true && len(encrypted["envelope"]["wrappedKeys"]) == 2, "portable evidence bundle uses AES-256-GCM envelope encryption with a recovery recipient")
     check(export_encrypted_bundle(storage, run_id, join_path(join_path(storage, run_id), "encrypted-bundle"), recipient["publicKey"], "")["ok"] == false, "encrypted bundle export refuses to write inside run storage")
     check(independent["ok"] == true && independent["signature"] == "verified" && independent["confidentiality"] == "not-required-for-integrity-check", "encrypted bundle integrity verifies without a decryption key")
+    envelope_binding_path := join_path(encrypted_path, "envelope.json"); envelope_binding_original := read_file(envelope_binding_path); envelope_binding := parse_json(envelope_binding_original); binding_entries := envelope_binding["artifacts"]; binding_index := 0; while binding_index < len(binding_entries) && (binding_entries[binding_index]["path"] == "artifact-manifest.json" || binding_entries[binding_index]["path"] == "signature.json") { binding_index = binding_index + 1 }; binding_entry := binding_entries[binding_index]; binding_entry["plaintextSha256"] := repeat("0", 64); binding_entries[binding_index] := binding_entry; envelope_binding["artifacts"] := binding_entries; write_json(envelope_binding_path, envelope_binding)
+    check(verify_encrypted_bundle_integrity(encrypted_path, signed["publicKey"])["ok"] == false, "encrypted bundle plaintext inventory is bound to the signed artifact manifest")
+    write_file(envelope_binding_path, envelope_binding_original, true)
     encrypted_import_storage := join_path(ROOT, "encrypted-import-runs")
     encrypted_import := import_encrypted_bundle(encrypted_path, encrypted_import_storage, trust, "bundle-import", recipient["privateKey"])
     check(encrypted_import["ok"] == true && encrypted_import["verification"]["signature"] == "verified", "primary envelope key decrypts and imports authenticated evidence")
@@ -284,6 +295,9 @@ if governed["ok"] == true {
     check(applied_hold["ok"] == true && delete_run(governance_storage, governed["runId"], "local-operator", "blocked by external hold", true)["ok"] == false, "post-seal external legal hold blocks deletion")
     released_hold := set_legal_hold(governance_storage, governed["runId"], "legal-officer", false, "matter closed")
     check(released_hold["ok"] == true && len(released_hold["governance"]["history"]) == 2, "legal-hold release preserves append-only governance history")
+    governance_path := join_path(join_path(governance_storage, ".governance"), governed["runId"] + ".json"); governance_original := read_file(governance_path); write_json(governance_path, {"legalHold": false})
+    check(deletion_eligibility(governance_storage, governed["runId"], true)["ok"] == false, "deletion fails closed on a malformed external governance record")
+    write_file(governance_path, governance_original, true)
     deleted := delete_run(governance_storage, governed["runId"], "local-operator", "approved test expiry", true)
     tombstone_path := join_path(join_path(governance_storage, ".deletions"), governed["runId"] + ".json")
     check(deleted["ok"] == true && file_exists(tombstone_path) && parse_json(read_file(tombstone_path))["status"] == "deleted", "policy deletion precommits and finalizes an external tombstone")

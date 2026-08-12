@@ -127,6 +127,10 @@ func test_catalog_and_config() {
     check(create_run(exclusive_storage, "exclusive-run") != "" && create_run(exclusive_storage, "exclusive-run") == "", "run creation is atomic and refuses an existing run directory")
     boundary_file := join_path(ROOT, "boundary.txt"); write_file(boundary_file, "bounded")
     check(inspect_path_boundary(ROOT, boundary_file, false)["ok"] == true, "canonical filesystem boundary accepts an in-root regular file")
+    symlink_root := join_path(ROOT, "boundary-link")
+    spawn_process(["ln", "-s", ROOT, symlink_root], {"inherit_env": false, "timeout_ms": 10000, "max_output_bytes": 1048576})
+    check(inspect_path_boundary(symlink_root, boundary_file, false)["ok"] == false, "canonical filesystem boundary rejects a symbolic-link root")
+    spawn_process(["unlink", symlink_root], {"inherit_env": false, "timeout_ms": 10000, "max_output_bytes": 1048576})
     same_mount := inspect_path_boundary(ROOT, boundary_file, true)
     check(same_mount["ok"] == true && starts_with(same_mount["mountPolicy"], "same-device:"), "mount-boundary enforcement verifies runtime device IDs")
     check(safe_relative_path("unicode-é.md") == false && safe_relative_path("Case/File.md") == true, "Unicode normalization is rejected and case is preserved explicitly")
@@ -345,6 +349,10 @@ func test_stop_the_line() {
         check(file_exists(artifact_path(storage, result["runId"], "receipt.json")), "stopped run writes receipt")
         check(verify(storage, result["runId"], "")["ok"] == true, "stopped run is integrity-verifiable")
     }
+    mismatch_a := generate_keys(join_path(ROOT, "stop-private-a.pem"), join_path(ROOT, "stop-public-a.pem"), 2048)
+    mismatch_b := generate_keys(join_path(ROOT, "stop-private-b.pem"), join_path(ROOT, "stop-public-b.pem"), 2048)
+    seal_failure := review(base_config(join_path(ROOT, "stop-seal-failure-runs")), join_path(ROOT, "still-missing.md"), "executioner-only", mismatch_a["privateKey"], mismatch_b["publicKey"])
+    check(mismatch_a["ok"] == true && mismatch_b["ok"] == true && dict_get(seal_failure, "sealingFailed", false) == true && contains(seal_failure["error"], "sealing failed") == 1, "stopped hearing reports a sealing failure instead of claiming durable sealed evidence")
     secret_docket := join_path(ROOT, "secret.md")
     write_file(secret_docket, "# Unsafe\n\n## Scope\n\napi_key=super-secret-value\n")
     secret := review(base_config(storage), secret_docket, "executioner-only", "", "")
@@ -385,6 +393,11 @@ func test_packwrite_and_sdk_bridge() {
     request_two := {"runId": "sdk-parallel", "stageId": "blind-first-pass", "seatId": "builder", "modelPreference": SEATS["builder"]["defaultModelPreference"], "systemPrompt": "Return structured output.", "input": "SDK parallel two", "outputSchema": {"type": "object"}, "timeoutMs": 60000}
     parallel_responses := await parallel_map([{"config": sdk_config, "request": request_one}, {"config": sdk_config, "request": request_two}], sdk_parallel_worker, 2)
     check(parallel_responses[0]["ok"] == true && parallel_responses[1]["ok"] == true, "live SDK offline fixtures pass bounded parallel execution with per-process cwd isolation")
+}
+
+func test_blind_cancellation_wiring() {
+    source := read_file(join_path(HOME, "src/tribunal.kujo"))
+    check(contains(source, "invoke_checked(job[\"config\"], job[\"runId\"], \"blind-first-pass\", job[\"seat\"], job[\"input\"], job[\"seat\"][\"requiredOutputSchema\"], job[\"cancelFile\"])") == 1, "blind workers forward the shared cancellation file to live provider subprocesses")
 }
 
 func test_limits_and_analytics() {
@@ -447,6 +460,7 @@ test_packet_template_and_policy()
 test_signing_and_tamper()
 test_stop_the_line()
 test_packwrite_and_sdk_bridge()
+test_blind_cancellation_wiring()
 test_limits_and_analytics()
 test_parallel_runtime_contract()
 remove_tree(ROOT)
