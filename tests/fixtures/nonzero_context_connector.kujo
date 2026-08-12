@@ -1,0 +1,6 @@
+request_path := env_or("TRIBUNAL_CONNECTOR_REQUEST", "")
+request := parse_json(read_file(request_path))
+docket := request["docket"]
+content := "Untrusted connector output for " + docket["title"]
+print(to_json({"ok": true, "content": content, "sources": [{"uri": "fixture:nonzero", "sha256": sha256(content)}]}))
+exit(1)

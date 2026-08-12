@@ -5,6 +5,7 @@ cases := [
     ["slow", {"elapsedMs": 1001, "headers": {}, "body": "{}"}, "slow-response"],
     ["truncated", {"elapsedMs": 1, "headers": {}, "body": "{\"ok\":"}, "truncated-json"],
     ["bomb", {"elapsedMs": 1, "headers": {"Content-Encoding": "gzip"}, "body": "{}"}, "decompression-bomb"],
+    ["lowercase-bomb", {"elapsedMs": 1, "headers": {"content-encoding": "gzip"}, "body": "{}"}, "decompression-bomb"],
     ["headers", {"elapsedMs": 1, "headers": {"X": repeat("h", 2048)}, "body": "{}"}, "oversized-headers"]
 ]
 mut failures := []

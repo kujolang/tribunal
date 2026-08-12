@@ -265,6 +265,12 @@ func test_context_plugin_contract() {
         for event in events { if event["eventType"] == "context_pack_created" && len(event["metadata"]["sources"]) == 1 && starts_with(event["metadata"]["sources"][0]["uri"], "docket-sha256:") { provenance_ok = true } }
         check(contains(content, "Source digest:") == 1 && provenance_ok && contains_secret(content) == false, "connector output carries source provenance and remains redacted")
     }
+    failing_manifest_path := join_path(ROOT, "failing-connector.json")
+    write_file(failing_manifest_path, to_json_pretty({"schemaVersion": "1.0.0", "id": "nonzero-evidence", "adapterPath": join_path(HOME, "tests/fixtures/nonzero_context_connector.kujo"), "allowedRoots": [ROOT], "timeoutMs": 10000, "maxOutputBytes": 65536}) + "\n")
+    failing_provenance := join_path(ROOT, "failing-connector.provenance.json"); failing_anchor := join_path(ROOT, "failing-connector.anchor.json")
+    check(sign_provenance(failing_manifest_path, "connector-catalog", 1, "", private_key, public_key, failing_provenance, failing_anchor)["ok"] == true, "failing context connector manifest is signed and externally anchored")
+    failing_config := base_config(join_path(ROOT, "failing-connector-runs")); failing_context := failing_config["context"]; failing_context["provider"] := "plugin"; failing_context["plugin_manifest_path"] := failing_manifest_path; failing_context["plugin_provenance_path"] := failing_provenance; failing_context["plugin_public_key_path"] := public_key; failing_context["plugin_anchor_path"] := failing_anchor; failing_config["context"] := failing_context
+    check(review(failing_config, DOCKET, "executioner-only", "", "")["ok"] == false, "context connector subprocess failure cannot be accepted as evidence")
 }
 
 func test_packet_template_and_policy() {

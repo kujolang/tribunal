@@ -1,0 +1,10 @@
+from src.integrity import signature_payload_for
+
+request := parse_json(env_or("TRIBUNAL_SIGNING_REQUEST", "{}"))
+key_root := request["keyReference"]
+public_key := read_file(join_path(key_root, "public.pem"))
+key_id := substring(sha256(public_key), 0, 32)
+payload := signature_payload_for("1.2.0", request["runId"], request["manifestSha256"], key_id, request["signedAt"])
+signature := rsa_sign(to_json(payload), read_file(join_path(key_root, "private.pem")))
+print(to_json({"ok": true, "algorithm": "RSA-PKCS1v15-SHA256", "keyId": key_id, "publicKey": public_key, "signature": signature, "attempts": 1}))
+exit(1)
