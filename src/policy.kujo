@@ -100,6 +100,12 @@ export func load_trust_policy(path) {
         if starts_with(public_path, "/") == false { entry["publicKeyPath"] := join_path(parent_dir(loaded["path"]), public_path) }
         normalized = push(normalized, entry)
     }
+    for entry in normalized {
+        if entry["status"] == "rotating" {
+            successor := dict_get(entry, "rotatesTo", "")
+            if successor == entry["keyId"] || has_key(seen, successor) == 0 { return {"ok": false, "error": "Rotating key must reference a distinct successor in the same trust policy: " + entry["keyId"]} }
+        }
+    }
     policy["keys"] := normalized
     loaded["policy"] := policy
     return loaded

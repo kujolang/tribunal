@@ -107,9 +107,10 @@ func system_prompt(seat_value, stage) {
     return "You are the " + seat_value["name"] + " seat in Tribunal. Authority: " + seat_value["authority"] + " Stay within the explicit " + stage + " contract. Return only valid JSON matching the requested schema."
 }
 
-func invoke_checked(config, run_id, stage, seat_value, input, output_schema) {
+func invoke_checked(config, run_id, stage, seat_value, input, output_schema, cancel_file) {
     system := system_prompt(seat_value, stage)
     request := {"runId": run_id, "stageId": stage, "seatId": seat_value["id"], "idempotencyKey": sha256(stage + ":" + seat_value["id"] + ":" + input + ":" + to_json(output_schema)), "modelPreference": seat_value["defaultModelPreference"], "systemPrompt": system, "input": input, "outputSchema": output_schema, "timeoutMs": config["limits"]["model_timeout_ms"]}
+    if cancel_file != "" { request["cancelFile"] := cancel_file }
     response := invoke(config, request)
     if dict_get(response, "ok", false) != true {
         error := dict_get(response, "error", {"code": "model_error", "message": "Model invocation failed."})
@@ -154,11 +155,11 @@ func call_model(config, storage_dir, state, stage, seat_value, input, output_sch
     system := system_prompt(seat_value, stage)
     save_text(storage_dir, run_id, "prompts/" + stage + "-" + seat_value["id"] + ".md", "# System\n\n" + system + "\n\n# Input\n\n" + input + "\n")
     emit(storage_dir, run_id, stage, "model_invocation_requested", "Model invocation requested through Kujo AI SDK boundary.", seat_value["id"], {"preference": seat_value["defaultModelPreference"]})
-    return persist_model_result(storage_dir, run_id, stage, seat_value, invoke_checked(config, run_id, stage, seat_value, input, output_schema))
+    return persist_model_result(storage_dir, run_id, stage, seat_value, invoke_checked(config, run_id, stage, seat_value, input, output_schema, ""))
 }
 
 async func invoke_blind_job(job) {
-    result := invoke_checked(job["config"], job["runId"], "blind-first-pass", job["seat"], job["input"], job["seat"]["requiredOutputSchema"])
+    result := invoke_checked(job["config"], job["runId"], "blind-first-pass", job["seat"], job["input"], job["seat"]["requiredOutputSchema"], job["cancelFile"])
     if result["ok"] != true {
         write_file_atomic(job["cancelFile"], "cancel")
         return error(to_json(result))
@@ -288,8 +289,9 @@ func stop_run(config, state, reason, private_key, public_key) {
     manifest["status"] := "stopped"
     manifest["completedAt"] := completed_at
     save_json(storage_dir, run_id, "manifest.json", manifest)
-    seal(storage_dir, run_id, private_key, public_key)
+    sealed := seal(storage_dir, run_id, private_key, public_key)
     release_lock(storage_dir, run_id, state["lockToken"])
+    if sealed["ok"] != true { return {"ok": false, "runId": run_id, "runDir": state["runDir"], "error": reason + " Stopped run sealing failed: " + sealed["error"], "record": record, "sealingFailed": true} }
     return {"ok": false, "runId": run_id, "runDir": state["runDir"], "error": reason, "record": record}
 }
 

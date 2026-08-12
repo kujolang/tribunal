@@ -11,6 +11,33 @@ func dict_get_or(obj, key, fallback) {
 	return fallback
 }
 
+func fixture_value(schema) {
+	if type(schema) != "dict" { return null }
+	enum_values := dict_get_or(schema, "enum", [])
+	if type(enum_values) == "array" && len(enum_values) > 0 { return enum_values[0] }
+	value_type := dict_get_or(schema, "type", "")
+	if value_type == "string" { return "fixture" }
+	if value_type == "integer" { return dict_get_or(schema, "minimum", 0) }
+	if value_type == "number" { return dict_get_or(schema, "minimum", 0) }
+	if value_type == "boolean" { return false }
+	if value_type == "array" {
+		mut values := []
+		mut i := 0
+		minimum := dict_get_or(schema, "minItems", 0)
+		while i < minimum { values = push(values, fixture_value(dict_get_or(schema, "items", {}))); i = i + 1 }
+		return values
+	}
+	if value_type == "object" || type(dict_get_or(schema, "properties", null)) == "dict" {
+		mut value := {}
+		properties := dict_get_or(schema, "properties", {})
+		for name in dict_get_or(schema, "required", []) {
+			if has_key(properties, name) { value[name] := fixture_value(properties[name]) }
+		}
+		return value
+	}
+	return null
+}
+
 payload_text := trim(to_string(env("KUJO_TRIBUNAL_PAYLOAD")))
 if payload_text == "" {
 	print(to_json({"ok": false, "error": {"code": "invalid_request", "message": "Missing KUJO_TRIBUNAL_PAYLOAD", "retryable": false}}))
@@ -62,10 +89,23 @@ output_schema := dict_get_or(payload, "outputSchema", null)
 if type(output_schema) == "dict" {
 	options["structured_output_schema"] = output_schema
 }
-if dict_get_or(payload, "offlineFixture", false) {
-	options["offline_fixture"] = true
+offline_fixture := dict_get_or(payload, "offlineFixture", false)
+if offline_fixture {
+	fixture_output := to_json(fixture_value(dict_get_or(payload, "outputSchema", {"type": "object"})))
+	options["transport"] = func(url, request_options) {
+		return Ok({
+			"_status": 200,
+			"_body": to_json({
+				"id": "tribunal-offline-fixture",
+				"choices": [{"message": {"content": fixture_output}, "finish_reason": "stop"}],
+				"usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}
+			})
+		})
+	}
 }
-client := create_client(provider, null)
+api_key := null
+if offline_fixture { api_key = "tribunal-offline-fixture" }
+client := create_client(provider, api_key)
 result := chat_completion(client, messages, options)
 result["model_resolution"] = model_resolution
 print(to_json(result))

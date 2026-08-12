@@ -150,7 +150,7 @@ export func path_within(root, candidate) {
 }
 
 export func safe_http_url(value) {
-    if type(value) != "string" || trim(value) != value || contains(value, " ") || contains(value, "\n") || contains(value, "\r") || contains(value, "\t") || contains(value, "@") || contains(value, "?") || contains(value, "#") { return false }
+    if type(value) != "string" || trim(value) != value || contains(value, " ") || contains(value, "\n") || contains(value, "\r") || contains(value, "\t") || contains(value, "\\") || contains(value, "\"") || contains(value, "'") || contains(value, "@") || contains(value, "?") || contains(value, "#") { return false }
     if starts_with(value, "https://") && len(value) > 8 && substring(value, 8, 9) != "/" { return true }
     return value == "http://localhost" || starts_with(value, "http://localhost:") || starts_with(value, "http://localhost/") ||
         value == "http://127.0.0.1" || starts_with(value, "http://127.0.0.1:") || starts_with(value, "http://127.0.0.1/") ||
@@ -173,6 +173,7 @@ func symlink_ancestor(root, path) {
 
 export func inspect_path_boundary(root, candidate, require_same_mount) {
     if type(root) != "string" || type(candidate) != "string" || file_exists(root) == false || file_exists(candidate) == false { return {"ok": false, "error": "Boundary paths must exist before canonical inspection."} }
+    if path_is_symlink(root) { return {"ok": false, "error": "Boundary root must not be a symbolic link.", "symlink": root} }
     ancestor := symlink_ancestor(root, candidate)
     if ancestor != "" { return {"ok": false, "error": "Path has a symbolic-link ancestor.", "symlink": ancestor} }
     canonical_root := path_absolute(root); canonical_candidate := path_absolute(candidate)

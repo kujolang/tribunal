@@ -218,14 +218,21 @@ export func export_encrypted_bundle(storage_dir, run_id, destination, recipient_
 
 export func verify_encrypted_bundle_integrity(bundle_path, signing_public_path) {
     envelope_path := join_path(bundle_path, "envelope.json")
+    metadata_path := join_path(bundle_path, "bundle.json")
     manifest_path := join_path(join_path(bundle_path, "integrity"), "artifact-manifest.json")
     signature_path := join_path(join_path(bundle_path, "integrity"), "signature.json")
-    if path_is_symlink(bundle_path) || safe_existing_file(envelope_path, MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle envelope")["ok"] != true || safe_existing_file(manifest_path, MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle manifest")["ok"] != true || safe_existing_file(signature_path, MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle signature")["ok"] != true || safe_existing_file(signing_public_path, 1048576, "Signing public key")["ok"] != true { return {"ok": false, "error": "Encrypted bundle integrity evidence is incomplete or unsafe."} }
+    if path_is_symlink(bundle_path) || safe_existing_file(envelope_path, MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle envelope")["ok"] != true || safe_existing_file(metadata_path, MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle metadata")["ok"] != true || safe_existing_file(manifest_path, MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle manifest")["ok"] != true || safe_existing_file(signature_path, MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle signature")["ok"] != true || safe_existing_file(signing_public_path, 1048576, "Signing public key")["ok"] != true { return {"ok": false, "error": "Encrypted bundle integrity evidence is incomplete or unsafe."} }
     envelope := null
     try { envelope = read_json(envelope_path) } except err { return {"ok": false, "error": "Encrypted bundle envelope is invalid JSON."} }
     contract := json_schema_validate(envelope, ENCRYPTED_BUNDLE_SCHEMA)
     if contract["valid"] != true || envelope["artifactCount"] != len(envelope["artifacts"]) { return {"ok": false, "error": "Encrypted bundle envelope failed validation."} }
+    metadata := null
+    try { metadata = read_json(metadata_path) } except err { return {"ok": false, "error": "Encrypted bundle metadata is invalid JSON."} }
+    metadata_checked := validate_bundle_metadata(metadata)
+    if metadata_checked["ok"] != true || metadata["runId"] != envelope["runId"] || metadata["manifestSha256"] != envelope["manifestSha256"] || metadata["keyId"] != envelope["signingKeyId"] { return {"ok": false, "error": "Encrypted bundle metadata is inconsistent with its envelope."} }
     manifest_text := read_file(manifest_path)
+    manifest := null
+    try { manifest = parse_json(manifest_text) } except err { return {"ok": false, "error": "Encrypted bundle signed manifest is invalid JSON."} }
     signature := null
     try { signature = read_json(signature_path) } except err { return {"ok": false, "error": "Encrypted bundle signature is invalid JSON."} }
     public_key := read_file(signing_public_path)
@@ -234,12 +241,26 @@ export func verify_encrypted_bundle_integrity(bundle_path, signing_public_path) 
     signature_ok := false
     try { signature_ok = rsa_verify(to_json(payload), signature["signature"], public_key) } except err { signature_ok = false }
     if signature_ok != true { return {"ok": false, "error": "Encrypted bundle manifest signature is invalid."} }
+    if type(manifest) != "dict" || dict_get(manifest, "runId", "") != envelope["runId"] || type(dict_get(manifest, "artifacts", null)) != "array" || envelope["artifactCount"] != len(manifest["artifacts"]) + 2 { return {"ok": false, "error": "Encrypted bundle inventory is inconsistent with its signed manifest."} }
+    mut expected := {}
+    for artifact in manifest["artifacts"] {
+        name := dict_get(artifact, "path", "")
+        if safe_relative_path(name) == false || has_key(expected, name) == 1 { return {"ok": false, "error": "Encrypted bundle signed manifest inventory is invalid."} }
+        expected[name] := {"bytes": dict_get(artifact, "bytes", -1), "sha256": dict_get(artifact, "sha256", "")}
+    }
+    expected["artifact-manifest.json"] := {"bytes": file_size(manifest_path), "sha256": sha256(manifest_text)}
+    expected["signature.json"] := {"bytes": file_size(signature_path), "sha256": sha256_file(signature_path)}
+    mut seen := {}
     for entry in envelope["artifacts"] {
-        if safe_relative_path(entry["path"]) == false { return {"ok": false, "error": "Encrypted bundle contains an unsafe artifact path."} }
+        if safe_relative_path(entry["path"]) == false || has_key(seen, entry["path"]) == 1 || has_key(expected, entry["path"]) == 0 { return {"ok": false, "error": "Encrypted bundle contains an unsafe, duplicate, or unexpected artifact path."} }
+        seen[entry["path"]] := true
+        bound := expected[entry["path"]]
+        if entry["bytes"] != bound["bytes"] || entry["plaintextSha256"] != bound["sha256"] { return {"ok": false, "error": "Encrypted artifact is not bound to the signed manifest: " + entry["path"]} }
         cipher_path := join_path(join_path(bundle_path, "artifacts"), entry["path"] + ".enc")
         if file_exists(cipher_path) == false || path_is_symlink(cipher_path) || sha256_file(cipher_path) != entry["ciphertextSha256"] { return {"ok": false, "error": "Encrypted artifact integrity failed: " + entry["path"]} }
     }
-    return {"ok": true, "runId": envelope["runId"], "manifestSha256": envelope["manifestSha256"], "signature": "verified", "confidentiality": "not-required-for-integrity-check", "legalHold": envelope["legalHold"]}
+    if len(keys(seen)) != len(keys(expected)) { return {"ok": false, "error": "Encrypted bundle omits signed artifacts."} }
+    return {"ok": true, "runId": envelope["runId"], "manifestSha256": envelope["manifestSha256"], "signature": "verified", "confidentiality": "not-required-for-integrity-check", "legalHold": envelope["legalHold"], "legalHoldAuthenticated": false}
 }
 
 func unwrap_data_key(wrapped_keys, recipient_private_path) {

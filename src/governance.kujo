@@ -1,6 +1,6 @@
 # Tribunal :: retention, legal hold, and policy-driven whole-run deletion
 
-from src.common import dict_get, ensure_dir, read_json, remove_tree, write_json
+from src.common import dict_get, ensure_dir, read_json, remove_tree, safe_existing_file, write_json
 from src.storage import artifact_path, remove_run_from_index, run_dir
 from src.locking import acquire_lock, release_lock
 
@@ -21,16 +21,19 @@ export func governance_metadata(config, actor) {
 
 export func deletion_eligibility(storage_dir, run_id, force_expired) {
     path := artifact_path(storage_dir, run_id, "record.json")
-    if path == "" || file_exists(path) == false { return {"ok": false, "error": "Run record is missing."} }
+    if path == "" || safe_existing_file(path, 4194304, "Run record")["ok"] != true { return {"ok": false, "error": "Run record is missing or unsafe."} }
     record := null
     try { record = read_json(path) } except err { return {"ok": false, "error": "Run record is invalid."} }
+    if type(record) != "dict" || dict_get(record, "runId", "") != run_id { return {"ok": false, "error": "Run record identity is invalid."} }
     governance := dict_get(record, "governance", {})
     if type(governance) != "dict" || len(keys(governance)) == 0 { return {"ok": false, "error": "Run has no retention metadata."} }
     if dict_get(governance, "legalHold", false) == true { return {"ok": false, "error": "Run is under legal hold."} }
     hold_path := join_path(join_path(storage_dir, ".governance"), run_id + ".json")
     if file_exists(hold_path) {
+        if safe_existing_file(hold_path, 4194304, "External governance record")["ok"] != true { return {"ok": false, "error": "External governance record is unsafe."} }
         hold := null
         try { hold = read_json(hold_path) } except err { return {"ok": false, "error": "External governance record is unreadable."} }
+        if type(hold) != "dict" || dict_get(hold, "runId", "") != run_id || type(dict_get(hold, "legalHold", null)) != "bool" { return {"ok": false, "error": "External governance record is invalid."} }
         if dict_get(hold, "legalHold", false) == true { return {"ok": false, "error": "Run is under externally applied legal hold."} }
     }
     if force_expired != true && current_timestamp() < dict_get(governance, "retainUntilMs", 0) { return {"ok": false, "error": "Run retention period has not expired."} }

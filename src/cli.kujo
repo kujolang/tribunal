@@ -587,9 +587,12 @@ func cmd_locks_recover(parsed, config) {
     if has_flag(parsed, "stale-after-ms") { try { stale = to_int(flag(parsed, "stale-after-ms", "")) } except err { stale = 0 } }
     if stale < 1000 { return command_error("--stale-after-ms must be at least 1000.", 2) }
     result := recover_stale_locks(config["tribunal"]["storage_dir"], stale)
-    result["sealTransactions"] := recover_seal_transactions(config["tribunal"]["storage_dir"])["recovered"]
+    seal_recovery := recover_seal_transactions(config["tribunal"]["storage_dir"])
+    result["sealTransactions"] := dict_get(seal_recovery, "recovered", [])
+    if seal_recovery["ok"] != true { result["ok"] := false; result["sealTransactionError"] := seal_recovery["error"] }
     print(to_json_pretty(result))
-    return 0
+    if result["ok"] { return 0 }
+    return 3
 }
 
 func cmd_index(command, parsed, config) {
