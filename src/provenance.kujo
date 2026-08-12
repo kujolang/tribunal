@@ -1,6 +1,6 @@
 # Tribunal :: signed document provenance with externally anchored rollback resistance.
 
-from src.common import array_includes, dict_get, read_json, safe_existing_file, write_json
+from src.common import array_includes, dict_get, path_within, read_json, safe_existing_file, write_json
 
 KINDS := ["access-policy", "trust-policy", "governance-registry", "deletion-tombstone", "artifact-store-index", "panel-catalog", "organization-policy", "connector-catalog"]
 
@@ -63,7 +63,8 @@ export func verify_provenance(document_path, provenance_path, public_path, ancho
 export func sign_provenance(document_path, document_kind, sequence, previous_path, private_path, public_path, output_path, anchor_path) {
     if array_includes(KINDS, document_kind) == false || type(sequence) != "int" || sequence < 1 { return {"ok": false, "error": "Provenance kind or sequence is invalid."} }
     if safe_existing_file(document_path, 67108864, "Provenance document")["ok"] != true || safe_key(private_path, true) == false || safe_key(public_path, false) == false { return {"ok": false, "error": "Provenance document or key input is unsafe."} }
-    if trim(output_path) == "" || trim(anchor_path) == "" || output_path == anchor_path || file_exists(output_path) || path_is_dir(output_path) || file_exists(anchor_path) || path_is_dir(anchor_path) { return {"ok": false, "error": "Provenance output and external anchor must be distinct new paths."} }
+    same_output := path_within(output_path, anchor_path) && path_within(anchor_path, output_path)
+    if trim(output_path) == "" || trim(anchor_path) == "" || same_output || file_exists(output_path) || path_is_dir(output_path) || file_exists(anchor_path) || path_is_dir(anchor_path) { return {"ok": false, "error": "Provenance output and external anchor must be distinct new paths."} }
     public_key := read_file(public_path)
     previous_digest := repeat("0", 64)
     if sequence > 1 {

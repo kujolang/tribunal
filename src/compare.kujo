@@ -1,6 +1,6 @@
 # Tribunal :: immutable sealed-ruling comparison and re-review workflow
 
-from src.common import dict_get, path_within, safe_existing_file, safe_run_id, write_json, write_text
+from src.common import dict_get, external_path_outside, safe_existing_file, safe_run_id, write_json, write_text
 from src.integrity import verify
 from src.storage import artifact_path
 from src.tribunal import review
@@ -9,7 +9,7 @@ func field_change(name, before, after) { return {"field": name, "before": before
 
 export func compare_rulings(storage_dir, base_run_id, candidate_run_id, output_prefix) {
     if safe_run_id(base_run_id) == false || safe_run_id(candidate_run_id) == false || base_run_id == candidate_run_id { return {"ok": false, "error": "Comparison requires two distinct safe run IDs."} }
-    if trim(output_prefix) == "" || path_within(storage_dir, output_prefix) { return {"ok": false, "error": "Comparison output must be outside immutable run storage."} }
+    if trim(output_prefix) == "" || external_path_outside(storage_dir, output_prefix) == false { return {"ok": false, "error": "Comparison output must be outside immutable run storage without symbolic-link aliases."} }
     base_path := artifact_path(storage_dir, base_run_id, "record.json")
     candidate_path := artifact_path(storage_dir, candidate_run_id, "record.json")
     if safe_existing_file(base_path, 4194304, "Base comparison record")["ok"] != true || safe_existing_file(candidate_path, 4194304, "Candidate comparison record")["ok"] != true { return {"ok": false, "error": "Both comparison records must exist and be safe."} }

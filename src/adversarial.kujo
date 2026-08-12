@@ -7,10 +7,14 @@ export func inspect_remote_envelope(surface, response, limits) {
     if elapsed > dict_get(limits, "timeoutMs", 60000) { return {"ok": false, "error": surface + " response exceeded its time budget.", "classification": "slow-response"} }
     if type(headers) != "dict" || len(keys(headers)) > dict_get(limits, "maxHeaders", 64) { return {"ok": false, "error": surface + " returned too many headers.", "classification": "oversized-headers"} }
     mut header_bytes := 0
-    for name in keys(headers) { header_bytes = header_bytes + utf8_byte_length(name) + utf8_byte_length(to_string(headers[name])) }
+    mut content_encoding := ""
+    for name in keys(headers) {
+        header_bytes = header_bytes + utf8_byte_length(name) + utf8_byte_length(to_string(headers[name]))
+        if to_lower(name) == "content-encoding" { content_encoding = to_string(headers[name]) }
+    }
     if header_bytes > dict_get(limits, "maxHeaderBytes", 16384) { return {"ok": false, "error": surface + " headers exceeded the byte budget.", "classification": "oversized-headers"} }
     if utf8_byte_length(body) > dict_get(limits, "maxBodyBytes", 1048576) { return {"ok": false, "error": surface + " body exceeded the byte budget.", "classification": "decompression-bomb-or-oversize"} }
-    if dict_get(headers, "Content-Encoding", "") != "" { return {"ok": false, "error": surface + " returned unsupported content encoding.", "classification": "decompression-bomb"} }
+    if content_encoding != "" { return {"ok": false, "error": surface + " returned unsupported content encoding.", "classification": "decompression-bomb"} }
     parsed := null
     try { parsed = parse_json(body) } except err { return {"ok": false, "error": surface + " returned truncated or invalid JSON.", "classification": "truncated-json"} }
     # Canonical re-encoding prevents ambiguous duplicate-field documents from

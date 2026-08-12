@@ -1,6 +1,6 @@
 # Tribunal :: signed evidence bundle export and import
 
-from src.common import dict_get, ensure_dir, path_within, read_json, relative_files, remove_tree, safe_existing_file, safe_relative_path, safe_run_id, write_json
+from src.common import dict_get, ensure_dir, external_path_outside, read_json, relative_files, remove_tree, safe_existing_file, safe_relative_path, safe_run_id, write_json
 from src.integrity import signature_payload_for, verify
 from src.policy import trusted_key
 from src.storage import artifact_path, index_run_manifest, run_dir
@@ -79,7 +79,7 @@ func copy_relative(source_root, destination_root, names) {
 
 export func export_bundle(storage_dir, run_id, destination) {
     if trim(destination) == "" { return {"ok": false, "error": "Bundle destination is required."} }
-    if path_within(storage_dir, destination) { return {"ok": false, "error": "Bundle destination must be outside Tribunal run storage."} }
+    if external_path_outside(storage_dir, destination) == false { return {"ok": false, "error": "Bundle destination must be outside Tribunal run storage without symbolic-link aliases."} }
     run_root := run_dir(storage_dir, run_id)
     if run_root == "" || path_is_dir(run_root) == false { return {"ok": false, "error": "Run does not exist."} }
     signature := artifact_path(storage_dir, run_id, "signature.json")
@@ -176,7 +176,7 @@ func recipient_wrap(public_path, purpose, data_key) {
 
 export func export_encrypted_bundle(storage_dir, run_id, destination, recipient_public_path, recovery_public_path) {
     if trim(destination) == "" || file_exists(destination) || path_is_dir(destination) { return {"ok": false, "error": "Encrypted bundle destination must be new."} }
-    if path_within(storage_dir, destination) { return {"ok": false, "error": "Encrypted bundle destination must be outside Tribunal run storage."} }
+    if external_path_outside(storage_dir, destination) == false { return {"ok": false, "error": "Encrypted bundle destination must be outside Tribunal run storage without symbolic-link aliases."} }
     temp := join_path(env_or("TMPDIR", "/tmp"), "tribunal-encrypted-export-" + uuid_v4())
     exported := export_bundle(storage_dir, run_id, temp)
     if exported["ok"] != true { return exported }
@@ -235,11 +235,23 @@ export func verify_encrypted_bundle_integrity(bundle_path, signing_public_path) 
     try { manifest = parse_json(manifest_text) } except err { return {"ok": false, "error": "Encrypted bundle signed manifest is invalid JSON."} }
     signature := null
     try { signature = read_json(signature_path) } except err { return {"ok": false, "error": "Encrypted bundle signature is invalid JSON."} }
+    if type(signature) != "dict" { return {"ok": false, "error": "Encrypted bundle signature failed structural validation."} }
+    for field in ["schemaVersion", "runId", "algorithm", "manifestSha256", "keyId", "signedAt", "signature"] {
+        if type(dict_get(signature, field, null)) != "string" || trim(signature[field]) == "" { return {"ok": false, "error": "Encrypted bundle signature failed structural validation."} }
+    }
+    signature_version := signature["schemaVersion"]
+    if signature_version != "1.0.0" && signature_version != "1.1.0" && signature_version != "1.2.0" { return {"ok": false, "error": "Encrypted bundle signature version is unsupported."} }
+    if signature_version != "1.0.0" && (type(dict_get(signature, "payloadSha256", null)) != "string" || len(signature["payloadSha256"]) != 64) { return {"ok": false, "error": "Encrypted bundle signature payload digest is missing."} }
     public_key := read_file(signing_public_path)
     if sha256(manifest_text) != envelope["manifestSha256"] || dict_get(signature, "manifestSha256", "") != envelope["manifestSha256"] || dict_get(signature, "keyId", "") != envelope["signingKeyId"] || substring(sha256(public_key), 0, 32) != envelope["signingKeyId"] { return {"ok": false, "error": "Encrypted bundle signed manifest binding is invalid."} }
-    payload := signature_payload_for(signature["schemaVersion"], envelope["runId"], envelope["manifestSha256"], envelope["signingKeyId"], signature["signedAt"])
+    signed_text := manifest_text
+    if signature_version != "1.0.0" {
+        payload := signature_payload_for(signature_version, envelope["runId"], envelope["manifestSha256"], envelope["signingKeyId"], signature["signedAt"])
+        signed_text = to_json(payload)
+        if signature["payloadSha256"] != sha256(signed_text) { return {"ok": false, "error": "Encrypted bundle signature payload digest is invalid."} }
+    }
     signature_ok := false
-    try { signature_ok = rsa_verify(to_json(payload), signature["signature"], public_key) } except err { signature_ok = false }
+    try { signature_ok = rsa_verify(signed_text, signature["signature"], public_key) } except err { signature_ok = false }
     if signature_ok != true { return {"ok": false, "error": "Encrypted bundle manifest signature is invalid."} }
     if type(manifest) != "dict" || dict_get(manifest, "runId", "") != envelope["runId"] || type(dict_get(manifest, "artifacts", null)) != "array" || envelope["artifactCount"] != len(manifest["artifacts"]) + 2 { return {"ok": false, "error": "Encrypted bundle inventory is inconsistent with its signed manifest."} }
     mut expected := {}
@@ -321,7 +333,12 @@ export func rotate_encrypted_bundle_key(bundle_path, current_private_path, new_p
     next := recipient_wrap(new_public_path, "primary", unwrapped["dataKey"])
     if next["ok"] != true { return next }
     mut retained := []
-    for entry in envelope["wrappedKeys"] { if entry["purpose"] == "recovery" { retained = push(retained, entry) } }
+    for entry in envelope["wrappedKeys"] {
+        if entry["purpose"] == "recovery" {
+            if entry["recipientKeyId"] == next["entry"]["recipientKeyId"] { return {"ok": false, "error": "Primary rotation recipient must remain distinct from every recovery recipient."} }
+            retained = push(retained, entry)
+        }
+    }
     envelope["wrappedKeys"] := push(retained, next["entry"])
     envelope["createdAt"] := now_utc()
     write_json(envelope_path, envelope)

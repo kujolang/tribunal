@@ -1,7 +1,7 @@
 # Tribunal :: immutable artifact-store providers with conditional writes and versions
 
 from src.bundles import export_bundle, import_bundle, validate_bundle_metadata
-from src.common import dict_get, ensure_dir, lower_hex, read_json, redact, remove_tree, safe_run_id, utf8_byte_length, write_json
+from src.common import dict_get, ensure_dir, external_path_outside, lower_hex, read_json, redact, remove_tree, safe_run_id, utf8_byte_length, write_json
 from src.integrity import verify
 from src.adversarial import inspect_remote_envelope
 
@@ -116,6 +116,7 @@ export func publish_local(storage_dir, run_id, root, expected_version) {
     if safe_run_id(run_id) == false { return {"ok": false, "error": "Run ID is unsafe."} }
     if expected_version != "" && lower_hex(expected_version, 64) == false { return {"ok": false, "error": "Expected version must be a lowercase SHA-256 digest."} }
     if trim(root) == "" || (file_exists(root) && path_is_symlink(root)) { return {"ok": false, "error": "Artifact-store root is unsafe."} }
+    if external_path_outside(storage_dir, root) == false { return {"ok": false, "error": "Artifact-store root must be outside Tribunal run storage without symbolic-link aliases."} }
     loaded_index := current_index(root, run_id)
     if loaded_index["ok"] != true { return loaded_index }
     existing := loaded_index["index"]
@@ -148,6 +149,7 @@ export func pull_local(root, run_id, version, storage_dir, trust_policy, target)
     if safe_run_id(run_id) == false { return {"ok": false, "error": "Run ID is unsafe."} }
     if version != "" && lower_hex(version, 64) == false { return {"ok": false, "error": "Version must be a lowercase SHA-256 digest."} }
     if trim(root) == "" || (file_exists(root) && path_is_symlink(root)) { return {"ok": false, "error": "Artifact-store root is unsafe."} }
+    if external_path_outside(storage_dir, root) == false { return {"ok": false, "error": "Artifact-store root must be outside Tribunal run storage without symbolic-link aliases."} }
     selected := version
     if selected == "" {
         loaded_index := current_index(root, run_id)

@@ -149,6 +149,20 @@ export func path_within(root, candidate) {
     return resolved_candidate == resolved_root || starts_with(resolved_candidate, resolved_root + "/")
 }
 
+export func external_path_outside(root, candidate) {
+    if type(root) != "string" || trim(root) == "" || type(candidate) != "string" || trim(candidate) == "" || path_within(root, candidate) { return false }
+    if file_exists(root) == false && path_is_dir(root) == false { return true }
+    mut existing := candidate
+    while file_exists(existing) == false && path_is_dir(existing) == false {
+        parent := parent_dir(existing)
+        if parent == existing { return false }
+        existing = parent
+    }
+    canonical_root := path_absolute(root)
+    canonical_existing := path_absolute(existing)
+    return path_within(canonical_root, canonical_existing) == false
+}
+
 export func safe_http_url(value) {
     if type(value) != "string" || trim(value) != value || contains(value, " ") || contains(value, "\n") || contains(value, "\r") || contains(value, "\t") || contains(value, "\\") || contains(value, "\"") || contains(value, "'") || contains(value, "@") || contains(value, "?") || contains(value, "#") { return false }
     if starts_with(value, "https://") && len(value) > 8 && substring(value, 8, 9) != "/" { return true }

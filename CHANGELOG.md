@@ -2,7 +2,12 @@
 
 ## Unreleased
 
-No unreleased changes.
+### Fixed
+
+- Fail closed on subprocesses that emit plausible signing or context-connector JSON but exit unsuccessfully.
+- Preserve distinct primary/recovery encryption recipients, validate encrypted-bundle signature structure and payload binding, and retain v1.0 signature compatibility.
+- Reject symlink-parent aliases into sealed storage across external output surfaces and equivalent provenance output/anchor paths.
+- Reject malformed Vault URLs and case-variant compressed-response headers, and preserve unexpected stale-lock state for operator reconciliation instead of crashing recovery.
 
 ## 1.0.0 - 2026-08-08
 
