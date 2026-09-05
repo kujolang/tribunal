@@ -1,12 +1,12 @@
 # Tribunal v1 compatibility contract
 
-Tribunal 1.0.0 is stable as a local or operator-controlled decision-evidence engine. This contract does not certify a hosted service, shared filesystem, identity provider, signing or encryption custody system, remote store, regulated environment, or organization deployment.
+Tribunal 1.0.1 is stable as a local or operator-controlled decision-evidence engine. This contract does not certify a hosted service, shared filesystem, identity provider, signing or encryption custody system, remote store, regulated environment, or organization deployment.
 
 ## Version identities
 
 | Surface | v1 identity | Compatibility rule |
 | --- | --- | --- |
-| Product and CLI | `1.0.0` | Patch and minor releases preserve the documented v1 command names, accepted option meanings, and exit-code meanings. |
+| Product and CLI | `1.0.1` | Patch and minor releases preserve the documented v1 command names, accepted option meanings, and exit-code meanings. |
 | Kujo library API | `1.0.0` | Additive 1.x changes are allowed; removal, semantic repurposing, or incompatible envelope changes require API 2.0. |
 | Configuration | schema `1.0.0` fixture contract | Existing documented fields keep their meanings within product 1.x; additive optional fields require safe defaults. |
 | Tribunal record | schema `1.0.0` | Readers continue validating and inspecting supported 1.x records. |

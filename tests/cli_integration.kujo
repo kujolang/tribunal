@@ -1,5 +1,6 @@
 # Tribunal real Kujo CLI integration suite.
 
+from src.version import VERSION
 from src.common import ensure_dir, remove_tree
 
 mut passed := 0
@@ -42,7 +43,7 @@ write_file(DOCKET, "# CLI integration\n\n## Scope\n\nProve every user-facing Kuj
 help := cli(["help"])
 check(proc_success(help) && contains(proc_stdout(help), "tribunal review") == 1, "help exposes command contract")
 launcher := spawn_process([join_path(HOME, "bin/tribunal"), "version"], {"inherit_env": true, "env": {"KUJO_BIN": KUJO_BIN}, "timeout_ms": 60000, "max_output_bytes": 1048576})
-check(proc_success(launcher) && contains(proc_stdout(launcher), "Tribunal v1.0.0") == 1, "launcher honors the documented KUJO_BIN runtime path")
+check(proc_success(launcher) && contains(proc_stdout(launcher), "Tribunal v" + VERSION) == 1, "launcher honors the documented KUJO_BIN runtime path")
 check(proc_success(cli(["panels"])), "panels command succeeds")
 check(proc_success(cli(["seats"])), "seats command succeeds")
 check(proc_success(cli(["panels", "--json"])), "panels supports JSON output")
@@ -137,7 +138,7 @@ check(proc_success(cli(["locks-recover", "--storage-dir", unsafe_recovery_storag
 release_output := join_path(ROOT, "release-evidence")
 release_proc := spawn_process([KUJO_BIN, "run", join_path(HOME, "scripts/release_evidence.kujo")], {"inherit_env": true, "env": {"TRIBUNAL_HOME": HOME, "KUJO_BIN": KUJO_BIN, "TRIBUNAL_SIGNING_PROVIDER_CONFIG": provider_config, "TRIBUNAL_RELEASE_OUTPUT": release_output}, "timeout_ms": 120000, "max_output_bytes": 1048576})
 if proc_success(release_proc) == false { print("  Release detail: " + proc_stderr(release_proc) + proc_stdout(release_proc)) }
-check(proc_success(release_proc) && file_exists(join_path(release_output, "release-receipt.json")) && file_exists(join_path(release_output, "tribunal-v1.0.0-signed-evidence.zip")), "Kujo-only release evidence orchestration succeeds")
+check(proc_success(release_proc) && file_exists(join_path(release_output, "release-receipt.json")) && file_exists(join_path(release_output, "tribunal-v" + VERSION + "-signed-evidence.zip")), "Kujo-only release evidence orchestration succeeds")
 
 write_file(join_path(join_path(STORAGE, run_id), "ruling.md"), "tampered\n", true)
 check(proc_success(cli(["replay", run_id, "--storage-dir", STORAGE])) == false, "replay rejects tampering")

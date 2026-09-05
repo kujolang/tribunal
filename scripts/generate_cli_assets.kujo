@@ -1,4 +1,5 @@
 # Generate command reference, man page, and shell completions from CLI help.
+from src.version import VERSION
 from src.common import ensure_dir, safe_process_env, write_text
 
 home := path_absolute(env_or("TRIBUNAL_HOME", ".")); kujo := env_or("KUJO_BIN", join_path(home, "../kujo/target/release/kujo"))
@@ -27,7 +28,7 @@ write_text(join_path(home, "completions/_tribunal"), zsh)
 mut fish := "# generated\n"
 for command in commands { fish = fish + "complete -c tribunal -n '__fish_use_subcommand' -a '" + command + "'\n" }
 write_text(join_path(home, "completions/tribunal.fish"), fish)
-mut man := ".TH TRIBUNAL 1 \"2026-08-08\" \"Tribunal 1.0.0\" \"User Commands\"\n.SH NAME\ntribunal \\- sealed adversarial decision review in Kujo\n.SH SYNOPSIS\n.B tribunal\n.I command options\n.SH COMMANDS\n"
+mut man := ".TH TRIBUNAL 1 \"2026-09-05\" \"Tribunal " + VERSION + "\" \"User Commands\"\n.SH NAME\ntribunal \\- sealed adversarial decision review in Kujo\n.SH SYNOPSIS\n.B tribunal\n.I command options\n.SH COMMANDS\n"
 for usage in usages { man = man + ".TP\n.B " + replace(usage, "-", "\\-") + "\n" }
 man = man + ".SH EXIT STATUS\n0 success; 1 runtime failure; 2 usage/configuration or stopped hearing; 3 integrity/authorization failure.\n.SH SEE ALSO\nTribunal README and docs/OPERATIONS.md.\n"
 write_text(join_path(home, "man/man1/tribunal.1"), man)

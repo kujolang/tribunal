@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "tribunalVersion": "1.0.0",
+  "tribunalVersion": "1.0.1",
   "certifiedAt": "2026-08-08",
   "integrations": [
     { "name": "Kujo Runtime", "version": "1.0.0", "revision": "9b77dce592047121cb71066629836ad89252f3ce", "path": "../kujo", "gate": "all release commands", "scope": "interpreter, VM, cryptography, filesystem, process, HTTP streaming, archive, and schema primitives" },
