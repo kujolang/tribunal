@@ -1,0 +1,79 @@
+# Focused offline regressions for repository hardening boundaries.
+from src.common import ensure_dir, remove_tree, truthy, redact, path_within, external_path_outside, read_file_digest, write_json
+from src.config import default_config
+from src.context import build_context
+from src.model import invoke
+from src.storage import rebuild_run_index, verify_run_index, run_index_path
+from src.bundles import validate_bundle_metadata
+
+mut passed := 0
+mut failed := 0
+func check(condition, name) {
+    if condition == true { passed = passed + 1 } else { failed = failed + 1; print("FAIL: " + name) }
+}
+root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-hardening-" + uuid_v4())
+ensure_dir(root)
+for header in ["Authorization: Bearer synthetic-credential-value", "authorization: Basic c3ludGhldGljOnNlY3JldA==", "{\"Authorization\":\"Bearer synthetic-credential-value\"}"] {
+    clean := redact(header)
+    check(truthy(contains(clean, "synthetic-credential-value")) == false && truthy(contains(clean, "c3ludGhldGljOnNlY3JldA==")) == false, "authorization value is fully redacted")
+}
+check(path_within("/", root), "filesystem root contains descendants")
+check(external_path_outside("/", root) == false, "root storage cannot have external filesystem outputs")
+
+# A fixture executable emits plausible success and then reports process failure.
+# It performs no model/provider request and never reads ambient credentials.
+bridge := join_path(root, "failed-bridge")
+write_file(bridge, "#!/bin/sh\nprintf '%s\\n' '{\"ok\":true,\"output_text\":\"{}\",\"markdown\":\"fixture context\",\"warnings\":[]}'\nexit 7\n")
+chmod := spawn_process(["chmod", "700", bridge], {"inherit_env": false, "timeout_ms": 10000, "max_output_bytes": 4096})
+check(chmod.success, "fixture executable created")
+config := default_config()
+ai := config["kujo_ai"]; ai["mock_mode"] := false; ai["offline_fixture"] := true; ai["kujo_bin"] := bridge; ai["sdk_path"] := root; config["kujo_ai"] := ai
+request := {"runId": "fixture", "stageId": "blind-first-pass", "seatId": "judge", "modelPreference": {"class": "frontier_reasoning"}, "systemPrompt": "fixture", "input": "fixture", "timeoutMs": 10000}
+check(invoke(config, request)["ok"] == false, "SDK process failure overrides success JSON")
+settings := config["context"]; settings["provider"] := "packwrite"; settings["kujo_bin"] := bridge; settings["packwrite_path"] := root; config["context"] := settings
+source := join_path(root, "docket.md"); write_file(source, "fixture")
+docket := {"title": "fixture", "scope": "fixture", "content": "fixture", "sourcePath": source}
+cwd := os_getcwd()
+check(build_context(config, docket)["ok"] == false, "PackWrite process failure overrides success JSON")
+check(os_getcwd() == cwd, "bridge invocation preserves caller working directory")
+
+# Index verification must check the cached projection as well as its digest label.
+storage := join_path(root, "runs"); ensure_dir(join_path(storage, "fixture"))
+write_json(join_path(storage, "fixture/manifest.json"), {"runId": "fixture", "status": "completed", "panelId": "executioner-only"})
+check(rebuild_run_index(storage)["ok"], "index fixture builds")
+page_path := join_path(storage, ".index/pages/00000001.json")
+page := parse_json(read_file(page_path)); entries := page["entries"]; entry := entries[0]; manifest := entry["manifest"]; manifest["status"] := "stopped"; entry["manifest"] := manifest; entries[0] = entry; page["entries"] := entries; write_json(page_path, page)
+check(verify_run_index(storage)["ok"] == false, "index verifier rejects altered cached manifest with unchanged digest")
+rebuild_run_index(storage)
+page = parse_json(read_file(page_path)); page["page"] := 2; write_json(join_path(storage, ".index/pages/00000002.json"), page)
+index := parse_json(read_file(run_index_path(storage))); index["runCount"] := 2; index["pageCount"] := 2; write_json(run_index_path(storage), index)
+check(verify_run_index(storage)["ok"] == false, "index verifier rejects duplicate run IDs across shards")
+
+metadata := {"schemaVersion": "1.0.0", "runId": "fixture", "exportedAt": "fixture", "manifestSha256": repeat("a", 64), "keyId": repeat("b", 32), "artifactCount": 1, "artifacts": ["record.json"], "artifactDescriptors": [{"path": "other.json", "bytes": 1, "sha256": repeat("c", 64), "chunkBytes": 1048576, "chunks": 1}]}
+check(validate_bundle_metadata(metadata)["ok"] == false, "bundle descriptors must match inventory")
+metadata["artifactDescriptors"] := [{"path": "record.json", "bytes": 1048577, "sha256": repeat("c", 64), "chunkBytes": 1048576, "chunks": 1}]
+check(validate_bundle_metadata(metadata)["ok"] == false, "bundle descriptor chunk count must match size")
+
+# Reject oversized downloads from metadata before any artifact transfer.
+names := []; descriptors := []
+mut i := 0
+while i < 17 {
+    name := "part-" + to_string(i)
+    names = push(names, name)
+    descriptors = push(descriptors, {"path": name, "bytes": 67108864, "sha256": repeat("c", 64), "chunkBytes": 1048576, "chunks": 64})
+    i = i + 1
+}
+metadata["artifacts"] := names; metadata["artifactCount"] := 17; metadata["artifactDescriptors"] := descriptors
+check(validate_bundle_metadata(metadata)["ok"] == false, "bundle aggregate descriptor bytes are bounded before downloads")
+legacy := {"schemaVersion": "1.0.0", "runId": "fixture", "exportedAt": "fixture", "manifestSha256": repeat("a", 64), "keyId": repeat("b", 32), "artifactCount": 1, "artifacts": ["record.json"]}
+check(validate_bundle_metadata(legacy)["ok"], "legacy descriptor-free bundles remain valid")
+
+for content in ["", "ASCII", "é\n"] {
+    write_file(source, content, true)
+    digest := read_file_digest(source, 1024)
+    check(digest["ok"] && digest["sha256"] == sha256(content) && digest["bytes"] == file_size(source), "stream digest preserves exact bytes")
+}
+check(read_file_digest(source, 1)["ok"] == false, "digest refuses oversized input")
+remove_tree(root)
+print(to_json({"passed": passed, "failed": failed}))
+if failed > 0 { exit(1) }

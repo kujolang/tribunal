@@ -269,7 +269,7 @@ export func verify(storage_dir, run_id, public_path) {
                 response["signature"] := "invalid"
                 response["errors"] := push(response["errors"], "Signature envelope does not match the manifest.")
             } else if public_path != "" {
-                if file_exists(public_path) == false || path_is_symlink(public_path) {
+                if file_exists(public_path) == false || path_is_dir(public_path) || path_is_symlink(public_path) || file_size(public_path) > MAX_KEY_BYTES {
                     response["signature"] := "invalid"
                     response["errors"] := push(response["errors"], "Trusted public key is missing.")
                 } else {

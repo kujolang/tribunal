@@ -125,6 +125,9 @@ func live_invoke(config, request) {
     } except err {
         return {"ok": false, "content": "", "metadata": {"latencyMs": current_timestamp() - started}, "error": {"code": "kujo_ai_sdk_bridge_error", "message": redact(err), "retryable": false}}
     }
+    if proc.success != true {
+        return {"ok": false, "content": "", "metadata": {"latencyMs": current_timestamp() - started}, "error": {"code": "kujo_ai_sdk_bridge_error", "message": "Kujo AI SDK bridge process failed: " + redact(proc.stderr), "retryable": false}}
+    }
     json_line := last_json_line(proc.stdout)
     if json_line == "" {
         return {"ok": false, "content": "", "metadata": {"latencyMs": current_timestamp() - started}, "error": {"code": "kujo_ai_sdk_bridge_error", "message": redact(proc.stderr), "retryable": false}}

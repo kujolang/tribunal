@@ -146,7 +146,7 @@ export func path_within(root, candidate) {
     if type(root) != "string" || trim(root) == "" || type(candidate) != "string" || trim(candidate) == "" { return false }
     resolved_root := normalized_absolute(root)
     resolved_candidate := normalized_absolute(candidate)
-    return resolved_candidate == resolved_root || starts_with(resolved_candidate, resolved_root + "/")
+    return resolved_root == "/" || resolved_candidate == resolved_root || starts_with(resolved_candidate, resolved_root + "/")
 }
 
 export func external_path_outside(root, candidate) {
@@ -305,6 +305,9 @@ export func index_by_id(values) {
 
 export func redact(text) {
     value := to_string(text)
+    # Remove the credential before the general assignment redactor can consume
+    # only the authentication scheme and leave its value visible.
+    value = regex_replace(value, "(?i)(authorization[\\s:=\\\"']+)(bearer|basic)\\s+[^\\s,}\\\"']+", "$1[REDACTED]")
     value = regex_replace(value, "(?i)(api[_-]?key|authorization|token|password)([\\s:=\\\"']+)[^\\s,}\\\"']+", "$1$2[REDACTED]")
     value = regex_replace(value, "sk-[A-Za-z0-9_-]{8}[A-Za-z0-9_-]+", "sk-[REDACTED]")
     value = regex_replace(value, "-----BEGIN [A-Z ]*PRIVATE KEY-----", "[REDACTED PRIVATE KEY]")
@@ -397,8 +400,12 @@ export func read_file_digest(path, max_bytes) {
     size := file_size(path)
     if size < 0 { return {"ok": false, "error": "Unable to determine file size: " + path} }
     if size > max_bytes { return {"ok": false, "error": "Artifact exceeds the " + to_string(max_bytes) + " byte safety limit: " + path} }
-    bytes := io_read_bytes(path, size)
-    return {"ok": true, "bytes": size, "sha256": sha256(bytes)}
+    digest := null
+    try { digest = sha256_file(path) } except err { digest = null }
+    if lower_hex(digest, 64) == false || file_size(path) != size {
+        return {"ok": false, "error": "Artifact could not be hashed completely or changed size: " + path}
+    }
+    return {"ok": true, "bytes": size, "sha256": digest}
 }
 
 export func relative_files(root, relative) {

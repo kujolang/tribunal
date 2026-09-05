@@ -22,14 +22,10 @@ func run_kujo(kujo_bin, script, command_args, cwd, env_values) {
     child_env := safe_process_env(env_values)
     module_path := join_path(parent_dir(parent_dir(parent_dir(resolved_kujo))), "modules")
     if path_is_dir(module_path) { child_env["KUJO_MODULE_PATH"] := module_path }
-    previous_cwd := os_getcwd()
     try {
-        os_chdir(cwd)
-        result := spawn_process(argv, {"inherit_env": false, "env": child_env, "timeout_ms": 120000, "max_output_bytes": 1024 * 1024 * 8})
-        os_chdir(previous_cwd)
+        result := spawn_process(argv, {"inherit_env": false, "cwd": cwd, "env": child_env, "timeout_ms": 120000, "max_output_bytes": 1024 * 1024 * 8})
         return result
     } except err {
-        os_chdir(previous_cwd)
         return {"success": false, "exitcode": 127, "stdout": "", "stderr": to_string(err)}
     }
 }

@@ -42,25 +42,23 @@ export func build_context(config, docket) {
     if starts_with(kujo_bin, "/") == false { kujo_bin = path_absolute(kujo_bin) }
     root := repository_root(parent_dir(docket["sourcePath"]))
     proc := null
-    previous_cwd := os_getcwd()
     try {
-        os_chdir(context_config["packwrite_path"])
         proc = spawn_process([kujo_bin, "run", bridge, "--interpreter"], {
             "inherit_env": false,
+            "cwd": context_config["packwrite_path"],
             "env": safe_process_env({"TRIBUNAL_CONTEXT_ROOT": root}),
             "timeout_ms": config["limits"]["model_timeout_ms"],
             "max_output_bytes": config["limits"]["max_process_output_bytes"]
         })
     } except err {
-        os_chdir(previous_cwd)
         return {"ok": false, "error": "PackWrite bridge failed: " + redact(err)}
     }
-    os_chdir(previous_cwd)
+    if proc.success != true { return {"ok": false, "error": "PackWrite bridge process failed: " + redact(proc.stderr)} }
     line := last_json_line(proc.stdout)
     if line == "" { return {"ok": false, "error": "PackWrite bridge returned no JSON: " + redact(proc.stderr)} }
     parsed := null
     try { parsed = parse_json(line) } except err { return {"ok": false, "error": "PackWrite bridge returned invalid JSON."} }
-    if dict_get(parsed, "ok", false) != true { return {"ok": false, "error": dict_get(parsed, "error", "PackWrite context failed.")} }
+    if dict_get(parsed, "ok", false) != true { return {"ok": false, "error": redact(dict_get(parsed, "error", "PackWrite context failed."))} }
     return {
         "ok": true,
         "content": base + "\n\n" + dict_get(parsed, "markdown", ""),

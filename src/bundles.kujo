@@ -39,6 +39,18 @@ export func validate_bundle_metadata(metadata) {
         if has_key(seen, name) == 1 { return {"ok": false, "error": "Duplicate bundle artifact path: " + name} }
         seen[name] := true
     }
+    mut descriptors := {}
+    mut total_bytes := 0
+    for descriptor in dict_get(metadata, "artifactDescriptors", []) {
+        name := descriptor["path"]
+        if has_key(seen, name) == 0 || has_key(descriptors, name) == 1 { return {"ok": false, "error": "Bundle descriptors must uniquely match the artifact inventory."} }
+        descriptors[name] := true
+        chunks := to_int((descriptor["bytes"] + STREAM_CHUNK_BYTES - 1) / STREAM_CHUNK_BYTES)
+        if chunks < 1 { chunks = 1 }
+        if descriptor["chunks"] != chunks { return {"ok": false, "error": "Bundle descriptor chunk count does not match its byte length."} }
+        total_bytes = total_bytes + descriptor["bytes"]
+        if total_bytes > MAX_BUNDLE_BYTES { return {"ok": false, "error": "Bundle descriptors exceed the aggregate safety limit."} }
+    }
     return {"ok": true}
 }
 
@@ -131,7 +143,8 @@ export func import_bundle(bundle_path, storage_dir, trust_policy, target) {
     if destination == "" || path_is_dir(destination) { return {"ok": false, "error": "Bundle run ID is unsafe or already exists."} }
     trusted := trusted_key(trust_policy, dict_get(metadata, "keyId", ""), target, current_timestamp())
     if trusted["ok"] != true { return trusted }
-    ensure_dir(destination)
+    ensure_dir(storage_dir)
+    try { create_dir(destination) } except err { return {"ok": false, "error": "Bundle destination could not be exclusively created."} }
     copied := copy_relative(artifacts_root, destination, dict_get(metadata, "artifacts", []))
     if copied["ok"] != true { remove_tree(destination); return copied }
     checked := verify(storage_dir, run_id, trusted["key"]["publicKeyPath"])

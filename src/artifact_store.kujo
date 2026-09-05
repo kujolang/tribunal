@@ -1,7 +1,7 @@
 # Tribunal :: immutable artifact-store providers with conditional writes and versions
 
 from src.bundles import export_bundle, import_bundle, validate_bundle_metadata
-from src.common import dict_get, ensure_dir, external_path_outside, lower_hex, read_json, redact, remove_tree, safe_run_id, utf8_byte_length, write_json
+from src.common import dict_get, ensure_dir, external_path_outside, lower_hex, read_json, redact, remove_tree, safe_run_id, safe_http_url, utf8_byte_length, write_json
 from src.integrity import verify
 from src.adversarial import inspect_remote_envelope
 
@@ -42,7 +42,7 @@ func http_store_context(store) {
     tenant := trim(dict_get(store, "tenant_id", ""))
     region := trim(dict_get(store, "region", ""))
     token_path := trim(dict_get(store, "bearer_token_file", ""))
-    if endpoint == "" || tenant == "" || region == "" || safe_run_id(tenant) == false || safe_run_id(region) == false { return {"ok": false, "error": "Authenticated HTTP store endpoint, tenant, and region are required."} }
+    if safe_http_url(endpoint) == false || tenant == "" || region == "" || safe_run_id(tenant) == false || safe_run_id(region) == false { return {"ok": false, "error": "Authenticated HTTP store endpoint, tenant, and region are required."} }
     if file_exists(token_path) == false || path_is_symlink(token_path) || file_size(token_path) > 1048576 { return {"ok": false, "error": "HTTP store bearer-token file is missing or unsafe."} }
     token := trim(read_file(token_path))
     if token == "" || contains(token, "\n") || contains(token, "\r") { return {"ok": false, "error": "HTTP store bearer token is invalid."} }
@@ -53,11 +53,6 @@ func merge_headers(base, extra) {
     result := base
     for name in keys(extra) { result[name] := extra[name] }
     return result
-}
-
-func descriptor_for(metadata, name) {
-    for descriptor in dict_get(metadata, "artifactDescriptors", []) { if descriptor["path"] == name { return descriptor } }
-    return null
 }
 
 func upload_file_request(url, source, headers) {
@@ -221,10 +216,12 @@ export func pull_http(store, run_id, version, storage_dir, trust_policy, target)
     temp := join_path(env_or("TMPDIR", "/tmp"), "tribunal-http-pull-" + to_string(current_timestamp()) + "-" + to_string(random_int(1000, 9999)))
     ensure_dir(join_path(temp, "artifacts"))
     write_json(join_path(temp, "bundle.json"), metadata)
+    descriptors := {}
+    for descriptor in dict_get(metadata, "artifactDescriptors", []) { descriptors[descriptor["path"]] := descriptor }
     for name in dict_get(metadata, "artifacts", []) {
         destination := join_path(join_path(temp, "artifacts"), name)
         ensure_dir(dirname(destination))
-        descriptor := descriptor_for(metadata, name)
+        descriptor := dict_get(descriptors, name, null)
         if type(descriptor) != "dict" { remove_tree(temp); return {"ok": false, "error": "Remote artifact descriptor is missing for " + name + "."} }
         downloaded := null
         try { downloaded = http_download_file(endpoint + "/runs/" + run_id + "/versions/" + selected + "/artifacts/" + name, destination, {"headers": context["headers"], "max_bytes": 67108864, "overwrite": false}) } except err { downloaded = {"status": 0, "error": redact(to_string(err))} }
