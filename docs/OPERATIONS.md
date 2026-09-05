@@ -76,3 +76,5 @@ The index is a rebuildable projection, not sealed evidence. `index-check` compar
 After a confirmed crash, stop **all** processes using this storage, preserve the index/lock evidence, and remove only the empty `.index.lock` directory with `rmdir`. Then run `tribunal index-repair --json` before restarting users. Do not remove `.index-dirty` manually. `locks-recover` handles per-run locks and does not remove the storage-wide index lock. Index coordination does not make an entire hearing, bundle import, deletion or multi-call analytics traversal one transaction; verification during such operations can still observe changes to source manifests.
 
 Exclusive directory claims use `/bin/mkdir` without `-p` on supported macOS/Linux hosts because Kujo `create_dir` recursively creates directories and accepts existing paths. Doctor checks this required helper. A timed-out helper can leave a claimed directory; confirm process death and reconcile ownership before removal.
+
+Symlink cleanup requires `/bin/rm` on supported POSIX hosts. Tribunal invokes it on one exact path without recursive options, preserving the symlink target; doctor checks the helper.

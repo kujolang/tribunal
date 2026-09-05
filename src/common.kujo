@@ -429,16 +429,27 @@ export func relative_files(root, relative) {
     return out
 }
 
+# The pinned runtime rejects delete_file on directory symlinks on Linux.
+# Unlink only this argv path; never recurse through the symlink target.
+func unlink_tree_symlink(path) {
+    destination := path
+    if starts_with(destination, "/") == false { destination = join_path(os_getcwd(), destination) }
+    removed := spawn_process(["/bin/rm", "--", destination], {"inherit_env": false, "timeout_ms": 10000, "max_output_bytes": 4096})
+    if removed.success != true { throw("Unable to unlink cleanup symlink.") }
+}
+
 export func remove_tree(path) {
-    if (file_exists(path) || path_is_dir(path)) && path_is_symlink(path) {
-        delete_file(path)
+    mut linked := false
+    try { linked = path_is_symlink(path) } except err { if file_exists(path) { throw(err) } }
+    if linked {
+        unlink_tree_symlink(path)
         return
     }
     if path_is_dir(path) == false { return }
     for name in list_dir(path) {
         child := join_path(path, name)
         if path_is_symlink(child) {
-            delete_file(child)
+            unlink_tree_symlink(child)
         } else if path_is_dir(child) {
             remove_tree(child)
         } else if file_exists(child) {

@@ -107,6 +107,21 @@ os_rmdir(run_index_path(broken))
 repaired := repair_run_index(broken)
 check(repaired["ok"] && repaired["indexed"] == 1 && file_exists(join_path(broken, ".index-dirty")) == false, "explicit repair restores persisted manifest and clears recovery marker")
 
+# Cleanup unlinks directory and dangling symlinks without touching targets.
+cleanup := join_path(root, "cleanup"); ensure_dir(cleanup)
+target := join_path(root, "preserved-target"); ensure_dir(target)
+write_file(join_path(target, "sentinel"), "preserve")
+for pair in [[target, join_path(cleanup, "directory-link")], [join_path(root, "absent-target"), join_path(cleanup, "dangling-link")]] {
+    linked := spawn_process(["/bin/ln", "-s", pair[0], pair[1]], {"inherit_env": false, "timeout_ms": 10000, "max_output_bytes": 4096})
+    check(linked.success, "cleanup symlink fixture created")
+}
+remove_tree(cleanup)
+check(path_is_dir(cleanup) == false && read_file(join_path(target, "sentinel")) == "preserve", "cleanup removes symlinks while preserving target contents")
+root_link := join_path(root, "root-link")
+spawn_process(["/bin/ln", "-s", join_path(root, "absent-target"), root_link], {"inherit_env": false, "timeout_ms": 10000, "max_output_bytes": 4096})
+remove_tree(root_link)
+check(claim_directory(root_link), "cleanup removes a dangling root symlink")
+
 remove_tree(root)
 print(to_json({"passed": passed, "failed": failed}))
 if failed > 0 { exit(1) }
