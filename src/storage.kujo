@@ -1,6 +1,6 @@
 # Tribunal :: durable local run storage
 
-from src.common import dict_get, ensure_dir, remove_tree, safe_existing_file, safe_run_id, safe_relative_path, slug, write_json, write_text, read_json, relative_files
+from src.common import claim_directory, dict_get, ensure_dir, remove_tree, safe_existing_file, safe_run_id, safe_relative_path, slug, write_json, write_text, read_json, relative_files
 
 RUN_INDEX_PAGE_SIZE := 100
 
@@ -32,6 +32,58 @@ RUN_INDEX_PAGE_SCHEMA := {
 func index_root(storage_dir) { return join_path(storage_dir, ".index") }
 func pages_root(storage_dir) { return join_path(index_root(storage_dir), "pages") }
 export func run_index_path(storage_dir) { return join_path(index_root(storage_dir), "runs.json") }
+
+
+func index_symlink(path) {
+    try { return path_is_symlink(path) } except err {
+        if file_exists(path) { throw(err) }
+        return false
+    }
+}
+
+# All cooperating readers and writers hold the same non-reentrant lock. Never
+# reclaim it by age: a slow owner must not overlap a replacement owner.
+func index_dirty_path(storage_dir) { return join_path(storage_dir, ".index-dirty") }
+func mark_index_dirty(storage_dir) { write_text(index_dirty_path(storage_dir), "Interrupted index update; run index-repair.\n") }
+
+func with_index_lock(storage_dir, recovery, operation) {
+    if index_symlink(storage_dir) { throw("Run storage is unsafe.") }
+    try { ensure_dir(storage_dir) } except err { if path_is_dir(storage_dir) == false { throw(err) } }
+    lock := join_path(storage_dir, ".index.lock")
+    started := current_timestamp()
+    mut acquired := false
+    while acquired == false {
+        if index_symlink(lock) { throw("Run-index lock is unsafe.") }
+        acquired = claim_directory(lock)
+        if acquired == false {
+            if file_exists(lock) && path_is_dir(lock) == false { throw("Run-index lock is not a directory.") }
+            if current_timestamp() - started >= 30000 { throw("Run-index lock timed out. Stop all storage users before recovering an abandoned .index.lock directory.") }
+            sleep(10)
+        }
+    }
+    result := null
+    try {
+        if index_symlink(index_root(storage_dir)) || index_symlink(pages_root(storage_dir)) || index_symlink(index_dirty_path(storage_dir)) { throw("Run-index storage is unsafe.") }
+        if file_exists(index_dirty_path(storage_dir)) && recovery == false { throw("Run-index update was interrupted; run index-repair before continuing.") }
+        result = operation()
+        if dict_get(result, "ok", true) != false && file_exists(index_dirty_path(storage_dir)) { delete_file(index_dirty_path(storage_dir)) }
+    } except err {
+        os_rmdir(lock)
+        throw(err)
+    }
+    os_rmdir(lock)
+    return result
+}
+
+export func rebuild_run_index(storage_dir) { return with_index_lock(storage_dir, true, func() { return rebuild_run_index_locked(storage_dir) }) }
+export func verify_run_index(storage_dir) { return with_index_lock(storage_dir, false, func() { return verify_run_index_locked(storage_dir) }) }
+export func repair_run_index(storage_dir) { return with_index_lock(storage_dir, true, func() { return repair_run_index_locked(storage_dir) }) }
+export func index_run_manifest(storage_dir, run_id) { return with_index_lock(storage_dir, false, func() { return index_run_manifest_locked(storage_dir, run_id) }) }
+export func remove_run_from_index(storage_dir, run_id) { return with_index_lock(storage_dir, false, func() { return remove_run_from_index_locked(storage_dir, run_id) }) }
+export func list_runs_page(storage_dir, status, panel_id, limit, cursor) {
+    if path_is_dir(storage_dir) == false || index_symlink(storage_dir) { return {"items": [], "nextCursor": "", "hasMore": false, "cursorFound": cursor == ""} }
+    return with_index_lock(storage_dir, false, func() { return list_runs_page_locked(storage_dir, status, panel_id, limit, cursor) })
+}
 
 func page_name(page) {
     value := to_string(page)
@@ -95,6 +147,7 @@ func scan_index_entries(storage_dir) {
 }
 
 func persist_rebuilt_index(storage_dir, entries, prior_generation) {
+    mark_index_dirty(storage_dir)
     ensure_dir(index_root(storage_dir))
     if path_is_dir(pages_root(storage_dir)) { remove_tree(pages_root(storage_dir)) }
     ensure_dir(pages_root(storage_dir))
@@ -139,7 +192,7 @@ func all_index_entries(storage_dir, index) {
     return entries
 }
 
-export func rebuild_run_index(storage_dir) {
+func rebuild_run_index_locked(storage_dir) {
     if file_exists(storage_dir) && path_is_symlink(storage_dir) { return {"ok": false, "error": "Run storage is unsafe."} }
     ensure_dir(storage_dir)
     prior := read_index(storage_dir)
@@ -149,7 +202,7 @@ export func rebuild_run_index(storage_dir) {
     return {"ok": true, "index": index, "rebuilt": index["runCount"]}
 }
 
-export func verify_run_index(storage_dir) {
+func verify_run_index_locked(storage_dir) {
     index := read_index(storage_dir)
     if type(index) != "dict" { return {"ok": false, "error": "Run index is missing, unsafe, or structurally invalid.", "missing": [], "stale": [], "mismatched": []} }
     indexed_entries := all_index_entries(storage_dir, index)
@@ -171,7 +224,7 @@ export func verify_run_index(storage_dir) {
     return {"ok": ok, "indexed": index["runCount"], "actual": len(actual), "generation": index["generation"], "missing": sort(missing), "stale": sort(stale), "mismatched": sort(mismatched)}
 }
 
-export func repair_run_index(storage_dir) {
+func repair_run_index_locked(storage_dir) {
     root := index_root(storage_dir)
     mut stale_temps := 0
     for candidate_root in [root, pages_root(storage_dir)] {
@@ -181,23 +234,23 @@ export func repair_run_index(storage_dir) {
             }
         }
     }
-    rebuilt := rebuild_run_index(storage_dir)
+    rebuilt := rebuild_run_index_locked(storage_dir)
     if rebuilt["ok"] != true { return rebuilt }
-    checked := verify_run_index(storage_dir)
+    checked := verify_run_index_locked(storage_dir)
     checked["repaired"] := checked["ok"]
     checked["staleTempsRemoved"] := stale_temps
     return checked
 }
 
-export func index_run_manifest(storage_dir, run_id) {
+func index_run_manifest_locked(storage_dir, run_id) {
     entry := manifest_entry(storage_dir, run_id)
     if type(entry) != "dict" { return {"ok": false, "error": "Run manifest is unavailable for indexing."} }
     index := read_index(storage_dir)
-    if type(index) != "dict" { rebuild_run_index(storage_dir); return {"ok": true, "runId": run_id, "replaced": true} }
+    if type(index) != "dict" { rebuilt := rebuild_run_index_locked(storage_dir); if rebuilt["ok"] != true { return rebuilt }; return {"ok": true, "runId": run_id, "replaced": true} }
     mut page := index["pageCount"]
     while page >= 1 {
         page_value := read_index_page(storage_dir, page)
-        if type(page_value) != "dict" { rebuild_run_index(storage_dir); return {"ok": true, "runId": run_id, "replaced": true} }
+        if type(page_value) != "dict" { rebuilt := rebuild_run_index_locked(storage_dir); if rebuilt["ok"] != true { return rebuilt }; return {"ok": true, "runId": run_id, "replaced": true} }
         mut updated := []
         mut replaced := false
         for current in page_value["entries"] {
@@ -205,6 +258,7 @@ export func index_run_manifest(storage_dir, run_id) {
         }
         if replaced {
             page_value["entries"] := updated
+            mark_index_dirty(storage_dir)
             write_json(index_page_path(storage_dir, page), page_value)
             index["generation"] := index["generation"] + 1; index["updatedAt"] := now_utc(); write_json(run_index_path(storage_dir), index)
             return {"ok": true, "runId": run_id, "replaced": true}
@@ -220,22 +274,24 @@ export func index_run_manifest(storage_dir, run_id) {
         index["pageCount"] := page
     }
     page_value["entries"] := push(page_value["entries"], entry)
+    mark_index_dirty(storage_dir)
     write_json(index_page_path(storage_dir, page), page_value)
     index["runCount"] := index["runCount"] + 1; index["generation"] := index["generation"] + 1; index["updatedAt"] := now_utc(); write_json(run_index_path(storage_dir), index)
     return {"ok": true, "runId": run_id, "replaced": false}
 }
 
-export func remove_run_from_index(storage_dir, run_id) {
+func remove_run_from_index_locked(storage_dir, run_id) {
     index := read_index(storage_dir)
-    if type(index) != "dict" { return rebuild_run_index(storage_dir) }
+    if type(index) != "dict" { return rebuild_run_index_locked(storage_dir) }
     mut page := index["pageCount"]
     while page >= 1 {
         page_value := read_index_page(storage_dir, page)
-        if type(page_value) != "dict" { return rebuild_run_index(storage_dir) }
+        if type(page_value) != "dict" { return rebuild_run_index_locked(storage_dir) }
         mut entries := []
         mut removed := false
         for entry in page_value["entries"] { if entry["runId"] == run_id { removed = true } else { entries = push(entries, entry) } }
         if removed {
+            mark_index_dirty(storage_dir)
             page_value["entries"] := entries; write_json(index_page_path(storage_dir, page), page_value)
             index["runCount"] := index["runCount"] - 1; index["generation"] := index["generation"] + 1; index["updatedAt"] := now_utc(); write_json(run_index_path(storage_dir), index)
             return {"ok": true, "runId": run_id, "removed": true}
@@ -271,7 +327,7 @@ export func create_run(storage_dir, run_id) {
     if root == "" { return "" }
     ensure_dir(storage_dir)
     if file_exists(root) || path_is_dir(root) { return "" }
-    try { create_dir(root) } except err { return "" }
+    if claim_directory(root) == false { return "" }
     ensure_dir(join_path(root, "prompts"))
     ensure_dir(join_path(root, "testimony"))
     return root
@@ -286,8 +342,16 @@ export func artifact_path(storage_dir, run_id, name) {
 export func save_json(storage_dir, run_id, name, value) {
     path := artifact_path(storage_dir, run_id, name)
     if path == "" { return false }
+    if name == "manifest.json" {
+        return with_index_lock(storage_dir, false, func() {
+            mark_index_dirty(storage_dir)
+            write_json(path, value)
+            indexed := index_run_manifest_locked(storage_dir, run_id)
+            if indexed["ok"] != true { throw(dict_get(indexed, "error", "Run-index update failed.")) }
+            return true
+        })
+    }
     write_json(path, value)
-    if name == "manifest.json" { index_run_manifest(storage_dir, run_id) }
     return true
 }
 
@@ -337,11 +401,11 @@ export func list_runs_filtered(storage_dir, status, panel_id, limit) {
     return list_runs_page(storage_dir, status, panel_id, limit, "")["items"]
 }
 
-export func list_runs_page(storage_dir, status, panel_id, limit, cursor) {
+func list_runs_page_locked(storage_dir, status, panel_id, limit, cursor) {
     if path_is_dir(storage_dir) == false { return {"items": [], "nextCursor": "", "hasMore": false, "cursorFound": cursor == ""} }
     if path_is_symlink(storage_dir) { return {"items": [], "nextCursor": "", "hasMore": false, "cursorFound": cursor == ""} }
     index := read_index(storage_dir)
-    if type(index) != "dict" { index = rebuild_run_index(storage_dir)["index"] }
+    if type(index) != "dict" { rebuilt := rebuild_run_index_locked(storage_dir); if rebuilt["ok"] != true { throw(rebuilt["error"]) }; index = rebuilt["index"] }
     mut runs := []
     mut after_cursor := cursor == ""
     mut has_more := false

@@ -1,6 +1,6 @@
 # Tribunal :: atomic per-run lock directories and crash recovery
 
-from src.common import dict_get, ensure_dir, read_json, safe_run_id, write_json
+from src.common import claim_directory, dict_get, ensure_dir, read_json, safe_run_id, write_json
 
 func locks_root(storage_dir) { return join_path(storage_dir, ".locks") }
 func lock_dir(storage_dir, run_id) { return join_path(locks_root(storage_dir), run_id + ".lock") }
@@ -32,7 +32,7 @@ export func acquire_lock(storage_dir, run_id, owner, stale_after_ms) {
         stale := stale_after_ms > 0 && acquired_ms > 0 && current_timestamp() - acquired_ms > stale_after_ms
         return {"ok": false, "error": "Run is locked. Stale locks require explicit operator recovery.", "lock": existing, "stale": stale, "metrics": {"waitMs": current_timestamp() - started_ms, "contended": true}}
     }
-    try { create_dir(path) } except err { return {"ok": false, "error": "Unable to acquire atomic run lock: " + to_string(err)} }
+    if claim_directory(path) == false { return {"ok": false, "error": "Unable to acquire exclusive run lock."} }
     token := sha256(run_id + ":" + owner + ":" + to_string(current_timestamp()) + ":" + to_string(random_int(1000, 9999)))
     lock := {"schemaVersion": "1.0.0", "runId": run_id, "owner": owner, "token": token, "acquiredAt": now_utc(), "acquiredAtMs": current_timestamp()}
     try { write_json(owner_path(storage_dir, run_id), lock) } except err { remove_lock(storage_dir, run_id); return {"ok": false, "error": "Unable to persist lock ownership."} }

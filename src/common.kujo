@@ -470,3 +470,14 @@ export func last_json_line(output) {
 export func result(ok, data, error) {
     return {"ok": ok, "data": data, "error": error}
 }
+
+# Kujo create_dir is recursive/idempotent, so it cannot claim ownership. The
+# supported POSIX hosts supply mkdir without -p, which atomically rejects an
+# existing destination. Use a fixed executable and pass the path as one argv.
+export func claim_directory(path) {
+    if file_exists("/bin/mkdir") == false { throw("Exclusive directory claims require /bin/mkdir on a supported POSIX host.") }
+    destination := path
+    if starts_with(destination, "/") == false { destination = join_path(os_getcwd(), destination) }
+    claimed := spawn_process(["/bin/mkdir", destination], {"inherit_env": false, "timeout_ms": 10000, "max_output_bytes": 4096})
+    return claimed.success == true
+}

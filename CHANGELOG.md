@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — index coordination
+
+- Serialize shared-index readers, writers and maintenance; refuse interrupted updates until explicit repair.
+- Use exclusive POSIX directory claims for run locks, run creation and imports; Kujo recursive directory creation does not establish ownership.
+- Add independent-process concurrency and interrupted-publication regressions.
+
 ## Unreleased — repository hardening
 
 - Reject failed SDK/PackWrite subprocesses even when stdout claims success; keep child working directories isolated.

@@ -1,9 +1,9 @@
 # Focused offline regressions for repository hardening boundaries.
-from src.common import ensure_dir, remove_tree, truthy, redact, path_within, external_path_outside, read_file_digest, write_json
+from src.common import claim_directory, ensure_dir, remove_tree, truthy, redact, path_within, external_path_outside, read_file_digest, write_json
 from src.config import default_config
 from src.context import build_context
 from src.model import invoke
-from src.storage import rebuild_run_index, verify_run_index, run_index_path
+from src.storage import save_json, list_runs_page, repair_run_index, rebuild_run_index, verify_run_index, run_index_path
 from src.bundles import validate_bundle_metadata
 
 mut passed := 0
@@ -78,6 +78,35 @@ for content in ["", "ASCII", "é\n"] {
     check(digest["ok"] && digest["sha256"] == sha256(content) && digest["bytes"] == file_size(source), "stream digest preserves exact bytes")
 }
 check(read_file_digest(source, 1)["ok"] == false, "digest refuses oversized input")
+# Shared index pages are read and written under one exclusive storage claim.
+claimed := join_path(root, "claim")
+check(claim_directory(claimed), "exclusive directory claim succeeds once")
+check(claim_directory(claimed) == false, "exclusive directory claim rejects an existing owner")
+check(path_is_dir(claimed), "failed claim preserves existing owner")
+concurrent := join_path(root, "concurrent"); ensure_dir(concurrent)
+worker := join_path(os_getcwd(), "tests/fixtures/index_concurrency_worker.kujo")
+kujo := env_or("KUJO_BIN", "kujo")
+script := "\"$1\" run \"$2\" --interpreter \"$3\" write a & a=$!; \"$1\" run \"$2\" --interpreter \"$3\" write b & b=$!; \"$1\" run \"$2\" --interpreter \"$3\" rebuild r & r=$!; \"$1\" run \"$2\" --interpreter \"$3\" read q & q=$!; failed=0; for pid in \"$a\" \"$b\" \"$r\" \"$q\"; do wait \"$pid\" || failed=1; done; exit \"$failed\""
+process := spawn_process(["/bin/sh", "-c", script, "tribunal-index-test", kujo, worker, concurrent], {"inherit_env": false, "timeout_ms": 120000, "max_output_bytes": 16384})
+check(process.success, "independent writers, rebuilds and readers complete without partial pages")
+verified := verify_run_index(concurrent)
+check(verified["ok"] && verified["indexed"] == 30, "concurrent index retains every manifest exactly once")
+
+# Inject a filesystem failure after a page write but before metadata publication.
+broken := join_path(root, "interrupted"); ensure_dir(broken)
+rebuild_run_index(broken)
+delete_file(run_index_path(broken)); ensure_dir(run_index_path(broken))
+mut failed_write := false
+try { save_json(broken, "retained", "manifest.json", {"runId": "retained", "status": "completed", "panelId": "fixture"}) } except err { failed_write = true }
+check(failed_write && file_exists(join_path(broken, ".index-dirty")), "failed publication retains recovery marker and propagates failure")
+check(path_is_dir(join_path(broken, ".index.lock")) == false, "failed publication releases coordination lock")
+mut refused := false
+try { list_runs_page(broken, "", "", 10, "") } except err { refused = true }
+check(refused, "reader refuses an interrupted generation")
+os_rmdir(run_index_path(broken))
+repaired := repair_run_index(broken)
+check(repaired["ok"] && repaired["indexed"] == 1 && file_exists(join_path(broken, ".index-dirty")) == false, "explicit repair restores persisted manifest and clears recovery marker")
+
 remove_tree(root)
 print(to_json({"passed": passed, "failed": failed}))
 if failed > 0 { exit(1) }

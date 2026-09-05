@@ -1,6 +1,6 @@
 # Tribunal :: signed evidence bundle export and import
 
-from src.common import dict_get, ensure_dir, external_path_outside, read_json, relative_files, remove_tree, safe_existing_file, safe_relative_path, safe_run_id, write_json
+from src.common import claim_directory, dict_get, ensure_dir, external_path_outside, read_json, relative_files, remove_tree, safe_existing_file, safe_relative_path, safe_run_id, write_json
 from src.integrity import signature_payload_for, verify
 from src.policy import trusted_key
 from src.storage import artifact_path, index_run_manifest, run_dir
@@ -144,7 +144,7 @@ export func import_bundle(bundle_path, storage_dir, trust_policy, target) {
     trusted := trusted_key(trust_policy, dict_get(metadata, "keyId", ""), target, current_timestamp())
     if trusted["ok"] != true { return trusted }
     ensure_dir(storage_dir)
-    try { create_dir(destination) } except err { return {"ok": false, "error": "Bundle destination could not be exclusively created."} }
+    if claim_directory(destination) == false { return {"ok": false, "error": "Bundle destination could not be exclusively created."} }
     copied := copy_relative(artifacts_root, destination, dict_get(metadata, "artifacts", []))
     if copied["ok"] != true { remove_tree(destination); return copied }
     checked := verify(storage_dir, run_id, trusted["key"]["publicKeyPath"])
