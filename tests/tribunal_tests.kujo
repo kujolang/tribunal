@@ -156,6 +156,8 @@ func test_full_mock_review() {
         check(contains_text(prompt, "No other seat testimony is available"), "blind prompt excludes peers: " + testimony["seatId"])
         check(contains_text(prompt, "Complete blind testimony record") == false, "blind prompt has no peer transcript: " + testimony["seatId"])
     }
+    cross_prompt := read_file(artifact_path(storage, run_id, "prompts/cross-examination-judge.md"))
+    check(contains(cross_prompt, to_json(record["testimonies"])) == 1, "cross prompt retains every testimony field in compact JSON")
     check(contains_text(artifact_path(storage, run_id, "ruling.md"), "## Final verdict"), "ruling contract is human-readable")
     check(contains_text(artifact_path(storage, run_id, "decision-packet.md"), "## Evidence required before marking complete"), "decision packet is agent-readable")
     events := load_events(storage, run_id)

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — repository hardening
+
+- Reject failed SDK/PackWrite subprocesses even when stdout claims success; keep child working directories isolated.
+- Fully redact Bearer/Basic authorization values and correct filesystem-root containment.
+- Validate cached index manifests, cross-shard uniqueness, and bundle descriptor identity, chunk counts, and aggregate transfer sizes; create import destinations exclusively.
+- Use native artifact hashing and compact model-visible JSON without changing persisted evidence schemas.
+- Add offline hardening regressions to compatibility and release CI.
+
 ## Unreleased
 
 ### Fixed

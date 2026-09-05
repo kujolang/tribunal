@@ -235,6 +235,7 @@ done
 "$KUJO_BIN" run tests/tribunal_tests.kujo
 "$KUJO_BIN" run tests/cli_integration.kujo
 "$KUJO_BIN" run tests/enterprise_tests.kujo
+"$KUJO_BIN" run tests/hardening_tests.kujo --interpreter
 "$KUJO_BIN" run tests/property_tests.kujo
 "$KUJO_BIN" run scripts/schema_gate.kujo
 "$KUJO_BIN" run scripts/drift_gate.kujo
