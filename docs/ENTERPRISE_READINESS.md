@@ -39,7 +39,7 @@ The detailed threat model is [THREAT_MODEL.md](THREAT_MODEL.md). No network API 
 A releasable commit must pass:
 
 - every Kujo source check;
-- all four current test suites and every executable JSON Schema;
+- the four main test suites plus focused hardening regressions and every executable JSON Schema;
 - Concord with no high/critical drift;
 - strict Spec validation;
 - the complete Eval release suite;

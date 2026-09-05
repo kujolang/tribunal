@@ -12,7 +12,7 @@ Tribunal is Kujo-native. Changes on `main` must not introduce Node, npm, TypeScr
 
 ## Required gates
 
-Set `TRIBUNAL_HOME` to the repository and `KUJO_BIN` to the pinned Kujo runtime. Check every `.kujo` file, then run all four test suites and every release gate documented in the README, including compatibility and local Markdown links.
+Set `TRIBUNAL_HOME` to the repository and `KUJO_BIN` to the pinned Kujo runtime. Check every `.kujo` file, then run the four main test suites plus focused hardening regressions and every release gate documented in the README, including compatibility and local Markdown links.
 
 Changes to identity, signing, trust, locking, governance, artifact stores, telemetry, bundles, or release publication must update the threat model and add failure-path tests. Never weaken conditional writes, separate trust anchors, legal-hold precedence, transaction rollback, or default-deny behavior for convenience.
 

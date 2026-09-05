@@ -43,3 +43,9 @@ Trust boundaries exist at CLI input, config/policy files, docket/context/model o
 - Accepted independent-review findings cannot close without an executable regression fixture.
 
 Review this model whenever a new provider, store, collector, filesystem, identity system, or network surface is introduced. The independent review commission and accepted-finding register live under `docs/security/`.
+
+## September 2026 boundary hardening
+
+Failed bridge processes cannot supply successful results, and child working directories do not change the parent process. Imported descriptors must uniquely cover the inventory with consistent chunk and aggregate byte bounds; imports claim their destination exclusively. Index verification compares cached manifest content and rejects duplicate run IDs across shards. Direct public-key verification and HTTP-store helpers enforce their declared input bounds. The focused hardening suite supplies regression evidence; see the [engineering receipt](audits/repository-hardening.md).
+
+These checks retain the administrator-controlled local filesystem assumption. Per-run locks do not serialize shared-index writes or make rebuilds atomic for readers. Operators must serialize writers sharing storage until storage-wide transaction and reader-generation coordination is implemented. Embedded library callers must enforce authorization before invoking storage APIs.

@@ -65,7 +65,7 @@ The dashboard is static, script-free, CSP-restricted, and capped at 500 rows. Tr
 
 ## Release and rollback
 
-Tag releases run all Kujo checks, four test suites, every executable schema, compatibility and documentation gates, Concord, Spec, Eval, performance/scale/index/load/chaos, adversarial, accessibility, security-register, integration, gallery, Kennel, doctor, and archive/package smoke gates on a self-hosted Kujo runner. CI always uploads the reproducible package, SBOM, provenance, checksums, and receipt. When `TRIBUNAL_SIGNING_PROVIDER_CONFIG` names an approved provider, CI additionally creates and uploads signed evidence; an absent provider does not block the local/operator-controlled release profile. See [release verification](RELEASE_VERIFICATION.md) and the [release checklist](launch-checklist.md).
+Tag releases run all Kujo checks, four main test suites plus focused hardening regressions, every executable schema, compatibility and documentation gates, Concord, Spec, Eval, performance/scale/index/load/chaos, adversarial, accessibility, security-register, integration, gallery, Kennel, doctor, and archive/package smoke gates on a self-hosted Kujo runner. CI always uploads the reproducible package, SBOM, provenance, checksums, and receipt. When `TRIBUNAL_SIGNING_PROVIDER_CONFIG` names an approved provider, CI additionally creates and uploads signed evidence; an absent provider does not block the local/operator-controlled release profile. See [release verification](RELEASE_VERIFICATION.md) and the [release checklist](launch-checklist.md).
 
 Tribunal 1.0.0 verifies signature schemas v1.0, v1.1, and v1.2. These are independent evidence-envelope versions. Rollback does not authorize modifying newer runs.
 
