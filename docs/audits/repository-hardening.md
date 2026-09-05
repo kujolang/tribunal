@@ -1,5 +1,7 @@
 # Tribunal repository hardening — 2026-09-04–05
 
+Follow-up: [shared-index coordination](index-coordination.md) reproduces and addresses H12 and corrects the earlier exclusive-directory assumption. This receipt retains its original implementation scope.
+
 ## Repository and evidence scope
 
 - Repository: `kujolang/tribunal`; implementation scope was this checkout only.
