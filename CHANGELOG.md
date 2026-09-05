@@ -1,8 +1,27 @@
 # Changelog
 
+## Unreleased — index coordination
+
+- Serialize shared-index readers, writers and maintenance; refuse interrupted updates until explicit repair.
+- Use exclusive POSIX directory claims for run locks, run creation and imports; Kujo recursive directory creation does not establish ownership.
+- Add independent-process concurrency and interrupted-publication regressions.
+
+## Unreleased — repository hardening
+
+- Reject failed SDK/PackWrite subprocesses even when stdout claims success; keep child working directories isolated.
+- Fully redact Bearer/Basic authorization values and correct filesystem-root containment.
+- Validate cached index manifests, cross-shard uniqueness, and bundle descriptor identity, chunk counts, and aggregate transfer sizes; create import destinations exclusively.
+- Use native artifact hashing and compact model-visible JSON without changing persisted evidence schemas.
+- Add offline hardening regressions to compatibility and release CI.
+
 ## Unreleased
 
-No unreleased changes.
+### Fixed
+
+- Fail closed on subprocesses that emit plausible signing or context-connector JSON but exit unsuccessfully.
+- Preserve distinct primary/recovery encryption recipients, validate encrypted-bundle signature structure and payload binding, and retain v1.0 signature compatibility.
+- Reject symlink-parent aliases into sealed storage across external output surfaces and equivalent provenance output/anchor paths.
+- Reject malformed Vault URLs and case-variant compressed-response headers, and preserve unexpected stale-lock state for operator reconciliation instead of crashing recovery.
 
 ## 1.0.0 - 2026-08-08
 

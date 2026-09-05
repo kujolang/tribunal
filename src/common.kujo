@@ -146,11 +146,25 @@ export func path_within(root, candidate) {
     if type(root) != "string" || trim(root) == "" || type(candidate) != "string" || trim(candidate) == "" { return false }
     resolved_root := normalized_absolute(root)
     resolved_candidate := normalized_absolute(candidate)
-    return resolved_candidate == resolved_root || starts_with(resolved_candidate, resolved_root + "/")
+    return resolved_root == "/" || resolved_candidate == resolved_root || starts_with(resolved_candidate, resolved_root + "/")
+}
+
+export func external_path_outside(root, candidate) {
+    if type(root) != "string" || trim(root) == "" || type(candidate) != "string" || trim(candidate) == "" || path_within(root, candidate) { return false }
+    if file_exists(root) == false && path_is_dir(root) == false { return true }
+    mut existing := candidate
+    while file_exists(existing) == false && path_is_dir(existing) == false {
+        parent := parent_dir(existing)
+        if parent == existing { return false }
+        existing = parent
+    }
+    canonical_root := path_absolute(root)
+    canonical_existing := path_absolute(existing)
+    return path_within(canonical_root, canonical_existing) == false
 }
 
 export func safe_http_url(value) {
-    if type(value) != "string" || trim(value) != value || contains(value, " ") || contains(value, "\n") || contains(value, "\r") || contains(value, "\t") || contains(value, "@") || contains(value, "?") || contains(value, "#") { return false }
+    if type(value) != "string" || trim(value) != value || contains(value, " ") || contains(value, "\n") || contains(value, "\r") || contains(value, "\t") || contains(value, "\\") || contains(value, "\"") || contains(value, "'") || contains(value, "@") || contains(value, "?") || contains(value, "#") { return false }
     if starts_with(value, "https://") && len(value) > 8 && substring(value, 8, 9) != "/" { return true }
     return value == "http://localhost" || starts_with(value, "http://localhost:") || starts_with(value, "http://localhost/") ||
         value == "http://127.0.0.1" || starts_with(value, "http://127.0.0.1:") || starts_with(value, "http://127.0.0.1/") ||
@@ -173,6 +187,7 @@ func symlink_ancestor(root, path) {
 
 export func inspect_path_boundary(root, candidate, require_same_mount) {
     if type(root) != "string" || type(candidate) != "string" || file_exists(root) == false || file_exists(candidate) == false { return {"ok": false, "error": "Boundary paths must exist before canonical inspection."} }
+    if path_is_symlink(root) { return {"ok": false, "error": "Boundary root must not be a symbolic link.", "symlink": root} }
     ancestor := symlink_ancestor(root, candidate)
     if ancestor != "" { return {"ok": false, "error": "Path has a symbolic-link ancestor.", "symlink": ancestor} }
     canonical_root := path_absolute(root); canonical_candidate := path_absolute(candidate)
@@ -290,6 +305,9 @@ export func index_by_id(values) {
 
 export func redact(text) {
     value := to_string(text)
+    # Remove the credential before the general assignment redactor can consume
+    # only the authentication scheme and leave its value visible.
+    value = regex_replace(value, "(?i)(authorization[\\s:=\\\"']+)(bearer|basic)\\s+[^\\s,}\\\"']+", "$1[REDACTED]")
     value = regex_replace(value, "(?i)(api[_-]?key|authorization|token|password)([\\s:=\\\"']+)[^\\s,}\\\"']+", "$1$2[REDACTED]")
     value = regex_replace(value, "sk-[A-Za-z0-9_-]{8}[A-Za-z0-9_-]+", "sk-[REDACTED]")
     value = regex_replace(value, "-----BEGIN [A-Z ]*PRIVATE KEY-----", "[REDACTED PRIVATE KEY]")
@@ -382,8 +400,12 @@ export func read_file_digest(path, max_bytes) {
     size := file_size(path)
     if size < 0 { return {"ok": false, "error": "Unable to determine file size: " + path} }
     if size > max_bytes { return {"ok": false, "error": "Artifact exceeds the " + to_string(max_bytes) + " byte safety limit: " + path} }
-    bytes := io_read_bytes(path, size)
-    return {"ok": true, "bytes": size, "sha256": sha256(bytes)}
+    digest := null
+    try { digest = sha256_file(path) } except err { digest = null }
+    if lower_hex(digest, 64) == false || file_size(path) != size {
+        return {"ok": false, "error": "Artifact could not be hashed completely or changed size: " + path}
+    }
+    return {"ok": true, "bytes": size, "sha256": digest}
 }
 
 export func relative_files(root, relative) {
@@ -407,16 +429,27 @@ export func relative_files(root, relative) {
     return out
 }
 
+# The pinned runtime rejects delete_file on directory symlinks on Linux.
+# Unlink only this argv path; never recurse through the symlink target.
+func unlink_tree_symlink(path) {
+    destination := path
+    if starts_with(destination, "/") == false { destination = join_path(os_getcwd(), destination) }
+    removed := spawn_process(["/bin/rm", "--", destination], {"inherit_env": false, "timeout_ms": 10000, "max_output_bytes": 4096})
+    if removed.success != true { throw("Unable to unlink cleanup symlink.") }
+}
+
 export func remove_tree(path) {
-    if (file_exists(path) || path_is_dir(path)) && path_is_symlink(path) {
-        delete_file(path)
+    mut linked := false
+    try { linked = path_is_symlink(path) } except err { if file_exists(path) { throw(err) } }
+    if linked {
+        unlink_tree_symlink(path)
         return
     }
     if path_is_dir(path) == false { return }
     for name in list_dir(path) {
         child := join_path(path, name)
         if path_is_symlink(child) {
-            delete_file(child)
+            unlink_tree_symlink(child)
         } else if path_is_dir(child) {
             remove_tree(child)
         } else if file_exists(child) {
@@ -447,4 +480,15 @@ export func last_json_line(output) {
 
 export func result(ok, data, error) {
     return {"ok": ok, "data": data, "error": error}
+}
+
+# Kujo create_dir is recursive/idempotent, so it cannot claim ownership. The
+# supported POSIX hosts supply mkdir without -p, which atomically rejects an
+# existing destination. Use a fixed executable and pass the path as one argv.
+export func claim_directory(path) {
+    if file_exists("/bin/mkdir") == false { throw("Exclusive directory claims require /bin/mkdir on a supported POSIX host.") }
+    destination := path
+    if starts_with(destination, "/") == false { destination = join_path(os_getcwd(), destination) }
+    claimed := spawn_process(["/bin/mkdir", destination], {"inherit_env": false, "timeout_ms": 10000, "max_output_bytes": 4096})
+    return claimed.success == true
 }

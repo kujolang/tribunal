@@ -1,6 +1,6 @@
 # Tribunal :: JSON configuration with Kujo-first invariants
 
-from src.common import dict_get, truthy, array_includes, path_within, safe_http_url, safe_run_id
+from src.common import dict_get, truthy, array_includes, external_path_outside, safe_http_url, safe_run_id
 from src.catalog import panel
 
 export func default_config() {
@@ -236,12 +236,12 @@ export func validate_config(config) {
     if artifact_store["provider"] == "http-immutable" && (safe_run_id(artifact_store["tenant_id"]) == false || safe_run_id(artifact_store["region"]) == false) { return "Artifact-store tenant_id or region is unsafe." }
     if contains(artifact_store["endpoint"], "@") { return "Artifact-store endpoint must not embed credentials." }
     if artifact_store["provider"] == "http-immutable" && (contains(artifact_store["endpoint"], "?") || contains(artifact_store["endpoint"], "#")) { return "artifact_store.endpoint must be a base URL without query or fragment." }
-    if artifact_store["provider"] == "local-immutable" && path_within(tribunal["storage_dir"], artifact_store["root"]) { return "artifact_store.root must be outside tribunal.storage_dir." }
+    if artifact_store["provider"] == "local-immutable" && external_path_outside(tribunal["storage_dir"], artifact_store["root"]) == false { return "artifact_store.root must be outside tribunal.storage_dir without symbolic-link aliases." }
     if array_includes(["jsonl", "http"], dict_get(telemetry, "collector", "")) == false { return "telemetry.collector is invalid." }
     if type(dict_get(telemetry, "destination", null)) != "string" || trim(dict_get(telemetry, "destination", "")) == "" { return "telemetry.destination is required." }
     if telemetry["collector"] == "http" && secure_http_url(telemetry["destination"]) == false { return "telemetry.destination must use HTTPS (plain HTTP is allowed only for loopback development)." }
     if telemetry["collector"] == "http" && contains(telemetry["destination"], "@") { return "Telemetry destination must not embed credentials." }
-    if telemetry["collector"] == "jsonl" && path_within(tribunal["storage_dir"], telemetry["destination"]) { return "telemetry.destination must be outside tribunal.storage_dir." }
+    if telemetry["collector"] == "jsonl" && external_path_outside(tribunal["storage_dir"], telemetry["destination"]) == false { return "telemetry.destination must be outside tribunal.storage_dir without symbolic-link aliases." }
     return ""
 }
 

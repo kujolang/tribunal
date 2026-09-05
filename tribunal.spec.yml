@@ -79,10 +79,14 @@ eval_requirements:
     params:
       command: "TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run scripts/scale_perf_gate.kujo"
 risks:
-  - "A self-signed bundle without a separately trusted public key does not establish provenance"
-  - "Post-seal writes inside a run directory invalidate the integrity manifest"
-  - "HTTP artifact stores and HSM/KMS adapters require deployment-specific authenticated implementations of the published contracts"
-  - "Kujo does not yet expose in-process peak RSS, so supervisors must enforce the published memory budget"
+  - risk: "A self-signed bundle without a separately trusted public key does not establish provenance"
+    mitigation: "Require independently distributed trust policies and trusted public keys at import and audit boundaries."
+  - risk: "Post-seal writes inside a run directory invalidate the integrity manifest"
+    mitigation: "Keep governance, telemetry, dashboard, and downstream receipts outside sealed run directories."
+  - risk: "HTTP artifact stores and HSM/KMS adapters require deployment-specific authenticated implementations of the published contracts"
+    mitigation: "Run target-specific conformance and certification harnesses before deployment."
+  - risk: "Kujo does not yet expose in-process peak RSS, so supervisors must enforce the published memory budget"
+    mitigation: "Enforce memory ceilings with the deployment supervisor and preserve performance receipts."
 review_expectations:
   - "Verify tamper detection with a changed ruling artifact"
   - "Exercise real offline RunLedger, CaseFile, PackWrite, Concord, and Kujo AI SDK paths"

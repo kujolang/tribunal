@@ -1,0 +1,3748 @@
+{
+  "schemaVersion": "1.0.0",
+  "repository": "kujolang/tribunal",
+  "branch": "fix/tribunal-bug-regressions",
+  "startingRevision": "a7499fb48c29d4860bafa4c80d997ba0a9fa2634",
+  "implementationRevision": "b9c3129122670cad2a9d557a7e3e5bc6f3bfae01",
+  "recordedAt": "2026-09-05T12:23:42.646862+00:00",
+  "platform": "macOS-26.3.1-x86_64-i386-64bit",
+  "runtimeBinarySha256": "672951e9703c21b0be2adf527c984bbcfec7a8b6107dc479970303d050cd15eb",
+  "claimBoundary": "Local current-runtime engineering verification; pinned integration and Workcell certification blocked.",
+  "phases": {
+    "baseline": {
+      "revision": "a7499fb48c29d4860bafa4c80d997ba0a9fa2634",
+      "results": [
+        {
+          "command": [
+            "./bin/tribunal",
+            "version"
+          ],
+          "exit": 0,
+          "seconds": 0.441,
+          "log": ".tribunal/hardening/baseline/000.log",
+          "logSha256": "5110e27906966eede602389a3023a74bcea1e630a462abb7e550828ac678f261"
+        },
+        {
+          "command": [
+            "./bin/tribunal",
+            "doctor",
+            "--json"
+          ],
+          "exit": 0,
+          "seconds": 1.344,
+          "log": ".tribunal/hardening/baseline/001.log",
+          "logSha256": "3f732afc50ba19e0bf602d92de11808b1442bcb15ecac1b4c9d828b1905422ab"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/adoption_report.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/baseline/002.log",
+          "logSha256": "408a3720d9269ee85e8c645bbd5f80eb6e1c01539251b10c2cc265c16736c71b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/adversarial_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.095,
+          "log": ".tribunal/hardening/baseline/003.log",
+          "logSha256": "e608e816662ab60a77d2b9475697cc0d0600ffab604664a26b6124573c511c7b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/archive_bundle.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.05,
+          "log": ".tribunal/hardening/baseline/004.log",
+          "logSha256": "62459fa1922f96e8cf89a44e73b0c28c86ae8fda53a0811f60ed7373243ecb72"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/archive_smoke.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.044,
+          "log": ".tribunal/hardening/baseline/005.log",
+          "logSha256": "21173bf8b620209593683b48db0b7de851f23504df3afe4e16341015ae40ba28"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/dashboard_accessibility_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/baseline/006.log",
+          "logSha256": "d248c861562ae5a88df041536c3db14807cbbf2969b44914f459741997f25325"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/docs_link_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.043,
+          "log": ".tribunal/hardening/baseline/007.log",
+          "logSha256": "f2cbe98e5c4b11d0731e19555abe01fb9d9df07bcee8e2dc760f2e0936beb7b8"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/drift_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.042,
+          "log": ".tribunal/hardening/baseline/008.log",
+          "logSha256": "6e84be18dedc9f87181ad1483f2446e420e6c73fe3ca67854570019307b51e4e"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/gallery_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.043,
+          "log": ".tribunal/hardening/baseline/009.log",
+          "logSha256": "0ad69da78d1b1af3c0d2ef8eb306263f8831b46bfd2d6ac698044235d8f9189a"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/generate_cli_assets.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.039,
+          "log": ".tribunal/hardening/baseline/010.log",
+          "logSha256": "4e23e1d284e427efe4e6f93a06919d1cfc11f4544cfc3f46088d040a2a9306b4"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/http_store_conformance.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.04,
+          "log": ".tribunal/hardening/baseline/011.log",
+          "logSha256": "3c22be7c0267a7f3f7c5044972acdb3f2a3c73a8adca7b74722da6e6c9d3a63d"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/index_perf_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.08,
+          "log": ".tribunal/hardening/baseline/012.log",
+          "logSha256": "5918bdec99887982af7f9f652c96e3b43688e374f6bbcfd60d2d5899b0252691"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/integration_matrix_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/baseline/013.log",
+          "logSha256": "b6e2e8cd8c4381a6882e08736cc65d3c4d4a8d22c272b510aa335cab0227bc76"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/kms_conformance.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.061,
+          "log": ".tribunal/hardening/baseline/014.log",
+          "logSha256": "029e5a1640554c4ae947dc4de047b6e1af698f291faa6bd1d33f990e57473dde"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/load_chaos_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/baseline/015.log",
+          "logSha256": "462b3f059a334b64087c0ce1847c34be7a47c0d4e1111380363398c419c512ce"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/multi_host_report.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.044,
+          "log": ".tribunal/hardening/baseline/016.log",
+          "logSha256": "d2a1fa851b47f8444841e30c50ba7df328394823513de898ffec87df91212855"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/multi_host_worker.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/baseline/017.log",
+          "logSha256": "f643f3e393aa6ad4b7bb85921fd14d6b251b1209fca92d47c5c59d343eb2d80f"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/perf_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.077,
+          "log": ".tribunal/hardening/baseline/018.log",
+          "logSha256": "a01cf1181af758109ba5fbf38c74fa2295331f383d6f88bd6460270c7e043d47"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/platform_receipt.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.046,
+          "log": ".tribunal/hardening/baseline/019.log",
+          "logSha256": "d65e2b8ff7adbdbc5a176cba881c741ba59a6880d3f853ce769b93f6805be8a2"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/release_archive.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.046,
+          "log": ".tribunal/hardening/baseline/020.log",
+          "logSha256": "b78208ccee3808b5eb4f9167b3a39b50d7237cff2753ee625229618a2622b407"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/release_evidence.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.046,
+          "log": ".tribunal/hardening/baseline/021.log",
+          "logSha256": "ff95f5faa5eb11151e7de133f05b8ab28ae2a2907f9eea104b5631f950b666a1"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/scale_perf_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.052,
+          "log": ".tribunal/hardening/baseline/022.log",
+          "logSha256": "c093c5bc3b127fe077d794bc1c82aa480a3072bd6d51fcda4ab0db9875a4e4e5"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/schema_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.044,
+          "log": ".tribunal/hardening/baseline/023.log",
+          "logSha256": "ce1709df4a53653be9c9155dee6edc459c88af3918937c00a25d87ff9ec056b3"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/security_review_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.044,
+          "log": ".tribunal/hardening/baseline/024.log",
+          "logSha256": "2a615c8169b9fc806948ba18eb10d9aaba86a7d20a54132a1bfd1b263cab64ec"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/spec_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.041,
+          "log": ".tribunal/hardening/baseline/025.log",
+          "logSha256": "7fb9252b9ba192074d6324388c14624b71afdd26fee67d8d866a9f0dfd3b618d"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/v1_compatibility_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.044,
+          "log": ".tribunal/hardening/baseline/026.log",
+          "logSha256": "2523a02c37f0ef008df106ecddfe120ee21c9af9146361cb4022067efe00142c"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/adversarial.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/baseline/027.log",
+          "logSha256": "b19fab2904d0fa2b0b2a0d5125d884f7f95f1206ba9cf1a9547f38a579efca84"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/algorithms.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/baseline/028.log",
+          "logSha256": "be525fe5539bcbfc84e743eaedc99665d4beaf417038c7c025aa5cbac358bd49"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/analytics.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.049,
+          "log": ".tribunal/hardening/baseline/029.log",
+          "logSha256": "8e1072bf109ee057916db6b132f4293f9bd67aad799d57949e19b7bc8b53239c"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/artifact_store.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.041,
+          "log": ".tribunal/hardening/baseline/030.log",
+          "logSha256": "06d33e893d609401aa10d331c12f887045bc0dd05814d5daf9c1ba20804fa4f1"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/audit.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.044,
+          "log": ".tribunal/hardening/baseline/031.log",
+          "logSha256": "10bd0f7ed7a6e50b17e8ac732192db444719475dd3589a645294dfa2d12fb2e0"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/bridges/ai_sdk_bridge.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.042,
+          "log": ".tribunal/hardening/baseline/032.log",
+          "logSha256": "c29403351e785e3f0905317f02505334185bae3a35d4c3cd417021aee7d0a070"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/bridges/immutable_http_store_server.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.077,
+          "log": ".tribunal/hardening/baseline/033.log",
+          "logSha256": "39cde0a2ae2ceb463e04e586106af21bc28c582376edb60bc33711dd510a6375"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/bridges/packwrite_context_bridge.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.047,
+          "log": ".tribunal/hardening/baseline/034.log",
+          "logSha256": "6124683faa5be886643e1a538aaf2d00748b4d0ee1b1cf423171a56361566768"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/bridges/vault_transit_signing_adapter.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.086,
+          "log": ".tribunal/hardening/baseline/035.log",
+          "logSha256": "28167c04af31d65597651d2bb9644c48c4c42428437dfb8865a43cb6428d7d3f"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/bundles.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.076,
+          "log": ".tribunal/hardening/baseline/036.log",
+          "logSha256": "e5052fbd158ba470264b2f9e28c519d4c25aaf69a248fdc92e216118c1a90e8a"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/catalog.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.043,
+          "log": ".tribunal/hardening/baseline/037.log",
+          "logSha256": "bba9d36270388c51c6b2692a2c80ca5eaea469cb58db25296cd731f06934e6e2"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/cli.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.075,
+          "log": ".tribunal/hardening/baseline/038.log",
+          "logSha256": "2931442c5fb9b82f7ad085b759cdf1d94282b3142fd44bbdd89c7f803acae88e"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/common.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.077,
+          "log": ".tribunal/hardening/baseline/039.log",
+          "logSha256": "844f9c3f63dea302044c147c36da634edf6143f46488e8651e8fda08db88f9f9"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/compare.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.041,
+          "log": ".tribunal/hardening/baseline/040.log",
+          "logSha256": "bdb67b9d812fde00ae35f4d832177aded385c2cadcb0f3a49414880dd2f090ba"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/config.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.084,
+          "log": ".tribunal/hardening/baseline/041.log",
+          "logSha256": "2e44ebdfcdaa2b18506ff3c527c09a328cafec75ebc86547c63fab8d75e3a48a"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/connectors.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/baseline/042.log",
+          "logSha256": "c11e164ac5e618066826dfb0d905a41a55217bba900d947febb85d6a6e8f3cb8"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/context.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.049,
+          "log": ".tribunal/hardening/baseline/043.log",
+          "logSha256": "7bac53b3828c3958a4e087268c48ba7936d02d2e91c76e0a02d2cbd810eacd67"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/contracts.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.04,
+          "log": ".tribunal/hardening/baseline/044.log",
+          "logSha256": "8e5c6f7a6d2bd8458025fdf91381bd0b0845d511b0e7d7720939ed867c607b28"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/dashboard.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.043,
+          "log": ".tribunal/hardening/baseline/045.log",
+          "logSha256": "b6357a7494d175e85c3d10534b69b684f08c786022f2b2908fe5b45edd76282f"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/decision_contracts.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.044,
+          "log": ".tribunal/hardening/baseline/046.log",
+          "logSha256": "6568b9e49bad31ed0293d65db4105def1c4f529882504c63a24d9f768a4891ad"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/diagnostics.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.047,
+          "log": ".tribunal/hardening/baseline/047.log",
+          "logSha256": "bcbea8ab35c2edd896dd1e6b0cef9be75aa7c9b53a5c075265a9a470a2ed5a4b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/governance.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/baseline/048.log",
+          "logSha256": "4b296a8bfe24e72bf91db2be74f258b44e84cae95b26d2c9cbb5e7cb5a7acccc"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/integrations.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.042,
+          "log": ".tribunal/hardening/baseline/049.log",
+          "logSha256": "896b4aa3a103c10359a434e90c7efb8e2646011e847b9d73a7b67e5c6408adac"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/integrity.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/baseline/050.log",
+          "logSha256": "00ff8ad51d06be942458c7be34b27b78cd3fdbb3e4954fcdc0b0d405c0c953dc"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/lib.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.046,
+          "log": ".tribunal/hardening/baseline/051.log",
+          "logSha256": "7ed4c64f5a04d9947e44333b9529de6f174940054f381ac0b2c7a09d06dc8dd8"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/locking.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.078,
+          "log": ".tribunal/hardening/baseline/052.log",
+          "logSha256": "5de399c8cc2d31503b5fc2c96957dae281bd2d30e3d35a9650e8f6960f1fb271"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/model.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.041,
+          "log": ".tribunal/hardening/baseline/053.log",
+          "logSha256": "33bf4fb1f8963fde6be31326d54d7021f34087a3253f4216205fe8f18f0e42b3"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/panels.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/baseline/054.log",
+          "logSha256": "bea84a86b6853ade72bf63852e34a60163a30865bea05c9b9c9bf27879b07f26"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/policy.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/baseline/055.log",
+          "logSha256": "a780d8c6b877a5ed13267b18a813811158c12275313a6f9cbe49e5ce4be8dd8d"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/provenance.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.047,
+          "log": ".tribunal/hardening/baseline/056.log",
+          "logSha256": "0459739788d2b56eae535a9eb175d2db68d8ecb19f72a762ea4efc55f389b9cb"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/render.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.041,
+          "log": ".tribunal/hardening/baseline/057.log",
+          "logSha256": "e11601a3ffc801c7bb031cac35e11fc256bd34b3fa66e949ae0bbced1cb6899c"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/signing_provider.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.043,
+          "log": ".tribunal/hardening/baseline/058.log",
+          "logSha256": "b5b92d566c6bf7e6968b3281384b47e0b2520fe511fb5de27cb5bf5a09df5111"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/storage.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.073,
+          "log": ".tribunal/hardening/baseline/059.log",
+          "logSha256": "c4c8862421f45f0f826ee0ca4ef7d5a3c57c99f33bcd3dc51c2ed995a9a0380d"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/telemetry.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.047,
+          "log": ".tribunal/hardening/baseline/060.log",
+          "logSha256": "9337e384f0d78faafd1396a3fd8c20d0a4e3932a93771d89916b5b405f3dd78b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/tribunal.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.083,
+          "log": ".tribunal/hardening/baseline/061.log",
+          "logSha256": "03c711a1c6799b1d161822e883a00c7837f3bb95d8a5bfcc773b9650e7beeb90"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/version.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.044,
+          "log": ".tribunal/hardening/baseline/062.log",
+          "logSha256": "5e56a628224de1c3e63950edcd0079b660135e4e88514e42f31d4dfb894ca28b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/adversarial/malicious_server.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.043,
+          "log": ".tribunal/hardening/baseline/063.log",
+          "logSha256": "bd61e177e21cf51f4f09575bc22e506b0ad789fecf0beeca06988f7be4359335"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/cli_integration.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.044,
+          "log": ".tribunal/hardening/baseline/064.log",
+          "logSha256": "88045ec39119e217caa96ac4c606ad7ecdffd13374bd4af2c74cfab30e0a6acf"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/enterprise_tests.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.079,
+          "log": ".tribunal/hardening/baseline/065.log",
+          "logSha256": "e18e97ded185a42be7d62b3abc958877b1d4909f6d12b899ea8e7e9b3510be76"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/cancellable_worker.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/baseline/066.log",
+          "logSha256": "beb6257fd76cee64d8a6ab8fec336fdc076cf762efb4aa768cbc5f2f213f0bb8"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/context_connector.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/baseline/067.log",
+          "logSha256": "3091648013bfe7eaa30390875b4ee6914047773fd80bb38c21d678a7998dbf33"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/external_signer.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.042,
+          "log": ".tribunal/hardening/baseline/068.log",
+          "logSha256": "31ea17207646a417334042b9a8f1f651860155d9d9a1fb5abd58a80330d80c06"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/leaky_signer.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.042,
+          "log": ".tribunal/hardening/baseline/069.log",
+          "logSha256": "cde76fd51fd13ecfa53f0b7e0418c01696d90834dd1c5dff6587258a30ed1309"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/nonzero_context_connector.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.041,
+          "log": ".tribunal/hardening/baseline/070.log",
+          "logSha256": "ee464a1a4233b373c81cceb92757d9e8cd2bed4355a8f5c6b44c7556b6f9db41"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/nonzero_signer.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.046,
+          "log": ".tribunal/hardening/baseline/071.log",
+          "logSha256": "9b42a8118144c2a1224f476983e785c988bdd7b4b5d559167c6a257c2b1b6e32"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/property_tests.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.078,
+          "log": ".tribunal/hardening/baseline/072.log",
+          "logSha256": "fe5022829dd37b4ce6be6e857cb05faf805e676307499d6b0178669e53af2c42"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/tribunal_tests.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.076,
+          "log": ".tribunal/hardening/baseline/073.log",
+          "logSha256": "43f0f08125856a1ee9f27885c4926bb43c82268327264791f8eef4a2704766aa"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tribunal.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/baseline/074.log",
+          "logSha256": "856f157a66b9efd698c0aa847ac9ff9b796ea8fb812c7e637a9190bcefca7247"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "tests/tribunal_tests.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 43.297,
+          "log": ".tribunal/hardening/baseline/075.log",
+          "logSha256": "2cdab9eb6d13bcb6329145fe9abb73f1309e75a6398ebbbfcadeb0d6f1e41b8e"
+        }
+      ]
+    },
+    "baseline-continuation": {
+      "revision": "a7499fb48c29d4860bafa4c80d997ba0a9fa2634",
+      "results": [
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "tests/cli_integration.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 82.512,
+          "log": ".tribunal/hardening/baseline-continuation/000.log",
+          "logSha256": "0cc836b7289fab4679df059a9fe0c05cebc2307c0a0259f96ad76ae38a42a67b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "tests/enterprise_tests.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 31.787,
+          "log": ".tribunal/hardening/baseline-continuation/001.log",
+          "logSha256": "2bc80654506b0ea9c72d59b1d63c5a8d8bf1cdd8bf8b97b3439159a6e29df302"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "tests/property_tests.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 31.292,
+          "log": ".tribunal/hardening/baseline-continuation/002.log",
+          "logSha256": "26d8436150a26b9048aa2d400579c87b0244d6c0627d9162a931e788174395d5"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/schema_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 18.387,
+          "log": ".tribunal/hardening/baseline-continuation/003.log",
+          "logSha256": "b687b8eb15a74ac869e3de982787058aa37a0ab4a535a5696d3c98b62ddb8e93"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/drift_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 30.298,
+          "log": ".tribunal/hardening/baseline-continuation/004.log",
+          "logSha256": "5797cd645ec2dfd558a19e4c28a11f7222225ff79fbe015548e67acdc7d0a7a3"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/spec_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 0.337,
+          "log": ".tribunal/hardening/baseline-continuation/005.log",
+          "logSha256": "f31bcfde1da8cf89bdad9de1b8a18ed0caaef3444d255a421bff17d21d9f37c9"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/perf_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 5.275,
+          "log": ".tribunal/hardening/baseline-continuation/006.log",
+          "logSha256": "b7f144eb081b889b331aa6e369b0393929a3c98800df41d784c1d3b33871767b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/scale_perf_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 1,
+          "seconds": 69.429,
+          "log": ".tribunal/hardening/baseline-continuation/007.log",
+          "logSha256": "cc25d3bad257ddbea230faaeea6196fd0869623169bb1f2130cc4937b6bfd783"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/index_perf_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 25.148,
+          "log": ".tribunal/hardening/baseline-continuation/008.log",
+          "logSha256": "eae078e1c9ca0cd3116e59d9f2bef11e946eb1f34caeb335915ad7a8faf99514"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/load_chaos_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 28.042,
+          "log": ".tribunal/hardening/baseline-continuation/009.log",
+          "logSha256": "ee86e6e3f360c7dc3d8eab6fc9ea5fcecacee7c8f495b9942980c5d12e8527e2"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/adversarial_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 0.564,
+          "log": ".tribunal/hardening/baseline-continuation/010.log",
+          "logSha256": "85e3eeeae8b110b52a88082871298623c0f97d2966fd67d444e9cf47f435860e"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/dashboard_accessibility_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 0.249,
+          "log": ".tribunal/hardening/baseline-continuation/011.log",
+          "logSha256": "99e22448a40c4d6b36343bc0732816f65f1a733d68762c22d8189397254843b7"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/security_review_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 0.087,
+          "log": ".tribunal/hardening/baseline-continuation/012.log",
+          "logSha256": "47e1a3e125a1cd43409acae2ff86d778a71af7a1f7e6396c02f94d0ca1684eb5"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/integration_matrix_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 1,
+          "seconds": 0.451,
+          "log": ".tribunal/hardening/baseline-continuation/013.log",
+          "logSha256": "d11b03d88c495db353567808622352e3da6390f5c73fd8bae7eb4345b2ffda1b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/gallery_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 17.702,
+          "log": ".tribunal/hardening/baseline-continuation/014.log",
+          "logSha256": "1cdfc4b6a26e580da16dfad40cb7aa3776a78e986afa99267714b1ee0a690d4d"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/v1_compatibility_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 1.198,
+          "log": ".tribunal/hardening/baseline-continuation/015.log",
+          "logSha256": "0c8e38565579188245389d75fab70f4126691bcd3e5c7a4ae26c7870fbe8b7b2"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/docs_link_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 0.133,
+          "log": ".tribunal/hardening/baseline-continuation/016.log",
+          "logSha256": "02dc02d7d68e0c3b654379e33ad689668afc099d999f7739e2a203aec8909827"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "../kennel/kennel.kujo",
+            "--interpreter",
+            "--",
+            "validate",
+            "--project-dir",
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal"
+          ],
+          "exit": 0,
+          "seconds": 0.307,
+          "log": ".tribunal/hardening/baseline-continuation/017.log",
+          "logSha256": "b580f787ae33b3673c7adbb61315dcc224a55bb5f0987fe2f5d3dec40128fba0"
+        },
+        {
+          "command": [
+            "git",
+            "diff",
+            "--check"
+          ],
+          "exit": 0,
+          "seconds": 0.027,
+          "log": ".tribunal/hardening/baseline-continuation/018.log",
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    "final": {
+      "revision": "24f0b3f38f3f11c998478d23baea1dfa0028131d",
+      "results": [
+        {
+          "command": [
+            "./bin/tribunal",
+            "version"
+          ],
+          "exit": 0,
+          "seconds": 0.367,
+          "log": ".tribunal/hardening/final/000.log",
+          "logSha256": "5110e27906966eede602389a3023a74bcea1e630a462abb7e550828ac678f261"
+        },
+        {
+          "command": [
+            "./bin/tribunal",
+            "doctor",
+            "--json"
+          ],
+          "exit": 0,
+          "seconds": 1.214,
+          "log": ".tribunal/hardening/final/001.log",
+          "logSha256": "3f732afc50ba19e0bf602d92de11808b1442bcb15ecac1b4c9d828b1905422ab"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/adoption_report.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.076,
+          "log": ".tribunal/hardening/final/002.log",
+          "logSha256": "408a3720d9269ee85e8c645bbd5f80eb6e1c01539251b10c2cc265c16736c71b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/adversarial_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.117,
+          "log": ".tribunal/hardening/final/003.log",
+          "logSha256": "e608e816662ab60a77d2b9475697cc0d0600ffab604664a26b6124573c511c7b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/archive_bundle.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.047,
+          "log": ".tribunal/hardening/final/004.log",
+          "logSha256": "62459fa1922f96e8cf89a44e73b0c28c86ae8fda53a0811f60ed7373243ecb72"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/archive_smoke.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.05,
+          "log": ".tribunal/hardening/final/005.log",
+          "logSha256": "21173bf8b620209593683b48db0b7de851f23504df3afe4e16341015ae40ba28"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/dashboard_accessibility_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.041,
+          "log": ".tribunal/hardening/final/006.log",
+          "logSha256": "d248c861562ae5a88df041536c3db14807cbbf2969b44914f459741997f25325"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/docs_link_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.107,
+          "log": ".tribunal/hardening/final/007.log",
+          "logSha256": "f2cbe98e5c4b11d0731e19555abe01fb9d9df07bcee8e2dc760f2e0936beb7b8"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/drift_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.044,
+          "log": ".tribunal/hardening/final/008.log",
+          "logSha256": "6e84be18dedc9f87181ad1483f2446e420e6c73fe3ca67854570019307b51e4e"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/gallery_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.052,
+          "log": ".tribunal/hardening/final/009.log",
+          "logSha256": "0ad69da78d1b1af3c0d2ef8eb306263f8831b46bfd2d6ac698044235d8f9189a"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/generate_cli_assets.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.046,
+          "log": ".tribunal/hardening/final/010.log",
+          "logSha256": "4e23e1d284e427efe4e6f93a06919d1cfc11f4544cfc3f46088d040a2a9306b4"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/http_store_conformance.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.08,
+          "log": ".tribunal/hardening/final/011.log",
+          "logSha256": "3c22be7c0267a7f3f7c5044972acdb3f2a3c73a8adca7b74722da6e6c9d3a63d"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/index_perf_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.089,
+          "log": ".tribunal/hardening/final/012.log",
+          "logSha256": "5918bdec99887982af7f9f652c96e3b43688e374f6bbcfd60d2d5899b0252691"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/integration_matrix_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.051,
+          "log": ".tribunal/hardening/final/013.log",
+          "logSha256": "b6e2e8cd8c4381a6882e08736cc65d3c4d4a8d22c272b510aa335cab0227bc76"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/kms_conformance.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.051,
+          "log": ".tribunal/hardening/final/014.log",
+          "logSha256": "029e5a1640554c4ae947dc4de047b6e1af698f291faa6bd1d33f990e57473dde"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/load_chaos_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.048,
+          "log": ".tribunal/hardening/final/015.log",
+          "logSha256": "462b3f059a334b64087c0ce1847c34be7a47c0d4e1111380363398c419c512ce"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/multi_host_report.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.075,
+          "log": ".tribunal/hardening/final/016.log",
+          "logSha256": "d2a1fa851b47f8444841e30c50ba7df328394823513de898ffec87df91212855"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/multi_host_worker.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.052,
+          "log": ".tribunal/hardening/final/017.log",
+          "logSha256": "f643f3e393aa6ad4b7bb85921fd14d6b251b1209fca92d47c5c59d343eb2d80f"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/perf_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.051,
+          "log": ".tribunal/hardening/final/018.log",
+          "logSha256": "a01cf1181af758109ba5fbf38c74fa2295331f383d6f88bd6460270c7e043d47"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/platform_receipt.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.048,
+          "log": ".tribunal/hardening/final/019.log",
+          "logSha256": "d65e2b8ff7adbdbc5a176cba881c741ba59a6880d3f853ce769b93f6805be8a2"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/release_archive.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/final/020.log",
+          "logSha256": "b78208ccee3808b5eb4f9167b3a39b50d7237cff2753ee625229618a2622b407"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/release_evidence.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.064,
+          "log": ".tribunal/hardening/final/021.log",
+          "logSha256": "ff95f5faa5eb11151e7de133f05b8ab28ae2a2907f9eea104b5631f950b666a1"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/scale_perf_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/final/022.log",
+          "logSha256": "c093c5bc3b127fe077d794bc1c82aa480a3072bd6d51fcda4ab0db9875a4e4e5"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/schema_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.089,
+          "log": ".tribunal/hardening/final/023.log",
+          "logSha256": "ce1709df4a53653be9c9155dee6edc459c88af3918937c00a25d87ff9ec056b3"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/security_review_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.058,
+          "log": ".tribunal/hardening/final/024.log",
+          "logSha256": "2a615c8169b9fc806948ba18eb10d9aaba86a7d20a54132a1bfd1b263cab64ec"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/spec_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.102,
+          "log": ".tribunal/hardening/final/025.log",
+          "logSha256": "7fb9252b9ba192074d6324388c14624b71afdd26fee67d8d866a9f0dfd3b618d"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/v1_compatibility_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.044,
+          "log": ".tribunal/hardening/final/026.log",
+          "logSha256": "2523a02c37f0ef008df106ecddfe120ee21c9af9146361cb4022067efe00142c"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/adversarial.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.052,
+          "log": ".tribunal/hardening/final/027.log",
+          "logSha256": "b19fab2904d0fa2b0b2a0d5125d884f7f95f1206ba9cf1a9547f38a579efca84"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/algorithms.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.051,
+          "log": ".tribunal/hardening/final/028.log",
+          "logSha256": "be525fe5539bcbfc84e743eaedc99665d4beaf417038c7c025aa5cbac358bd49"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/analytics.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.058,
+          "log": ".tribunal/hardening/final/029.log",
+          "logSha256": "8e1072bf109ee057916db6b132f4293f9bd67aad799d57949e19b7bc8b53239c"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/artifact_store.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.093,
+          "log": ".tribunal/hardening/final/030.log",
+          "logSha256": "06d33e893d609401aa10d331c12f887045bc0dd05814d5daf9c1ba20804fa4f1"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/audit.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.08,
+          "log": ".tribunal/hardening/final/031.log",
+          "logSha256": "10bd0f7ed7a6e50b17e8ac732192db444719475dd3589a645294dfa2d12fb2e0"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/bridges/ai_sdk_bridge.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.05,
+          "log": ".tribunal/hardening/final/032.log",
+          "logSha256": "c29403351e785e3f0905317f02505334185bae3a35d4c3cd417021aee7d0a070"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/bridges/immutable_http_store_server.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.048,
+          "log": ".tribunal/hardening/final/033.log",
+          "logSha256": "39cde0a2ae2ceb463e04e586106af21bc28c582376edb60bc33711dd510a6375"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/bridges/packwrite_context_bridge.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.049,
+          "log": ".tribunal/hardening/final/034.log",
+          "logSha256": "6124683faa5be886643e1a538aaf2d00748b4d0ee1b1cf423171a56361566768"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/bridges/vault_transit_signing_adapter.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/final/035.log",
+          "logSha256": "28167c04af31d65597651d2bb9644c48c4c42428437dfb8865a43cb6428d7d3f"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/bundles.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.16,
+          "log": ".tribunal/hardening/final/036.log",
+          "logSha256": "e5052fbd158ba470264b2f9e28c519d4c25aaf69a248fdc92e216118c1a90e8a"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/catalog.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/final/037.log",
+          "logSha256": "bba9d36270388c51c6b2692a2c80ca5eaea469cb58db25296cd731f06934e6e2"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/cli.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.079,
+          "log": ".tribunal/hardening/final/038.log",
+          "logSha256": "2931442c5fb9b82f7ad085b759cdf1d94282b3142fd44bbdd89c7f803acae88e"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/common.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.081,
+          "log": ".tribunal/hardening/final/039.log",
+          "logSha256": "844f9c3f63dea302044c147c36da634edf6143f46488e8651e8fda08db88f9f9"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/compare.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.084,
+          "log": ".tribunal/hardening/final/040.log",
+          "logSha256": "bdb67b9d812fde00ae35f4d832177aded385c2cadcb0f3a49414880dd2f090ba"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/config.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.08,
+          "log": ".tribunal/hardening/final/041.log",
+          "logSha256": "2e44ebdfcdaa2b18506ff3c527c09a328cafec75ebc86547c63fab8d75e3a48a"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/connectors.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.047,
+          "log": ".tribunal/hardening/final/042.log",
+          "logSha256": "c11e164ac5e618066826dfb0d905a41a55217bba900d947febb85d6a6e8f3cb8"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/context.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.044,
+          "log": ".tribunal/hardening/final/043.log",
+          "logSha256": "7bac53b3828c3958a4e087268c48ba7936d02d2e91c76e0a02d2cbd810eacd67"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/contracts.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.077,
+          "log": ".tribunal/hardening/final/044.log",
+          "logSha256": "8e5c6f7a6d2bd8458025fdf91381bd0b0845d511b0e7d7720939ed867c607b28"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/dashboard.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.085,
+          "log": ".tribunal/hardening/final/045.log",
+          "logSha256": "b6357a7494d175e85c3d10534b69b684f08c786022f2b2908fe5b45edd76282f"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/decision_contracts.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.042,
+          "log": ".tribunal/hardening/final/046.log",
+          "logSha256": "6568b9e49bad31ed0293d65db4105def1c4f529882504c63a24d9f768a4891ad"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/diagnostics.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.042,
+          "log": ".tribunal/hardening/final/047.log",
+          "logSha256": "bcbea8ab35c2edd896dd1e6b0cef9be75aa7c9b53a5c075265a9a470a2ed5a4b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/governance.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.08,
+          "log": ".tribunal/hardening/final/048.log",
+          "logSha256": "4b296a8bfe24e72bf91db2be74f258b44e84cae95b26d2c9cbb5e7cb5a7acccc"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/integrations.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.093,
+          "log": ".tribunal/hardening/final/049.log",
+          "logSha256": "896b4aa3a103c10359a434e90c7efb8e2646011e847b9d73a7b67e5c6408adac"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/integrity.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.083,
+          "log": ".tribunal/hardening/final/050.log",
+          "logSha256": "00ff8ad51d06be942458c7be34b27b78cd3fdbb3e4954fcdc0b0d405c0c953dc"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/lib.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/final/051.log",
+          "logSha256": "7ed4c64f5a04d9947e44333b9529de6f174940054f381ac0b2c7a09d06dc8dd8"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/locking.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.054,
+          "log": ".tribunal/hardening/final/052.log",
+          "logSha256": "5de399c8cc2d31503b5fc2c96957dae281bd2d30e3d35a9650e8f6960f1fb271"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/model.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.05,
+          "log": ".tribunal/hardening/final/053.log",
+          "logSha256": "33bf4fb1f8963fde6be31326d54d7021f34087a3253f4216205fe8f18f0e42b3"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/panels.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.079,
+          "log": ".tribunal/hardening/final/054.log",
+          "logSha256": "bea84a86b6853ade72bf63852e34a60163a30865bea05c9b9c9bf27879b07f26"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/policy.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.081,
+          "log": ".tribunal/hardening/final/055.log",
+          "logSha256": "a780d8c6b877a5ed13267b18a813811158c12275313a6f9cbe49e5ce4be8dd8d"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/provenance.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.08,
+          "log": ".tribunal/hardening/final/056.log",
+          "logSha256": "0459739788d2b56eae535a9eb175d2db68d8ecb19f72a762ea4efc55f389b9cb"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/render.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.058,
+          "log": ".tribunal/hardening/final/057.log",
+          "logSha256": "e11601a3ffc801c7bb031cac35e11fc256bd34b3fa66e949ae0bbced1cb6899c"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/signing_provider.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.079,
+          "log": ".tribunal/hardening/final/058.log",
+          "logSha256": "b5b92d566c6bf7e6968b3281384b47e0b2520fe511fb5de27cb5bf5a09df5111"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/storage.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.086,
+          "log": ".tribunal/hardening/final/059.log",
+          "logSha256": "c4c8862421f45f0f826ee0ca4ef7d5a3c57c99f33bcd3dc51c2ed995a9a0380d"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/telemetry.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.054,
+          "log": ".tribunal/hardening/final/060.log",
+          "logSha256": "9337e384f0d78faafd1396a3fd8c20d0a4e3932a93771d89916b5b405f3dd78b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/tribunal.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.086,
+          "log": ".tribunal/hardening/final/061.log",
+          "logSha256": "03c711a1c6799b1d161822e883a00c7837f3bb95d8a5bfcc773b9650e7beeb90"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/version.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.049,
+          "log": ".tribunal/hardening/final/062.log",
+          "logSha256": "5e56a628224de1c3e63950edcd0079b660135e4e88514e42f31d4dfb894ca28b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/adversarial/malicious_server.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.08,
+          "log": ".tribunal/hardening/final/063.log",
+          "logSha256": "bd61e177e21cf51f4f09575bc22e506b0ad789fecf0beeca06988f7be4359335"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/cli_integration.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.081,
+          "log": ".tribunal/hardening/final/064.log",
+          "logSha256": "88045ec39119e217caa96ac4c606ad7ecdffd13374bd4af2c74cfab30e0a6acf"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/enterprise_tests.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.086,
+          "log": ".tribunal/hardening/final/065.log",
+          "logSha256": "e18e97ded185a42be7d62b3abc958877b1d4909f6d12b899ea8e7e9b3510be76"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/cancellable_worker.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.081,
+          "log": ".tribunal/hardening/final/066.log",
+          "logSha256": "beb6257fd76cee64d8a6ab8fec336fdc076cf762efb4aa768cbc5f2f213f0bb8"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/context_connector.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.086,
+          "log": ".tribunal/hardening/final/067.log",
+          "logSha256": "3091648013bfe7eaa30390875b4ee6914047773fd80bb38c21d678a7998dbf33"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/external_signer.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.084,
+          "log": ".tribunal/hardening/final/068.log",
+          "logSha256": "31ea17207646a417334042b9a8f1f651860155d9d9a1fb5abd58a80330d80c06"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/leaky_signer.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.057,
+          "log": ".tribunal/hardening/final/069.log",
+          "logSha256": "cde76fd51fd13ecfa53f0b7e0418c01696d90834dd1c5dff6587258a30ed1309"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/nonzero_context_connector.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.09,
+          "log": ".tribunal/hardening/final/070.log",
+          "logSha256": "ee464a1a4233b373c81cceb92757d9e8cd2bed4355a8f5c6b44c7556b6f9db41"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/nonzero_signer.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.091,
+          "log": ".tribunal/hardening/final/071.log",
+          "logSha256": "9b42a8118144c2a1224f476983e785c988bdd7b4b5d559167c6a257c2b1b6e32"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/hardening_tests.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.083,
+          "log": ".tribunal/hardening/final/072.log",
+          "logSha256": "2d107005b3bc2286f8559da46272f46a1c76390660de7c6261a0af11132844cc"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/property_tests.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.089,
+          "log": ".tribunal/hardening/final/073.log",
+          "logSha256": "fe5022829dd37b4ce6be6e857cb05faf805e676307499d6b0178669e53af2c42"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/tribunal_tests.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.085,
+          "log": ".tribunal/hardening/final/074.log",
+          "logSha256": "43f0f08125856a1ee9f27885c4926bb43c82268327264791f8eef4a2704766aa"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tribunal.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.089,
+          "log": ".tribunal/hardening/final/075.log",
+          "logSha256": "856f157a66b9efd698c0aa847ac9ff9b796ea8fb812c7e637a9190bcefca7247"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "tests/tribunal_tests.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 47.65,
+          "log": ".tribunal/hardening/final/076.log",
+          "logSha256": "b2e48d000a1f2a656c218f05863563fb3e4e97188566c0ff4f09f7aaa6dc4f12"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "tests/cli_integration.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 61.163,
+          "log": ".tribunal/hardening/final/077.log",
+          "logSha256": "0cc836b7289fab4679df059a9fe0c05cebc2307c0a0259f96ad76ae38a42a67b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "tests/enterprise_tests.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 23.533,
+          "log": ".tribunal/hardening/final/078.log",
+          "logSha256": "ad41771aa5f0fee0f413a81790f8aef788b6c8b61ebdbe714e8bb72ca73d62e8"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "tests/property_tests.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 10.746,
+          "log": ".tribunal/hardening/final/079.log",
+          "logSha256": "26d8436150a26b9048aa2d400579c87b0244d6c0627d9162a931e788174395d5"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "tests/hardening_tests.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 0.723,
+          "log": ".tribunal/hardening/final/080.log",
+          "logSha256": "9f0dd561f5205193193266c56e791ebd818443475c77526b55b7be0fbe893f8d"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/schema_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 6.475,
+          "log": ".tribunal/hardening/final/081.log",
+          "logSha256": "b687b8eb15a74ac869e3de982787058aa37a0ab4a535a5696d3c98b62ddb8e93"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/drift_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 11.962,
+          "log": ".tribunal/hardening/final/082.log",
+          "logSha256": "5797cd645ec2dfd558a19e4c28a11f7222225ff79fbe015548e67acdc7d0a7a3"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/spec_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 0.235,
+          "log": ".tribunal/hardening/final/083.log",
+          "logSha256": "f31bcfde1da8cf89bdad9de1b8a18ed0caaef3444d255a421bff17d21d9f37c9"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/perf_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 3.631,
+          "log": ".tribunal/hardening/final/084.log",
+          "logSha256": "cee959426b618f76794e467ab7aba84f3fbc9e7222eb57022022abfd7ff7d635"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/scale_perf_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 57.748,
+          "log": ".tribunal/hardening/final/085.log",
+          "logSha256": "2f17f23c8bf8c0245ddda94c9fd70c6b5a36ec36980c03d801b671c0c2ccca72"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/index_perf_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 22.101,
+          "log": ".tribunal/hardening/final/086.log",
+          "logSha256": "f8e08ab75962b87065151b6de2d8a58edec6e0e93dc1fd665588a060345104d7"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/load_chaos_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 26.805,
+          "log": ".tribunal/hardening/final/087.log",
+          "logSha256": "91d85a5f56ca3c1fc552ec246c46d16ddf7ecb28a2a1cfa4fa159df0dc184456"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/adversarial_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 0.598,
+          "log": ".tribunal/hardening/final/088.log",
+          "logSha256": "85e3eeeae8b110b52a88082871298623c0f97d2966fd67d444e9cf47f435860e"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/dashboard_accessibility_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 0.241,
+          "log": ".tribunal/hardening/final/089.log",
+          "logSha256": "99e22448a40c4d6b36343bc0732816f65f1a733d68762c22d8189397254843b7"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/security_review_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 0.082,
+          "log": ".tribunal/hardening/final/090.log",
+          "logSha256": "47e1a3e125a1cd43409acae2ff86d778a71af7a1f7e6396c02f94d0ca1684eb5"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/integration_matrix_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 1,
+          "seconds": 0.496,
+          "log": ".tribunal/hardening/final/091.log",
+          "logSha256": "a822c089004f70f105ed2b50f0bb098a04dd063f7eaccc14dfb79ef2b93543a8"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/gallery_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 16.009,
+          "log": ".tribunal/hardening/final/092.log",
+          "logSha256": "1cdfc4b6a26e580da16dfad40cb7aa3776a78e986afa99267714b1ee0a690d4d"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/v1_compatibility_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 1.246,
+          "log": ".tribunal/hardening/final/093.log",
+          "logSha256": "0c8e38565579188245389d75fab70f4126691bcd3e5c7a4ae26c7870fbe8b7b2"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/docs_link_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 0.191,
+          "log": ".tribunal/hardening/final/094.log",
+          "logSha256": "02dc02d7d68e0c3b654379e33ad689668afc099d999f7739e2a203aec8909827"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "../kennel/kennel.kujo",
+            "--interpreter",
+            "--",
+            "validate",
+            "--project-dir",
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal"
+          ],
+          "exit": 0,
+          "seconds": 0.343,
+          "log": ".tribunal/hardening/final/095.log",
+          "logSha256": "b580f787ae33b3673c7adbb61315dcc224a55bb5f0987fe2f5d3dec40128fba0"
+        },
+        {
+          "command": [
+            "git",
+            "diff",
+            "--check"
+          ],
+          "exit": 0,
+          "seconds": 0.088,
+          "log": ".tribunal/hardening/final/096.log",
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    "verified": {
+      "revision": "b9c3129122670cad2a9d557a7e3e5bc6f3bfae01",
+      "results": [
+        {
+          "command": [
+            "./bin/tribunal",
+            "version"
+          ],
+          "exit": 0,
+          "seconds": 0.305,
+          "log": ".tribunal/hardening/verified/000.log",
+          "logSha256": "5110e27906966eede602389a3023a74bcea1e630a462abb7e550828ac678f261"
+        },
+        {
+          "command": [
+            "./bin/tribunal",
+            "doctor",
+            "--json"
+          ],
+          "exit": 0,
+          "seconds": 0.796,
+          "log": ".tribunal/hardening/verified/001.log",
+          "logSha256": "3f732afc50ba19e0bf602d92de11808b1442bcb15ecac1b4c9d828b1905422ab"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/adoption_report.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.041,
+          "log": ".tribunal/hardening/verified/002.log",
+          "logSha256": "408a3720d9269ee85e8c645bbd5f80eb6e1c01539251b10c2cc265c16736c71b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/adversarial_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.047,
+          "log": ".tribunal/hardening/verified/003.log",
+          "logSha256": "e608e816662ab60a77d2b9475697cc0d0600ffab604664a26b6124573c511c7b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/archive_bundle.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.047,
+          "log": ".tribunal/hardening/verified/004.log",
+          "logSha256": "62459fa1922f96e8cf89a44e73b0c28c86ae8fda53a0811f60ed7373243ecb72"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/archive_smoke.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.047,
+          "log": ".tribunal/hardening/verified/005.log",
+          "logSha256": "21173bf8b620209593683b48db0b7de851f23504df3afe4e16341015ae40ba28"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/dashboard_accessibility_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.052,
+          "log": ".tribunal/hardening/verified/006.log",
+          "logSha256": "d248c861562ae5a88df041536c3db14807cbbf2969b44914f459741997f25325"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/docs_link_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.05,
+          "log": ".tribunal/hardening/verified/007.log",
+          "logSha256": "f2cbe98e5c4b11d0731e19555abe01fb9d9df07bcee8e2dc760f2e0936beb7b8"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/drift_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.043,
+          "log": ".tribunal/hardening/verified/008.log",
+          "logSha256": "6e84be18dedc9f87181ad1483f2446e420e6c73fe3ca67854570019307b51e4e"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/gallery_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.049,
+          "log": ".tribunal/hardening/verified/009.log",
+          "logSha256": "0ad69da78d1b1af3c0d2ef8eb306263f8831b46bfd2d6ac698044235d8f9189a"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/generate_cli_assets.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.048,
+          "log": ".tribunal/hardening/verified/010.log",
+          "logSha256": "4e23e1d284e427efe4e6f93a06919d1cfc11f4544cfc3f46088d040a2a9306b4"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/http_store_conformance.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.051,
+          "log": ".tribunal/hardening/verified/011.log",
+          "logSha256": "3c22be7c0267a7f3f7c5044972acdb3f2a3c73a8adca7b74722da6e6c9d3a63d"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/index_perf_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.046,
+          "log": ".tribunal/hardening/verified/012.log",
+          "logSha256": "5918bdec99887982af7f9f652c96e3b43688e374f6bbcfd60d2d5899b0252691"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/integration_matrix_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/verified/013.log",
+          "logSha256": "b6e2e8cd8c4381a6882e08736cc65d3c4d4a8d22c272b510aa335cab0227bc76"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/kms_conformance.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.049,
+          "log": ".tribunal/hardening/verified/014.log",
+          "logSha256": "029e5a1640554c4ae947dc4de047b6e1af698f291faa6bd1d33f990e57473dde"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/load_chaos_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.05,
+          "log": ".tribunal/hardening/verified/015.log",
+          "logSha256": "462b3f059a334b64087c0ce1847c34be7a47c0d4e1111380363398c419c512ce"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/multi_host_report.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.043,
+          "log": ".tribunal/hardening/verified/016.log",
+          "logSha256": "d2a1fa851b47f8444841e30c50ba7df328394823513de898ffec87df91212855"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/multi_host_worker.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.055,
+          "log": ".tribunal/hardening/verified/017.log",
+          "logSha256": "f643f3e393aa6ad4b7bb85921fd14d6b251b1209fca92d47c5c59d343eb2d80f"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/perf_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.047,
+          "log": ".tribunal/hardening/verified/018.log",
+          "logSha256": "a01cf1181af758109ba5fbf38c74fa2295331f383d6f88bd6460270c7e043d47"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/platform_receipt.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.051,
+          "log": ".tribunal/hardening/verified/019.log",
+          "logSha256": "d65e2b8ff7adbdbc5a176cba881c741ba59a6880d3f853ce769b93f6805be8a2"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/release_archive.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/verified/020.log",
+          "logSha256": "b78208ccee3808b5eb4f9167b3a39b50d7237cff2753ee625229618a2622b407"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/release_evidence.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.049,
+          "log": ".tribunal/hardening/verified/021.log",
+          "logSha256": "ff95f5faa5eb11151e7de133f05b8ab28ae2a2907f9eea104b5631f950b666a1"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/scale_perf_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.071,
+          "log": ".tribunal/hardening/verified/022.log",
+          "logSha256": "c093c5bc3b127fe077d794bc1c82aa480a3072bd6d51fcda4ab0db9875a4e4e5"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/schema_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.076,
+          "log": ".tribunal/hardening/verified/023.log",
+          "logSha256": "ce1709df4a53653be9c9155dee6edc459c88af3918937c00a25d87ff9ec056b3"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/security_review_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.063,
+          "log": ".tribunal/hardening/verified/024.log",
+          "logSha256": "2a615c8169b9fc806948ba18eb10d9aaba86a7d20a54132a1bfd1b263cab64ec"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/spec_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.042,
+          "log": ".tribunal/hardening/verified/025.log",
+          "logSha256": "7fb9252b9ba192074d6324388c14624b71afdd26fee67d8d866a9f0dfd3b618d"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "scripts/v1_compatibility_gate.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.047,
+          "log": ".tribunal/hardening/verified/026.log",
+          "logSha256": "2523a02c37f0ef008df106ecddfe120ee21c9af9146361cb4022067efe00142c"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/adversarial.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/verified/027.log",
+          "logSha256": "b19fab2904d0fa2b0b2a0d5125d884f7f95f1206ba9cf1a9547f38a579efca84"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/algorithms.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/verified/028.log",
+          "logSha256": "be525fe5539bcbfc84e743eaedc99665d4beaf417038c7c025aa5cbac358bd49"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/analytics.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.044,
+          "log": ".tribunal/hardening/verified/029.log",
+          "logSha256": "8e1072bf109ee057916db6b132f4293f9bd67aad799d57949e19b7bc8b53239c"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/artifact_store.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.051,
+          "log": ".tribunal/hardening/verified/030.log",
+          "logSha256": "06d33e893d609401aa10d331c12f887045bc0dd05814d5daf9c1ba20804fa4f1"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/audit.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.048,
+          "log": ".tribunal/hardening/verified/031.log",
+          "logSha256": "10bd0f7ed7a6e50b17e8ac732192db444719475dd3589a645294dfa2d12fb2e0"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/bridges/ai_sdk_bridge.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.049,
+          "log": ".tribunal/hardening/verified/032.log",
+          "logSha256": "c29403351e785e3f0905317f02505334185bae3a35d4c3cd417021aee7d0a070"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/bridges/immutable_http_store_server.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.046,
+          "log": ".tribunal/hardening/verified/033.log",
+          "logSha256": "39cde0a2ae2ceb463e04e586106af21bc28c582376edb60bc33711dd510a6375"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/bridges/packwrite_context_bridge.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/verified/034.log",
+          "logSha256": "6124683faa5be886643e1a538aaf2d00748b4d0ee1b1cf423171a56361566768"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/bridges/vault_transit_signing_adapter.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.042,
+          "log": ".tribunal/hardening/verified/035.log",
+          "logSha256": "28167c04af31d65597651d2bb9644c48c4c42428437dfb8865a43cb6428d7d3f"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/bundles.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.077,
+          "log": ".tribunal/hardening/verified/036.log",
+          "logSha256": "e5052fbd158ba470264b2f9e28c519d4c25aaf69a248fdc92e216118c1a90e8a"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/catalog.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.043,
+          "log": ".tribunal/hardening/verified/037.log",
+          "logSha256": "bba9d36270388c51c6b2692a2c80ca5eaea469cb58db25296cd731f06934e6e2"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/cli.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.079,
+          "log": ".tribunal/hardening/verified/038.log",
+          "logSha256": "2931442c5fb9b82f7ad085b759cdf1d94282b3142fd44bbdd89c7f803acae88e"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/common.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.08,
+          "log": ".tribunal/hardening/verified/039.log",
+          "logSha256": "844f9c3f63dea302044c147c36da634edf6143f46488e8651e8fda08db88f9f9"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/compare.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.112,
+          "log": ".tribunal/hardening/verified/040.log",
+          "logSha256": "bdb67b9d812fde00ae35f4d832177aded385c2cadcb0f3a49414880dd2f090ba"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/config.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.063,
+          "log": ".tribunal/hardening/verified/041.log",
+          "logSha256": "2e44ebdfcdaa2b18506ff3c527c09a328cafec75ebc86547c63fab8d75e3a48a"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/connectors.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.089,
+          "log": ".tribunal/hardening/verified/042.log",
+          "logSha256": "c11e164ac5e618066826dfb0d905a41a55217bba900d947febb85d6a6e8f3cb8"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/context.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.05,
+          "log": ".tribunal/hardening/verified/043.log",
+          "logSha256": "7bac53b3828c3958a4e087268c48ba7936d02d2e91c76e0a02d2cbd810eacd67"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/contracts.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.1,
+          "log": ".tribunal/hardening/verified/044.log",
+          "logSha256": "8e5c6f7a6d2bd8458025fdf91381bd0b0845d511b0e7d7720939ed867c607b28"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/dashboard.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.084,
+          "log": ".tribunal/hardening/verified/045.log",
+          "logSha256": "b6357a7494d175e85c3d10534b69b684f08c786022f2b2908fe5b45edd76282f"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/decision_contracts.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.042,
+          "log": ".tribunal/hardening/verified/046.log",
+          "logSha256": "6568b9e49bad31ed0293d65db4105def1c4f529882504c63a24d9f768a4891ad"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/diagnostics.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/verified/047.log",
+          "logSha256": "bcbea8ab35c2edd896dd1e6b0cef9be75aa7c9b53a5c075265a9a470a2ed5a4b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/governance.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.048,
+          "log": ".tribunal/hardening/verified/048.log",
+          "logSha256": "4b296a8bfe24e72bf91db2be74f258b44e84cae95b26d2c9cbb5e7cb5a7acccc"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/integrations.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.04,
+          "log": ".tribunal/hardening/verified/049.log",
+          "logSha256": "896b4aa3a103c10359a434e90c7efb8e2646011e847b9d73a7b67e5c6408adac"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/integrity.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.076,
+          "log": ".tribunal/hardening/verified/050.log",
+          "logSha256": "00ff8ad51d06be942458c7be34b27b78cd3fdbb3e4954fcdc0b0d405c0c953dc"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/lib.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.072,
+          "log": ".tribunal/hardening/verified/051.log",
+          "logSha256": "7ed4c64f5a04d9947e44333b9529de6f174940054f381ac0b2c7a09d06dc8dd8"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/locking.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.082,
+          "log": ".tribunal/hardening/verified/052.log",
+          "logSha256": "5de399c8cc2d31503b5fc2c96957dae281bd2d30e3d35a9650e8f6960f1fb271"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/model.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.047,
+          "log": ".tribunal/hardening/verified/053.log",
+          "logSha256": "33bf4fb1f8963fde6be31326d54d7021f34087a3253f4216205fe8f18f0e42b3"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/panels.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.079,
+          "log": ".tribunal/hardening/verified/054.log",
+          "logSha256": "bea84a86b6853ade72bf63852e34a60163a30865bea05c9b9c9bf27879b07f26"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/policy.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.042,
+          "log": ".tribunal/hardening/verified/055.log",
+          "logSha256": "a780d8c6b877a5ed13267b18a813811158c12275313a6f9cbe49e5ce4be8dd8d"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/provenance.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.046,
+          "log": ".tribunal/hardening/verified/056.log",
+          "logSha256": "0459739788d2b56eae535a9eb175d2db68d8ecb19f72a762ea4efc55f389b9cb"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/render.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.049,
+          "log": ".tribunal/hardening/verified/057.log",
+          "logSha256": "e11601a3ffc801c7bb031cac35e11fc256bd34b3fa66e949ae0bbced1cb6899c"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/signing_provider.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.051,
+          "log": ".tribunal/hardening/verified/058.log",
+          "logSha256": "b5b92d566c6bf7e6968b3281384b47e0b2520fe511fb5de27cb5bf5a09df5111"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/storage.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.05,
+          "log": ".tribunal/hardening/verified/059.log",
+          "logSha256": "c4c8862421f45f0f826ee0ca4ef7d5a3c57c99f33bcd3dc51c2ed995a9a0380d"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/telemetry.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.049,
+          "log": ".tribunal/hardening/verified/060.log",
+          "logSha256": "9337e384f0d78faafd1396a3fd8c20d0a4e3932a93771d89916b5b405f3dd78b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/tribunal.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.083,
+          "log": ".tribunal/hardening/verified/061.log",
+          "logSha256": "03c711a1c6799b1d161822e883a00c7837f3bb95d8a5bfcc773b9650e7beeb90"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "src/version.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.106,
+          "log": ".tribunal/hardening/verified/062.log",
+          "logSha256": "5e56a628224de1c3e63950edcd0079b660135e4e88514e42f31d4dfb894ca28b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/adversarial/malicious_server.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.05,
+          "log": ".tribunal/hardening/verified/063.log",
+          "logSha256": "bd61e177e21cf51f4f09575bc22e506b0ad789fecf0beeca06988f7be4359335"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/cli_integration.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.046,
+          "log": ".tribunal/hardening/verified/064.log",
+          "logSha256": "88045ec39119e217caa96ac4c606ad7ecdffd13374bd4af2c74cfab30e0a6acf"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/enterprise_tests.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.089,
+          "log": ".tribunal/hardening/verified/065.log",
+          "logSha256": "e18e97ded185a42be7d62b3abc958877b1d4909f6d12b899ea8e7e9b3510be76"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/cancellable_worker.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.045,
+          "log": ".tribunal/hardening/verified/066.log",
+          "logSha256": "beb6257fd76cee64d8a6ab8fec336fdc076cf762efb4aa768cbc5f2f213f0bb8"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/context_connector.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.047,
+          "log": ".tribunal/hardening/verified/067.log",
+          "logSha256": "3091648013bfe7eaa30390875b4ee6914047773fd80bb38c21d678a7998dbf33"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/external_signer.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.073,
+          "log": ".tribunal/hardening/verified/068.log",
+          "logSha256": "31ea17207646a417334042b9a8f1f651860155d9d9a1fb5abd58a80330d80c06"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/leaky_signer.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.047,
+          "log": ".tribunal/hardening/verified/069.log",
+          "logSha256": "cde76fd51fd13ecfa53f0b7e0418c01696d90834dd1c5dff6587258a30ed1309"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/nonzero_context_connector.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.046,
+          "log": ".tribunal/hardening/verified/070.log",
+          "logSha256": "ee464a1a4233b373c81cceb92757d9e8cd2bed4355a8f5c6b44c7556b6f9db41"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/fixtures/nonzero_signer.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.048,
+          "log": ".tribunal/hardening/verified/071.log",
+          "logSha256": "9b42a8118144c2a1224f476983e785c988bdd7b4b5d559167c6a257c2b1b6e32"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/hardening_tests.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.044,
+          "log": ".tribunal/hardening/verified/072.log",
+          "logSha256": "2d107005b3bc2286f8559da46272f46a1c76390660de7c6261a0af11132844cc"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/property_tests.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.078,
+          "log": ".tribunal/hardening/verified/073.log",
+          "logSha256": "fe5022829dd37b4ce6be6e857cb05faf805e676307499d6b0178669e53af2c42"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tests/tribunal_tests.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.102,
+          "log": ".tribunal/hardening/verified/074.log",
+          "logSha256": "43f0f08125856a1ee9f27885c4926bb43c82268327264791f8eef4a2704766aa"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "check",
+            "tribunal.kujo"
+          ],
+          "exit": 0,
+          "seconds": 0.074,
+          "log": ".tribunal/hardening/verified/075.log",
+          "logSha256": "856f157a66b9efd698c0aa847ac9ff9b796ea8fb812c7e637a9190bcefca7247"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "tests/tribunal_tests.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 65.558,
+          "log": ".tribunal/hardening/verified/076.log",
+          "logSha256": "53d44bb5f21f796b80ded03bc73d9989cea61d9fede90eb15e61423c10cb1dd5"
+        }
+      ]
+    },
+    "verified-continuation": {
+      "revision": "b9c3129122670cad2a9d557a7e3e5bc6f3bfae01",
+      "results": [
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "tests/cli_integration.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 37.459,
+          "log": ".tribunal/hardening/verified-continuation/000.log",
+          "logSha256": "0cc836b7289fab4679df059a9fe0c05cebc2307c0a0259f96ad76ae38a42a67b"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "tests/enterprise_tests.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 21.123,
+          "log": ".tribunal/hardening/verified-continuation/001.log",
+          "logSha256": "ad41771aa5f0fee0f413a81790f8aef788b6c8b61ebdbe714e8bb72ca73d62e8"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "tests/property_tests.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 9.54,
+          "log": ".tribunal/hardening/verified-continuation/002.log",
+          "logSha256": "26d8436150a26b9048aa2d400579c87b0244d6c0627d9162a931e788174395d5"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "tests/hardening_tests.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 0.7,
+          "log": ".tribunal/hardening/verified-continuation/003.log",
+          "logSha256": "87eadc70ce540c1a7b41333ad2373181a5d2bc968c59f9df57418768328b0a84"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/schema_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 5.312,
+          "log": ".tribunal/hardening/verified-continuation/004.log",
+          "logSha256": "b687b8eb15a74ac869e3de982787058aa37a0ab4a535a5696d3c98b62ddb8e93"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/drift_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 10.819,
+          "log": ".tribunal/hardening/verified-continuation/005.log",
+          "logSha256": "5797cd645ec2dfd558a19e4c28a11f7222225ff79fbe015548e67acdc7d0a7a3"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/spec_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 0.225,
+          "log": ".tribunal/hardening/verified-continuation/006.log",
+          "logSha256": "f31bcfde1da8cf89bdad9de1b8a18ed0caaef3444d255a421bff17d21d9f37c9"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/perf_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 2.758,
+          "log": ".tribunal/hardening/verified-continuation/007.log",
+          "logSha256": "b11794176c808a722bad3eefd3c238f121f17edf81c11c435559c34f47dc4ad0"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/scale_perf_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 43.411,
+          "log": ".tribunal/hardening/verified-continuation/008.log",
+          "logSha256": "9a4270f6f7545f6be00a32c67fb27b5cf8b4fd7a63dfae377ea1e95325316622"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/index_perf_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 20.311,
+          "log": ".tribunal/hardening/verified-continuation/009.log",
+          "logSha256": "8cc45d64d2e03ec6cf1208db96bab8beb1ceb190d43c259e99b6e0cab8c56007"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/load_chaos_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 21.517,
+          "log": ".tribunal/hardening/verified-continuation/010.log",
+          "logSha256": "eebc88ecf6527510b89a6eca7b55f51b592cf831d4a4e1cad620d5553d1b909f"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/adversarial_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 0.335,
+          "log": ".tribunal/hardening/verified-continuation/011.log",
+          "logSha256": "85e3eeeae8b110b52a88082871298623c0f97d2966fd67d444e9cf47f435860e"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/dashboard_accessibility_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 0.182,
+          "log": ".tribunal/hardening/verified-continuation/012.log",
+          "logSha256": "99e22448a40c4d6b36343bc0732816f65f1a733d68762c22d8189397254843b7"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/security_review_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 0.077,
+          "log": ".tribunal/hardening/verified-continuation/013.log",
+          "logSha256": "47e1a3e125a1cd43409acae2ff86d778a71af7a1f7e6396c02f94d0ca1684eb5"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/integration_matrix_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 1,
+          "seconds": 0.388,
+          "log": ".tribunal/hardening/verified-continuation/014.log",
+          "logSha256": "a822c089004f70f105ed2b50f0bb098a04dd063f7eaccc14dfb79ef2b93543a8"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/gallery_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 13.291,
+          "log": ".tribunal/hardening/verified-continuation/015.log",
+          "logSha256": "1cdfc4b6a26e580da16dfad40cb7aa3776a78e986afa99267714b1ee0a690d4d"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/v1_compatibility_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 1.007,
+          "log": ".tribunal/hardening/verified-continuation/016.log",
+          "logSha256": "0c8e38565579188245389d75fab70f4126691bcd3e5c7a4ae26c7870fbe8b7b2"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "scripts/docs_link_gate.kujo",
+            "--interpreter"
+          ],
+          "exit": 0,
+          "seconds": 0.125,
+          "log": ".tribunal/hardening/verified-continuation/017.log",
+          "logSha256": "f7d0c08098095035fd0842587090872a712f047d2419ff608f2f7689ef94dbe4"
+        },
+        {
+          "command": [
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/kujo/target/release/kujo",
+            "run",
+            "../kennel/kennel.kujo",
+            "--interpreter",
+            "--",
+            "validate",
+            "--project-dir",
+            "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal"
+          ],
+          "exit": 0,
+          "seconds": 0.279,
+          "log": ".tribunal/hardening/verified-continuation/018.log",
+          "logSha256": "b580f787ae33b3673c7adbb61315dcc224a55bb5f0987fe2f5d3dec40128fba0"
+        },
+        {
+          "command": [
+            "git",
+            "diff",
+            "--check"
+          ],
+          "exit": 0,
+          "seconds": 0.04,
+          "log": ".tribunal/hardening/verified-continuation/019.log",
+          "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    }
+  },
+  "baselineInterruptedCli": {
+    "log": ".tribunal/hardening/baseline/076.log",
+    "sha256": "6645123fc32749f84b634a6fb86359f60b7a4a932af3923b33a2e8f4aa4483e6",
+    "outcome": "Host resource exhaustion; unchanged CLI rerun passed."
+  },
+  "focusedReproduction": {
+    "log": ".tribunal/hardening/reproductions.log",
+    "sha256": "57e2299b84b2d7f536d24affe336f404fdcc7b5a7e5bf4868e738416d08cdbcf",
+    "before": {
+      "passed": 8,
+      "failed": 12
+    },
+    "after": {
+      "passed": 21,
+      "failed": 0
+    }
+  },
+  "digest": {
+    "bytes": 67108864,
+    "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+    "beforeMaxRssBytes": 144596992,
+    "afterMaxRssBytes": 10485760,
+    "beforeMs": 808,
+    "afterMs": 773,
+    "samplesPerVariant": 1
+  },
+  "prompts": {
+    "before": {
+      "runId": "2026-09-05-product-decision-md-7917",
+      "promptFiles": 13,
+      "promptBytes": 69070,
+      "totalTokens": null,
+      "receipt": {
+        "completedAt": "2026-09-05T03:22:54Z",
+        "durationMs": 3621,
+        "failedInvocations": 0,
+        "integration": {
+          "modelRuntime": "mock-kujo",
+          "runLedger": "compatible-receipt"
+        },
+        "modelInvocations": 13,
+        "panelId": "strategic-five",
+        "recordSha256": "92e2b2a16d6a6aef3d0e75826a1c6ac3f68ea5bd7ac579b882e74e55c8a072f9",
+        "runId": "2026-09-05-product-decision-md-7917",
+        "schemaVersion": "1.0.0",
+        "startedAt": "2026-09-05T03:22:50Z",
+        "status": "completed",
+        "totalTokens": 17106
+      }
+    },
+    "after": {
+      "runId": "2026-09-05-product-decision-md-6166",
+      "promptFiles": 13,
+      "promptBytes": 59841,
+      "totalTokens": null,
+      "receipt": {
+        "completedAt": "2026-09-05T03:25:30Z",
+        "durationMs": 2669,
+        "failedInvocations": 0,
+        "integration": {
+          "modelRuntime": "mock-kujo",
+          "runLedger": "compatible-receipt"
+        },
+        "modelInvocations": 13,
+        "panelId": "strategic-five",
+        "recordSha256": "538c9c78a80a36108031defb732d6aceaba12096113f79659eb604014ee17942",
+        "runId": "2026-09-05-product-decision-md-6166",
+        "schemaVersion": "1.0.0",
+        "startedAt": "2026-09-05T03:25:27Z",
+        "status": "completed",
+        "totalTokens": 14797
+      }
+    }
+  },
+  "archive": {
+    "archive": "tribunal-v1.0.0.zip",
+    "archiveBuilder": "scripts/deterministic_zip.py",
+    "archiveBytes": 284669,
+    "archiveSha256": "92bcaecc95884af7f70f9b3b0ee2362391df08fdd6709a6235368fd83e47d3f6",
+    "files": 192,
+    "provenanceSha256": "789703cdd956663041fa5222b8f51f3abec3ba33956dd1806afb8e76e9f559ac",
+    "rebuildSha256": "92bcaecc95884af7f70f9b3b0ee2362391df08fdd6709a6235368fd83e47d3f6",
+    "reproducible": true,
+    "runtimeRevision": "9b77dce592047121cb71066629836ad89252f3ce",
+    "runtimeSha256": "672951e9703c21b0be2adf527c984bbcfec7a8b6107dc479970303d050cd15eb",
+    "sbomSha256": "293b1fe7df39e744ac397b2b9c6b969c82a0e397ae6156ccfec28d5af939dc8e",
+    "schemaVersion": "1.0.0",
+    "sourceDateEpoch": "1788579429",
+    "sourceRevision": "b9c3129122670cad2a9d557a7e3e5bc6f3bfae01",
+    "version": "1.0.0",
+    "runtimeProvenanceVerified": false,
+    "warning": "runtimeRevision is the declared matrix pin; current binary build is not attested to that pin."
+  },
+  "archiveSmoke": {
+    "command": [
+      "$KUJO_BIN",
+      "run",
+      "scripts/archive_smoke.kujo",
+      "--interpreter",
+      ".tribunal/hardening/archive-final-output/tribunal-v1.0.0.zip"
+    ],
+    "exit": 0,
+    "logSha256": "b9ac0ced31760fcfd56b476f1e7957899e9a69eca0fa8db0814810827c004589"
+  },
+  "workcell": [
+    {
+      "runId": "wc-47f8be928a4746fda48e5110f43ef401",
+      "receipt": {
+        "artifact_bytes": 0,
+        "artifact_files": 0,
+        "cancelled": false,
+        "change_report_path": null,
+        "changed_files": [],
+        "cleanup_status": "complete",
+        "command": [
+          "sh",
+          "-lc",
+          "set -eu; kujo --version > tribunal-workcell-proof.txt; ./bin/tribunal version >> tribunal-workcell-proof.txt; ./bin/tribunal doctor --json >> tribunal-workcell-proof.txt; ./bin/tribunal validate examples/product-decision.md --json >> tribunal-workcell-proof.txt; if ./bin/tribunal validate /tmp/tribunal-missing-docket.md --json >/tmp/invalid.out 2>&1; then exit 1; fi; printf 'failure-path-exit: nonzero\\n' >> tribunal-workcell-proof.txt; ./bin/tribunal review examples/product-decision.md --panel executioner-only --mock --storage-dir /tmp/tribunal-runs >> tribunal-workcell-proof.txt; test -f /tmp/tribunal-runs/*/record.json; printf 'happy-path: pass\\n' >> tribunal-workcell-proof.txt"
+        ],
+        "container_image": "kujolang/workcell-kujo:tribunal-v1.0.0-9b77dce",
+        "container_image_digest": "",
+        "container_image_digest_source": "",
+        "container_image_id": "",
+        "container_image_labels": {},
+        "container_image_platform": "",
+        "container_name": "kujo-workcell-wc-47f8be928a4746fda48e5110f43ef401",
+        "definition_version": 1,
+        "effective_security_policy": {
+          "artifact_export_boundary": "host output directory only",
+          "capabilities_dropped": "ALL",
+          "devices": false,
+          "docker_socket": false,
+          "host_home_mount": false,
+          "host_ipc": false,
+          "host_pid": false,
+          "host_root_mount": false,
+          "host_user_namespace": false,
+          "network_mode": "none",
+          "network_policy": {
+            "configured_egress": {
+              "dns": "blocked",
+              "enforcement_profile": "none",
+              "policy": "deny-by-default",
+              "proxy": "none"
+            },
+            "egress": {
+              "dns": "blocked",
+              "enforcement_profile": "none",
+              "policy": "deny-by-default",
+              "proxy": "none"
+            },
+            "enforcement_profile": "none",
+            "mode": "none",
+            "name": "",
+            "warnings": []
+          },
+          "no_new_privileges": true,
+          "non_root_user": "501:20",
+          "privileged": false,
+          "read_only_root": true,
+          "workspace_identity": "host",
+          "workspace_mount": "/workspace:rw"
+        },
+        "elapsed": 3879,
+        "elapsed_ms": 3879,
+        "end_time": "2026-09-05T03:26:30Z",
+        "errors": [
+          {
+            "message": "rootless Docker requires workspace.run_as rootless so bind mounts use the daemon user's mapped identity",
+            "stage": "preparing"
+          }
+        ],
+        "exit_code": 4,
+        "exported_artifacts": [],
+        "final_status": "failed",
+        "image_provenance_policy": {
+          "registry_allowlist": [],
+          "require_digest": false,
+          "require_signature": false
+        },
+        "integration_status": "disabled",
+        "integrations": [],
+        "lifecycle": [
+          "created",
+          "validated",
+          "preparing",
+          "prepared",
+          "failed",
+          "cleaning",
+          "cleaned"
+        ],
+        "logs_path": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.workcell/runs/wc-47f8be928a4746fda48e5110f43ef401",
+        "manifest_path": "manifest.json",
+        "manifest_schema_version": "workcell-manifest/v1",
+        "mounts": [
+          "/private/var/folders/wb/0cck3lgd08n55g_8ly9qmf_00000gn/T/kujo-workcell-wc-47f8be928a4746fda48e5110f43ef401:/workspace:rw"
+        ],
+        "network_mode": "none",
+        "network_policy": {
+          "configured_egress": {
+            "dns": "blocked",
+            "enforcement_profile": "none",
+            "policy": "deny-by-default",
+            "proxy": "none"
+          },
+          "egress": {
+            "dns": "blocked",
+            "enforcement_profile": "none",
+            "policy": "deny-by-default",
+            "proxy": "none"
+          },
+          "enforcement_profile": "none",
+          "mode": "none",
+          "name": "",
+          "warnings": []
+        },
+        "patch_bytes": 0,
+        "patch_path": null,
+        "resource_limits": {
+          "cpus": 1,
+          "max_output_bytes": 4000000,
+          "memory": "512m",
+          "pids": 128,
+          "timeout_ms": 120000
+        },
+        "run_id": "wc-47f8be928a4746fda48e5110f43ef401",
+        "runtime_backend": "docker",
+        "schema_version": "workcell-receipt/v1",
+        "secret_names": [],
+        "source_commit": "24f0b3f38f3f11c998478d23baea1dfa0028131d",
+        "source_repository": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal",
+        "start_time": "2026-09-05T03:26:26Z",
+        "stderr_truncated": false,
+        "stdout_truncated": false,
+        "timeout": false,
+        "verification": {
+          "artifacts_exported": false,
+          "checks": [],
+          "cleanup_succeeded": true,
+          "execution_succeeded": false,
+          "verification_succeeded": false
+        },
+        "warnings": [],
+        "workcell_definition_hash": "482b2b9492158cd0586c88c705ac3c84f0c6fdd760c4a890523b1a096e0ab3e8",
+        "workcell_definition_path": "docs/workcell-launch-gate.json",
+        "workcell_name": "tribunal-launch-gate",
+        "workcell_version": "1.1.0",
+        "workspace_path": "/var/folders/wb/0cck3lgd08n55g_8ly9qmf_00000gn/T/kujo-workcell-wc-47f8be928a4746fda48e5110f43ef401",
+        "workspace_strategy": "git-worktree"
+      }
+    },
+    {
+      "runId": "wc-5538791dba9745a9ad616e6866b0b459",
+      "receipt": {
+        "artifact_bytes": 0,
+        "artifact_files": 0,
+        "cancelled": false,
+        "change_report_path": null,
+        "changed_files": [],
+        "cleanup_status": "complete",
+        "command": [
+          "sh",
+          "-lc",
+          "set -eu; kujo --version > tribunal-workcell-proof.txt; ./bin/tribunal version >> tribunal-workcell-proof.txt; ./bin/tribunal doctor --json >> tribunal-workcell-proof.txt; ./bin/tribunal validate examples/product-decision.md --json >> tribunal-workcell-proof.txt; if ./bin/tribunal validate /tmp/tribunal-missing-docket.md --json >/tmp/invalid.out 2>&1; then exit 1; fi; printf 'failure-path-exit: nonzero\\n' >> tribunal-workcell-proof.txt; ./bin/tribunal review examples/product-decision.md --panel executioner-only --mock --storage-dir /tmp/tribunal-runs >> tribunal-workcell-proof.txt; test -f /tmp/tribunal-runs/*/record.json; printf 'happy-path: pass\\n' >> tribunal-workcell-proof.txt"
+        ],
+        "container_image": "kujolang/workcell-kujo:tribunal-v1.0.0-9b77dce",
+        "container_image_digest": "",
+        "container_image_digest_source": "",
+        "container_image_id": "",
+        "container_image_labels": {},
+        "container_image_platform": "",
+        "container_name": "kujo-workcell-wc-5538791dba9745a9ad616e6866b0b459",
+        "definition_version": 1,
+        "effective_security_policy": {
+          "artifact_export_boundary": "host output directory only",
+          "capabilities_dropped": "ALL",
+          "devices": false,
+          "docker_socket": false,
+          "host_home_mount": false,
+          "host_ipc": false,
+          "host_pid": false,
+          "host_root_mount": false,
+          "host_user_namespace": false,
+          "network_mode": "none",
+          "network_policy": {
+            "configured_egress": {
+              "dns": "blocked",
+              "enforcement_profile": "none",
+              "policy": "deny-by-default",
+              "proxy": "none"
+            },
+            "egress": {
+              "dns": "blocked",
+              "enforcement_profile": "none",
+              "policy": "deny-by-default",
+              "proxy": "none"
+            },
+            "enforcement_profile": "none",
+            "mode": "none",
+            "name": "",
+            "warnings": []
+          },
+          "no_new_privileges": true,
+          "non_root_user": "0:0",
+          "privileged": false,
+          "read_only_root": true,
+          "workspace_identity": "rootless",
+          "workspace_mount": "/workspace:rw"
+        },
+        "elapsed": 1624,
+        "elapsed_ms": 1624,
+        "end_time": "2026-09-05T03:27:54Z",
+        "errors": [
+          {
+            "message": "image is not available locally and --no-pull was requested: kujolang/workcell-kujo:tribunal-v1.0.0-9b77dce",
+            "stage": "preparing"
+          }
+        ],
+        "exit_code": 4,
+        "exported_artifacts": [],
+        "final_status": "failed",
+        "image_provenance_policy": {
+          "registry_allowlist": [],
+          "require_digest": false,
+          "require_signature": false
+        },
+        "integration_status": "disabled",
+        "integrations": [],
+        "lifecycle": [
+          "created",
+          "validated",
+          "preparing",
+          "prepared",
+          "failed",
+          "cleaning",
+          "cleaned"
+        ],
+        "logs_path": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.workcell/runs/wc-5538791dba9745a9ad616e6866b0b459",
+        "manifest_path": "manifest.json",
+        "manifest_schema_version": "workcell-manifest/v1",
+        "mounts": [
+          "/private/var/folders/wb/0cck3lgd08n55g_8ly9qmf_00000gn/T/kujo-workcell-wc-5538791dba9745a9ad616e6866b0b459:/workspace:rw"
+        ],
+        "network_mode": "none",
+        "network_policy": {
+          "configured_egress": {
+            "dns": "blocked",
+            "enforcement_profile": "none",
+            "policy": "deny-by-default",
+            "proxy": "none"
+          },
+          "egress": {
+            "dns": "blocked",
+            "enforcement_profile": "none",
+            "policy": "deny-by-default",
+            "proxy": "none"
+          },
+          "enforcement_profile": "none",
+          "mode": "none",
+          "name": "",
+          "warnings": []
+        },
+        "patch_bytes": 0,
+        "patch_path": null,
+        "resource_limits": {
+          "cpus": 1,
+          "max_output_bytes": 4000000,
+          "memory": "512m",
+          "pids": 128,
+          "timeout_ms": 120000
+        },
+        "run_id": "wc-5538791dba9745a9ad616e6866b0b459",
+        "runtime_backend": "docker",
+        "schema_version": "workcell-receipt/v1",
+        "secret_names": [],
+        "source_commit": "24f0b3f38f3f11c998478d23baea1dfa0028131d",
+        "source_repository": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal",
+        "start_time": "2026-09-05T03:27:53Z",
+        "stderr_truncated": false,
+        "stdout_truncated": false,
+        "timeout": false,
+        "verification": {
+          "artifacts_exported": false,
+          "checks": [],
+          "cleanup_succeeded": true,
+          "execution_succeeded": false,
+          "verification_succeeded": false
+        },
+        "warnings": [],
+        "workcell_definition_hash": "ef450ca919332d68dfc42df35d7a4527774dfaa67d386b38df45e2f5c3d2c01f",
+        "workcell_definition_path": ".tribunal/hardening/workcell-rootless.json",
+        "workcell_name": "tribunal-launch-gate",
+        "workcell_version": "1.1.0",
+        "workspace_path": "/var/folders/wb/0cck3lgd08n55g_8ly9qmf_00000gn/T/kujo-workcell-wc-5538791dba9745a9ad616e6866b0b459",
+        "workspace_strategy": "git-worktree"
+      }
+    }
+  ],
+  "signalbox": {
+    "captureId": "cap_6394a6a1-ca64-4384-851a-df7c4d4f5158",
+    "signalId": "sig_5a9051d1-f2b2-47a0-a5c5-fe34d49013d0",
+    "exactRetrieval": "pass",
+    "conceptRetrieval": "pass",
+    "duplicatesSkipped": 1,
+    "existingPinSignalId": "sig_d0870233-3b96-4dec-90ad-59c2870ce992",
+    "rejected": "Completed work, routine verification and transient host contention."
+  },
+  "eval": {
+    "active_policy_stage": "",
+    "command": "run",
+    "duration_ms": 284099,
+    "failed": 1,
+    "generated_at_ms": 1788579408270,
+    "last_run_path": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/hardening/eval/last_run.json",
+    "manifest_path": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/hardening/eval/artifact-manifest.json",
+    "ok": false,
+    "passed": 18,
+    "report_cached": false,
+    "report_path": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/hardening/eval/eval-report.md",
+    "skipped": 0,
+    "status": "FAIL",
+    "suite_name": "tribunal-kujo-native-gate",
+    "summary_path": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/hardening/eval/summary.json",
+    "total": 19,
+    "implementationRevision": "24f0b3f38f3f11c998478d23baea1dfa0028131d",
+    "logSha256": "94704f5fe1127048f20d4b1e210880aa87845b1f835e016323b9fc45b33ea707"
+  },
+  "workcellResumptionBlocker": {
+    "sourceRevision": "b9c3129122670cad2a9d557a7e3e5bc6f3bfae01",
+    "recordedAt": "2026-09-05T12:18:03.633987+00:00",
+    "command": [
+      "docker",
+      "image",
+      "inspect",
+      "kujolang/workcell-kujo:tribunal-v1.0.0-9b77dce",
+      "--format",
+      "{{.Id}}"
+    ],
+    "result": {
+      "exit": 1,
+      "stdout": "\n",
+      "stderr": "Cannot connect to the Docker daemon at unix:///Users/robertdevore/.colima/default/docker.sock. Is the docker daemon running?\n"
+    },
+    "runtimeSha256": "672951e9703c21b0be2adf527c984bbcfec7a8b6107dc479970303d050cd15eb",
+    "closestProof": "Local direct offline gate receipts and final-code extracted archive smoke; no Workcell execution claim."
+  },
+  "resumption": {
+    "interruptedPhase": "verified",
+    "lastCompletedCommandIndex": 76,
+    "continuedPhase": "verified-continuation",
+    "note": "User resumed after process sessions were unavailable. Incomplete CLI and archive smoke were rerun; completed source checks and main suite retained."
+  },
+  "strata": {
+    "mode": "CONSOLIDATE",
+    "project": "Agent Notes",
+    "saved": 1,
+    "noteId": "7522ba0a-45f6-472e-9bb6-97ab62ca2145",
+    "representation": "handoff with current branch state and timeline",
+    "exactRetrieval": "pass",
+    "conceptRetrieval": "pass",
+    "pending": 0,
+    "writeResponse": "HTTP 500 after persistence; complete content confirmed by exact retrieval; no duplicate retry"
+  }
+}

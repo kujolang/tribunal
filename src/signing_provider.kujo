@@ -1,6 +1,6 @@
 # Tribunal :: external HSM/KMS signing-provider contract
 
-from src.common import dict_get, last_json_line, parent_dir, read_json, redact, safe_process_env, safe_relative_path, safe_run_id, write_json
+from src.common import dict_get, last_json_line, parent_dir, read_json, redact, safe_http_url, safe_process_env, safe_relative_path, safe_run_id, write_json
 from src.integrity import begin_seal_transaction, finish_seal_transaction, rollback_seal_transaction, seal, signature_payload_for, verify
 from src.storage import artifact_path
 
@@ -55,7 +55,7 @@ export func load_signing_provider(path) {
     protocol := dict_get(config, "protocol", "command-v1")
     if protocol == "vault-transit-jwt-v1" {
         endpoint := dict_get(config, "endpoint", "")
-        if starts_with(endpoint, "https://") == false && starts_with(endpoint, "http://127.0.0.1") == false && starts_with(endpoint, "http://localhost") == false && starts_with(endpoint, "http://[::1]") == false { return {"ok": false, "error": "Vault Transit endpoint must use HTTPS outside loopback development."} }
+        if safe_http_url(endpoint) == false { return {"ok": false, "error": "Vault Transit endpoint must use a valid HTTPS URL outside loopback development."} }
         if contains(endpoint, "@") || contains(endpoint, "?") || contains(endpoint, "#") { return {"ok": false, "error": "Vault Transit endpoint must be a credential-free base URL."} }
         for field in ["jwtRole", "audience"] { if trim(dict_get(config, field, "")) == "" { return {"ok": false, "error": "Vault Transit signing requires " + field + "."} } }
         if trim(dict_get(config, "jwtAuthPath", "jwt")) == "" || trim(dict_get(config, "transitPath", "transit")) == "" { return {"ok": false, "error": "Vault auth and transit paths are required."} }
@@ -113,6 +113,7 @@ export func seal_with_provider(storage_dir, run_id, provider_config) {
     })
     line := last_json_line(proc.stdout)
     if line == "" { return {"ok": false, "error": "Signing provider returned no JSON: " + redact(proc.stderr)} }
+    if proc.success == false { return {"ok": false, "error": "Signing provider process failed: " + redact(proc.stderr)} }
     response := null
     try { response = parse_json(line) } except err { return {"ok": false, "error": "Signing provider returned invalid JSON."} }
     if dict_get(response, "ok", false) != true { return {"ok": false, "error": "Signing provider failed: " + redact(dict_get(response, "error", "unknown error")), "providerEvidence": {"attempts": dict_get(response, "attempts", 0)}} }

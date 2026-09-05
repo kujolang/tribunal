@@ -235,6 +235,7 @@ done
 "$KUJO_BIN" run tests/tribunal_tests.kujo
 "$KUJO_BIN" run tests/cli_integration.kujo
 "$KUJO_BIN" run tests/enterprise_tests.kujo
+"$KUJO_BIN" run tests/hardening_tests.kujo --interpreter
 "$KUJO_BIN" run tests/property_tests.kujo
 "$KUJO_BIN" run scripts/schema_gate.kujo
 "$KUJO_BIN" run scripts/drift_gate.kujo
@@ -253,7 +254,7 @@ done
 (cd ../eval && "$KUJO_BIN" run main.kujo run "$TRIBUNAL_HOME/tests/tribunal_eval.json")
 ```
 
-The offline gates cover every Kujo source, four test suites, 35+ executable schemas, signing/tamper/recovery, authorization, governance, encrypted and streamed bundles, provenance rollback, bounded authenticated stores, index repair, resumed lineage, custom catalogs/connectors, policy checks, adversarial peers, accessibility, telemetry/dashboard isolation, PackWrite, RunLedger, CaseFile, the AI SDK fixture, Spec, Concord, Eval, Kennel, gallery, and performance/scale/chaos budgets. See [Contributing](CONTRIBUTING.md).
+The offline gates cover every Kujo source, four main test suites plus focused hardening regressions, 35+ executable schemas, signing/tamper/recovery, authorization, governance, encrypted and streamed bundles, provenance rollback, bounded authenticated stores, index repair, resumed lineage, custom catalogs/connectors, policy checks, adversarial peers, accessibility, telemetry/dashboard isolation, PackWrite, RunLedger, CaseFile, the AI SDK fixture, Spec, Concord, Eval, Kennel, gallery, and performance/scale/chaos budgets. See [Contributing](CONTRIBUTING.md).
 
 ## Repository layout
 

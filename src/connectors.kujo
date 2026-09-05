@@ -40,6 +40,7 @@ export func invoke_connector(config, docket) {
     line := last_json_line(proc.stdout)
     remove_tree(temp)
     if line == "" { return {"ok": false, "error": "Context connector returned no bounded JSON response: " + redact(proc.stderr)} }
+    if proc.success == false { return {"ok": false, "error": "Context connector process failed: " + redact(proc.stderr)} }
     inspected := inspect_remote_envelope("context-plugin", {"elapsedMs": 0, "headers": {}, "body": line}, {"timeoutMs": manifest["timeoutMs"], "maxHeaders": 1, "maxHeaderBytes": 128, "maxBodyBytes": manifest["maxOutputBytes"]})
     if inspected["ok"] != true { return {"ok": false, "error": inspected["error"], "classification": inspected["classification"]} }
     parsed := inspected["value"]

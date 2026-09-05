@@ -1,6 +1,6 @@
 # Tribunal :: trusted RunLedger and CaseFile ingestion via Kujo tooling
 
-from src.common import dict_get, last_json_line, ensure_dir, write_json, read_json, parent_dir, safe_process_env, redact
+from src.common import dict_get, external_path_outside, last_json_line, ensure_dir, write_json, read_json, parent_dir, safe_process_env, redact
 from src.storage import load_record, artifact_path
 from src.integrity import verify
 
@@ -22,14 +22,10 @@ func run_kujo(kujo_bin, script, command_args, cwd, env_values) {
     child_env := safe_process_env(env_values)
     module_path := join_path(parent_dir(parent_dir(parent_dir(resolved_kujo))), "modules")
     if path_is_dir(module_path) { child_env["KUJO_MODULE_PATH"] := module_path }
-    previous_cwd := os_getcwd()
     try {
-        os_chdir(cwd)
-        result := spawn_process(argv, {"inherit_env": false, "env": child_env, "timeout_ms": 120000, "max_output_bytes": 1024 * 1024 * 8})
-        os_chdir(previous_cwd)
+        result := spawn_process(argv, {"inherit_env": false, "cwd": cwd, "env": child_env, "timeout_ms": 120000, "max_output_bytes": 1024 * 1024 * 8})
         return result
     } except err {
-        os_chdir(previous_cwd)
         return {"success": false, "exitcode": 127, "stdout": "", "stderr": to_string(err)}
     }
 }
@@ -89,6 +85,7 @@ export func ingest_runledger(storage_dir, run_id, options) {
     prompt := path_absolute(artifact_path(storage_dir, run_id, "decision-packet.md"))
     ledger := options["ledger"]
     if starts_with(ledger, "/") == false { ledger = join_path(os_getcwd(), ledger) }
+    if external_path_outside(storage_dir, ledger) == false { return {"ok": false, "error": "RunLedger output must be outside Tribunal run storage without symbolic-link aliases."} }
     verification := checked["verification"]
     receipt_dir := join_path(ledger, "tribunal-ingestions")
     receipt_path := join_path(receipt_dir, run_id + ".json")
@@ -129,6 +126,7 @@ export func ingest_casefile(storage_dir, run_id, options) {
     if type(record) != "dict" { return {"ok": false, "error": "Tribunal record is missing."} }
     output_root := options["output_dir"]
     if starts_with(output_root, "/") == false { output_root = join_path(os_getcwd(), output_root) }
+    if external_path_outside(storage_dir, output_root) == false { return {"ok": false, "error": "CaseFile output must be outside Tribunal run storage without symbolic-link aliases."} }
     ensure_dir(output_root)
     verification := checked["verification"]
     receipt_dir := join_path(output_root, "tribunal-ingestions")

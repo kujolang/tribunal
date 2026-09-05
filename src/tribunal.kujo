@@ -107,9 +107,10 @@ func system_prompt(seat_value, stage) {
     return "You are the " + seat_value["name"] + " seat in Tribunal. Authority: " + seat_value["authority"] + " Stay within the explicit " + stage + " contract. Return only valid JSON matching the requested schema."
 }
 
-func invoke_checked(config, run_id, stage, seat_value, input, output_schema) {
+func invoke_checked(config, run_id, stage, seat_value, input, output_schema, cancel_file) {
     system := system_prompt(seat_value, stage)
     request := {"runId": run_id, "stageId": stage, "seatId": seat_value["id"], "idempotencyKey": sha256(stage + ":" + seat_value["id"] + ":" + input + ":" + to_json(output_schema)), "modelPreference": seat_value["defaultModelPreference"], "systemPrompt": system, "input": input, "outputSchema": output_schema, "timeoutMs": config["limits"]["model_timeout_ms"]}
+    if cancel_file != "" { request["cancelFile"] := cancel_file }
     response := invoke(config, request)
     if dict_get(response, "ok", false) != true {
         error := dict_get(response, "error", {"code": "model_error", "message": "Model invocation failed."})
@@ -154,11 +155,11 @@ func call_model(config, storage_dir, state, stage, seat_value, input, output_sch
     system := system_prompt(seat_value, stage)
     save_text(storage_dir, run_id, "prompts/" + stage + "-" + seat_value["id"] + ".md", "# System\n\n" + system + "\n\n# Input\n\n" + input + "\n")
     emit(storage_dir, run_id, stage, "model_invocation_requested", "Model invocation requested through Kujo AI SDK boundary.", seat_value["id"], {"preference": seat_value["defaultModelPreference"]})
-    return persist_model_result(storage_dir, run_id, stage, seat_value, invoke_checked(config, run_id, stage, seat_value, input, output_schema))
+    return persist_model_result(storage_dir, run_id, stage, seat_value, invoke_checked(config, run_id, stage, seat_value, input, output_schema, ""))
 }
 
 async func invoke_blind_job(job) {
-    result := invoke_checked(job["config"], job["runId"], "blind-first-pass", job["seat"], job["input"], job["seat"]["requiredOutputSchema"])
+    result := invoke_checked(job["config"], job["runId"], "blind-first-pass", job["seat"], job["input"], job["seat"]["requiredOutputSchema"], job["cancelFile"])
     if result["ok"] != true {
         write_file_atomic(job["cancelFile"], "cancel")
         return error(to_json(result))
@@ -288,8 +289,9 @@ func stop_run(config, state, reason, private_key, public_key) {
     manifest["status"] := "stopped"
     manifest["completedAt"] := completed_at
     save_json(storage_dir, run_id, "manifest.json", manifest)
-    seal(storage_dir, run_id, private_key, public_key)
+    sealed := seal(storage_dir, run_id, private_key, public_key)
     release_lock(storage_dir, run_id, state["lockToken"])
+    if sealed["ok"] != true { return {"ok": false, "runId": run_id, "runDir": state["runDir"], "error": reason + " Stopped run sealing failed: " + sealed["error"], "record": record, "sealingFailed": true} }
     return {"ok": false, "runId": run_id, "runDir": state["runDir"], "error": reason, "record": record}
 }
 
@@ -375,7 +377,7 @@ func review_internal(config, docket_path, panel_id, private_key, public_key, lin
 
     state["currentStage"] := "cross-examination"
     emit(storage_dir, run_id, "cross-examination", "stage_started", "Cross-examination started after all blind testimony was persisted.", "", {})
-    transcript := to_json_pretty(state["testimonies"])
+    transcript := to_json(state["testimonies"])
     for seat_value in selected_seats {
         input := context + "\n\n# Complete blind testimony record\n\n" + transcript + "\n\nChallenge the strongest opposing claims without changing the docket scope."
         call := call_model(config, storage_dir, state, "cross-examination", seat_value, input, seat_value["requiredOutputSchema"])
@@ -393,7 +395,7 @@ func review_internal(config, docket_path, panel_id, private_key, public_key, lin
     emit(storage_dir, run_id, "executioner-kill-pass", "stage_started", "Executioner kill pass started.", "executioner", {})
     executioner := seat("executioner")
     kill_schema := {"type": "object", "required": ["fatalFlaws", "survivableRisks", "requiredChanges", "recommendation"], "properties": {"fatalFlaws": {"type": "array", "items": {"type": "string"}}, "survivableRisks": {"type": "array", "items": {"type": "string"}}, "requiredChanges": {"type": "array", "items": {"type": "string"}}, "recommendation": {"enum": ["kill", "survive", "redesign"]}}, "additionalProperties": false}
-    kill_input := context + "\n\n# Testimony\n\n" + transcript + "\n\n# Cross-examination\n\n" + to_json_pretty(state["crossExaminations"])
+    kill_input := context + "\n\n# Testimony\n\n" + transcript + "\n\n# Cross-examination\n\n" + to_json(state["crossExaminations"])
     kill_call := call_model(config, storage_dir, state, "executioner-kill-pass", executioner, kill_input, kill_schema)
     state = add_usage(state, kill_call)
     if kill_call["ok"] != true { return stop_run(config, state, kill_call["error"], private_key, public_key) }
@@ -413,7 +415,7 @@ func review_internal(config, docket_path, panel_id, private_key, public_key, lin
     } else {
         judge := seat("judge")
         ruling_schema := {"type": "object", "required": ["finalVerdict", "bestArgumentFor", "bestArgumentAgainst", "panelAgreement", "unresolved", "requiredChanges", "confidence", "disposition"], "properties": {"finalVerdict": {"type": "string", "minLength": 1}, "bestArgumentFor": {"type": "string"}, "bestArgumentAgainst": {"type": "string"}, "panelAgreement": {"type": "array", "items": {"type": "string"}}, "unresolved": {"type": "array", "items": {"type": "string"}}, "requiredChanges": {"type": "array", "items": {"type": "string"}}, "confidence": {"type": "integer", "minimum": 0, "maximum": 10}, "disposition": {"enum": ["proceed", "reject", "redesign"]}}, "additionalProperties": false}
-        ruling_input := context + "\n\n# Blind testimony\n\n" + transcript + "\n\n# Cross-examination\n\n" + to_json_pretty(state["crossExaminations"]) + "\n\n# Executioner findings\n\n" + to_json_pretty(kill_pass)
+        ruling_input := context + "\n\n# Blind testimony\n\n" + transcript + "\n\n# Cross-examination\n\n" + to_json(state["crossExaminations"]) + "\n\n# Executioner findings\n\n" + to_json(kill_pass)
         ruling_call := call_model(config, storage_dir, state, "judge-ruling", judge, ruling_input, ruling_schema)
         state = add_usage(state, ruling_call)
         if ruling_call["ok"] != true { return stop_run(config, state, ruling_call["error"], private_key, public_key) }
@@ -435,7 +437,7 @@ func review_internal(config, docket_path, panel_id, private_key, public_key, lin
     } else {
         judge := seat("judge")
         packet_schema := {"type": "object", "required": ["decision", "scope", "nonGoals", "requiredNextActions", "suggestedOwnerRole", "suggestedModelLevel", "acceptanceCriteria", "escalationTriggers", "evidenceRequired", "stopTheLineConditions"], "properties": {"decision": {"type": "string", "minLength": 1}, "scope": {"type": "string", "minLength": 1}, "nonGoals": {"type": "array", "items": {"type": "string"}}, "requiredNextActions": {"type": "array", "items": {"type": "string"}}, "suggestedOwnerRole": {"type": "string", "minLength": 1}, "suggestedModelLevel": {"type": "string", "minLength": 1}, "acceptanceCriteria": {"type": "array", "items": {"type": "string"}}, "escalationTriggers": {"type": "array", "items": {"type": "string"}}, "evidenceRequired": {"type": "array", "items": {"type": "string"}}, "stopTheLineConditions": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false}
-        packet_input := "# Docket\n" + docket["content"] + "\n\n# Final ruling\n" + to_json_pretty(ruling)
+        packet_input := "# Docket\n" + docket["content"] + "\n\n# Final ruling\n" + to_json(ruling)
         packet_call := call_model(config, storage_dir, state, "decision-packet", judge, packet_input, packet_schema)
         state = add_usage(state, packet_call)
         if packet_call["ok"] != true { return stop_run(config, state, packet_call["error"], private_key, public_key) }

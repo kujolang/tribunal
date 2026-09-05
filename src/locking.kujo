@@ -1,16 +1,20 @@
 # Tribunal :: atomic per-run lock directories and crash recovery
 
-from src.common import dict_get, ensure_dir, read_json, safe_run_id, write_json
+from src.common import claim_directory, dict_get, ensure_dir, read_json, safe_run_id, write_json
 
 func locks_root(storage_dir) { return join_path(storage_dir, ".locks") }
 func lock_dir(storage_dir, run_id) { return join_path(locks_root(storage_dir), run_id + ".lock") }
 func owner_path(storage_dir, run_id) { return join_path(lock_dir(storage_dir, run_id), "owner.json") }
 
 func remove_lock(storage_dir, run_id) {
+    path := lock_dir(storage_dir, run_id)
+    if path_is_dir(path) == false { return {"ok": true, "removed": false} }
+    if path_is_symlink(path) { return {"ok": false, "error": "Run lock path is unsafe."} }
+    for name in list_dir(path) { if name != "owner.json" { return {"ok": false, "error": "Run lock contains unexpected state and requires operator reconciliation."} } }
     owner := owner_path(storage_dir, run_id)
     if file_exists(owner) { delete_file(owner) }
-    path := lock_dir(storage_dir, run_id)
-    if path_is_dir(path) { os_rmdir(path) }
+    try { os_rmdir(path) } except err { return {"ok": false, "error": "Unable to remove run lock directory."} }
+    return {"ok": true, "removed": true}
 }
 
 export func acquire_lock(storage_dir, run_id, owner, stale_after_ms) {
@@ -28,7 +32,7 @@ export func acquire_lock(storage_dir, run_id, owner, stale_after_ms) {
         stale := stale_after_ms > 0 && acquired_ms > 0 && current_timestamp() - acquired_ms > stale_after_ms
         return {"ok": false, "error": "Run is locked. Stale locks require explicit operator recovery.", "lock": existing, "stale": stale, "metrics": {"waitMs": current_timestamp() - started_ms, "contended": true}}
     }
-    try { create_dir(path) } except err { return {"ok": false, "error": "Unable to acquire atomic run lock: " + to_string(err)} }
+    if claim_directory(path) == false { return {"ok": false, "error": "Unable to acquire exclusive run lock."} }
     token := sha256(run_id + ":" + owner + ":" + to_string(current_timestamp()) + ":" + to_string(random_int(1000, 9999)))
     lock := {"schemaVersion": "1.0.0", "runId": run_id, "owner": owner, "token": token, "acquiredAt": now_utc(), "acquiredAtMs": current_timestamp()}
     try { write_json(owner_path(storage_dir, run_id), lock) } except err { remove_lock(storage_dir, run_id); return {"ok": false, "error": "Unable to persist lock ownership."} }
@@ -40,7 +44,8 @@ export func release_lock(storage_dir, run_id, token) {
     existing := null
     try { existing = read_json(owner_path(storage_dir, run_id)) } except err { return {"ok": false, "error": "Lock owner record is unreadable."} }
     if dict_get(existing, "token", "") != token { return {"ok": false, "error": "Lock token does not match the current owner."} }
-    remove_lock(storage_dir, run_id)
+    removed := remove_lock(storage_dir, run_id)
+    if removed["ok"] != true { return removed }
     return {"ok": true, "released": true}
 }
 
@@ -59,7 +64,8 @@ export func recover_stale_locks(storage_dir, stale_after_ms) {
             try { existing = read_json(owner_path(storage_dir, run_id)) } except err { existing = null }
             acquired_ms := dict_get(existing, "acquiredAtMs", 0)
             if acquired_ms == 0 || current_timestamp() - acquired_ms > stale_after_ms {
-                remove_lock(storage_dir, run_id)
+                removed := remove_lock(storage_dir, run_id)
+                if removed["ok"] != true { return {"ok": false, "error": removed["error"], "runId": run_id, "recovered": recovered, "recoveryMs": current_timestamp() - started_ms} }
                 recovered = push(recovered, run_id)
             }
         }

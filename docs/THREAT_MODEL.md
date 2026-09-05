@@ -43,3 +43,9 @@ Trust boundaries exist at CLI input, config/policy files, docket/context/model o
 - Accepted independent-review findings cannot close without an executable regression fixture.
 
 Review this model whenever a new provider, store, collector, filesystem, identity system, or network surface is introduced. The independent review commission and accepted-finding register live under `docs/security/`.
+
+## September 2026 boundary hardening
+
+Failed bridge processes cannot supply successful results, and child working directories do not change the parent process. Imported descriptors must uniquely cover the inventory with consistent chunk and aggregate byte bounds; imports claim their destination exclusively. Index verification compares cached manifest content and rejects duplicate run IDs across shards. Direct public-key verification and HTTP-store helpers enforce their declared input bounds. The focused hardening suite supplies regression evidence; see the [engineering receipt](audits/repository-hardening.md).
+
+These checks retain the administrator-controlled local filesystem assumption. Storage-wide exclusive coordination now covers index readers, writers and maintenance. An interrupted mutation leaves a refusal marker until explicit repair; crashes can leave an abandoned lock requiring confirmed shutdown and operator recovery. Exclusive directory creation uses the fixed POSIX `/bin/mkdir` helper rather than Kujo’s idempotent `create_dir`. Separate cursor calls and source-manifest changes outside index operations are not a global snapshot. Embedded library callers must enforce authorization before invoking storage APIs.

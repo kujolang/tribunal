@@ -10,6 +10,7 @@ gates := [
     "cli-integration",
     "enterprise-tests",
     "property-tests",
+    "hardening-tests",
     "schema",
     "concord-drift",
     "strict-spec",

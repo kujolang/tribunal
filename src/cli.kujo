@@ -1,6 +1,6 @@
 # Tribunal :: Kujo-native CLI
 
-from src.common import parse_args, flag, has_flag, positional, slice_from, dict_get, array_includes, path_within
+from src.common import parse_args, flag, has_flag, positional, slice_from, dict_get, array_includes, external_path_outside
 from src.config import load_config, apply_overrides, validate_config
 from src.catalog import PANELS, SEATS
 from src.tribunal import review, resume, validate_docket
@@ -316,7 +316,7 @@ func cmd_keys(parsed, config) {
     try { bits = to_int(flag(parsed, "bits", "4096")) } except err { bits = 0 }
     private_path := flag(parsed, "private-key", "")
     public_path := flag(parsed, "public-key", "")
-    if path_within(config["tribunal"]["storage_dir"], private_path) || path_within(config["tribunal"]["storage_dir"], public_path) { return command_error("Key outputs must be outside Tribunal run storage.", 2) }
+    if external_path_outside(config["tribunal"]["storage_dir"], private_path) == false || external_path_outside(config["tribunal"]["storage_dir"], public_path) == false { return command_error("Key outputs must be outside Tribunal run storage without symbolic-link aliases.", 2) }
     created := generate_keys(private_path, public_path, bits)
     if created["ok"] != true { return command_error(created["error"], 2) }
     print(to_json_pretty(created))
@@ -365,7 +365,7 @@ func cmd_ingest(parsed, config) {
     result := null
     if target == "runledger" {
         ledger_path := flag(parsed, "ledger", "./.runledger")
-        if path_within(config["tribunal"]["storage_dir"], ledger_path) { return command_error("RunLedger output must be outside Tribunal run storage.", 2) }
+        if external_path_outside(config["tribunal"]["storage_dir"], ledger_path) == false { return command_error("RunLedger output must be outside Tribunal run storage without symbolic-link aliases.", 2) }
         result = ingest_runledger(config["tribunal"]["storage_dir"], run_id, {
             "public_key": public_key,
             "kujo_bin": config["kujo_ai"]["kujo_bin"],
@@ -374,7 +374,7 @@ func cmd_ingest(parsed, config) {
         })
     } else if target == "casefile" {
         casefile_output := flag(parsed, "casefile-output", "./.casefile")
-        if path_within(config["tribunal"]["storage_dir"], casefile_output) { return command_error("CaseFile output must be outside Tribunal run storage.", 2) }
+        if external_path_outside(config["tribunal"]["storage_dir"], casefile_output) == false { return command_error("CaseFile output must be outside Tribunal run storage without symbolic-link aliases.", 2) }
         result = ingest_casefile(config["tribunal"]["storage_dir"], run_id, {
             "public_key": public_key,
             "kujo_bin": config["kujo_ai"]["kujo_bin"],
@@ -587,9 +587,12 @@ func cmd_locks_recover(parsed, config) {
     if has_flag(parsed, "stale-after-ms") { try { stale = to_int(flag(parsed, "stale-after-ms", "")) } except err { stale = 0 } }
     if stale < 1000 { return command_error("--stale-after-ms must be at least 1000.", 2) }
     result := recover_stale_locks(config["tribunal"]["storage_dir"], stale)
-    result["sealTransactions"] := recover_seal_transactions(config["tribunal"]["storage_dir"])["recovered"]
+    seal_recovery := recover_seal_transactions(config["tribunal"]["storage_dir"])
+    result["sealTransactions"] := dict_get(seal_recovery, "recovered", [])
+    if seal_recovery["ok"] != true { result["ok"] := false; result["sealTransactionError"] := seal_recovery["error"] }
     print(to_json_pretty(result))
-    return 0
+    if result["ok"] { return 0 }
+    return 3
 }
 
 func cmd_index(command, parsed, config) {

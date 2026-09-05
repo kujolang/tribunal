@@ -1,7 +1,7 @@
 # Tribunal :: external metrics and audit export without sealed-run mutation
 
 from src.analytics import collect_stats
-from src.common import dict_get, ensure_dir, parent_dir, path_within, redact, safe_http_url, write_json
+from src.common import dict_get, ensure_dir, external_path_outside, parent_dir, redact, safe_http_url, write_json
 from src.storage import list_runs_page, load_events
 
 func audit_event(event) {
@@ -41,7 +41,8 @@ export func telemetry_payload(storage_dir) {
 }
 
 export func export_telemetry(storage_dir, collector, destination) {
-    if collector == "jsonl" && path_within(storage_dir, destination) { return {"ok": false, "error": "Telemetry destination must be outside Tribunal run storage."} }
+    if collector == "jsonl" && external_path_outside(storage_dir, destination) == false { return {"ok": false, "error": "Telemetry destination must be outside Tribunal run storage without symbolic-link aliases."} }
+    if collector == "jsonl" && (((file_exists(destination) || path_is_dir(destination)) && path_is_symlink(destination)) || ((file_exists(destination + ".receipt.json") || path_is_dir(destination + ".receipt.json")) && path_is_symlink(destination + ".receipt.json"))) { return {"ok": false, "error": "Telemetry destination and receipt must not be symbolic links."} }
     metrics := collect_stats(storage_dir)
     cursor := ""
     payload := telemetry_payload_page(storage_dir, cursor, 100, metrics)

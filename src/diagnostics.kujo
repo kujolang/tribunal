@@ -17,6 +17,8 @@ func path_check(checks, name, path, kind, required) {
 
 export func doctor(config, home) {
     mut checks := []
+    checks = path_check(checks, "Exclusive directory helper", "/bin/mkdir", "file", true)
+    checks = path_check(checks, "Symlink cleanup helper", "/bin/rm", "file", true)
     checks = path_check(checks, "Kujo runtime", config["kujo_ai"]["kujo_bin"], "file", true)
     checks = path_check(checks, "Tribunal entrypoint", join_path(home, "tribunal.kujo"), "file", true)
     checks = path_check(checks, "Kujo project manifest", join_path(home, "kujo.toml"), "file", true)

@@ -132,6 +132,8 @@ for path in extracted { if basename(path) == "bundle.json" { bundle_metadata_fou
 check(len(extracted) > 5 && bundle_metadata_found, "Kujo release archive contains portable bundle evidence")
 import_storage := join_path(ROOT, "imported")
 check(proc_success(cli(["bundle-import", bundle_path, "--storage-dir", import_storage, "--trust-policy", trust_path, "--target", "bundle-import"])), "signed bundle import command succeeds")
+unsafe_recovery_storage := join_path(ROOT, "unsafe-recovery-storage"); ensure_dir(unsafe_recovery_storage); unsafe_locks_target := join_path(ROOT, "unsafe-locks-target"); ensure_dir(unsafe_locks_target); spawn_process(["ln", "-s", unsafe_locks_target, join_path(unsafe_recovery_storage, ".locks")], {"inherit_env": false, "timeout_ms": 10000, "max_output_bytes": 1048576})
+check(proc_success(cli(["locks-recover", "--storage-dir", unsafe_recovery_storage, "--json"])) == false, "locks-recover returns failure when lock storage is unsafe")
 release_output := join_path(ROOT, "release-evidence")
 release_proc := spawn_process([KUJO_BIN, "run", join_path(HOME, "scripts/release_evidence.kujo")], {"inherit_env": true, "env": {"TRIBUNAL_HOME": HOME, "KUJO_BIN": KUJO_BIN, "TRIBUNAL_SIGNING_PROVIDER_CONFIG": provider_config, "TRIBUNAL_RELEASE_OUTPUT": release_output}, "timeout_ms": 120000, "max_output_bytes": 1048576})
 if proc_success(release_proc) == false { print("  Release detail: " + proc_stderr(release_proc) + proc_stdout(release_proc)) }

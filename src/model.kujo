@@ -153,6 +153,9 @@ func live_invoke(config, request) {
         sdk_error := dict_get(sdk, "error", {})
         return {"ok": false, "content": content, "structured": structured, "metadata": metadata, "error": {"code": dict_get(sdk_error, "code", "kujo_ai_sdk_error"), "message": redact(dict_get(sdk_error, "message", "Kujo AI SDK invocation failed.")), "retryable": dict_get(sdk_error, "retryable", false)}}
     }
+    if proc.success != true {
+        return {"ok": false, "content": "", "metadata": {"latencyMs": current_timestamp() - started}, "error": {"code": "kujo_ai_sdk_bridge_error", "message": "Kujo AI SDK bridge process failed: " + redact(proc.stderr), "retryable": false}}
+    }
     return {"ok": true, "content": content, "structured": structured, "metadata": metadata}
 }
 
