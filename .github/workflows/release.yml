@@ -21,20 +21,97 @@ permissions:
 
 jobs:
   verify:
-    runs-on: [self-hosted, kujo]
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       id-token: write
     env:
-      TRIBUNAL_HOME: ${{ github.workspace }}
-      KUJO_BIN: ${{ vars.KUJO_BIN }}
+      TRIBUNAL_HOME: ${{ github.workspace }}/tribunal
+      KUJO_BIN: ${{ github.workspace }}/kujo/target/release/kujo
       TRIBUNAL_SIGNING_PROVIDER_CONFIG: ${{ vars.TRIBUNAL_SIGNING_PROVIDER_CONFIG }}
+    defaults:
+      run:
+        working-directory: tribunal
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          path: tribunal
           fetch-depth: 0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: kujolang/kujo
+          ref: 9b77dce592047121cb71066629836ad89252f3ce
+          path: kujo
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: kujolang/ai-sdk
+          ref: d3c6def0f7844f8b42bd92d3b176e80283af8e79
+          path: ai-sdk
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: kujolang/packwrite
+          ref: 0cb9487e4c02218bb4a18efe68b8a0c22998f715
+          path: packwrite
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: kujolang/runledger
+          ref: 5cf186c9b56b540970f75e33a06f50d3dac833a8
+          path: runledger
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: kujolang/casefile
+          ref: 6e8a6ded379a9882b2e48b0a8f0bad57e284c3bf
+          path: casefile
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: kujolang/concord
+          ref: d388c951b7ff0e1e03da1cd252ad5b65e25765b9
+          path: concord
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: kujolang/spec
+          ref: 11180d8f6af1ed3eea84abb3434dd736fa51293b
+          path: spec
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: kujolang/eval
+          ref: dce9d030a3547803dab876b404c44c25b247dde1
+          path: eval
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: kujolang/kennel
+          ref: 6df043c3ba0bde4445cc8f8f7d4c01c60c9c6d7e
+          path: kennel
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: kujolang/workcell
+          ref: 91b9f066ad32b6fffb8f456d8613c0379ac48b04
+          path: workcell
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: kujolang/watchdog
+          ref: 7c46cd0bf1680d037c24506be4ed0a2405a9841f
+          path: watchdog
+          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build pinned Kujo runtime
+        working-directory: kujo
+        run: cargo build --release --locked
 
       - name: Verify release inputs and tag safety
+        env:
+          PUBLISH_RELEASE: ${{ inputs.publish_release || false }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           test -x "$KUJO_BIN"
           command -v python3
@@ -47,9 +124,9 @@ jobs:
             test "$GITHUB_REF_NAME" = "$expected_tag"
             test "$(git rev-parse "$GITHUB_REF_NAME^{commit}")" = "$GITHUB_SHA"
           fi
-          if [[ "${{ inputs.publish_release || false }}" == "true" ]]; then
-            test "${{ inputs.release_tag }}" = "$expected_tag"
-            test "$(git rev-parse "${{ inputs.release_tag }}^{commit}")" = "$GITHUB_SHA"
+          if [[ "$PUBLISH_RELEASE" == "true" ]]; then
+            test "$RELEASE_TAG" = "$expected_tag"
+            test "$(git rev-parse "$RELEASE_TAG^{commit}")" = "$GITHUB_SHA"
           fi
 
       - name: Run Kujo release gates
