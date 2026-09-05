@@ -1,6 +1,6 @@
 # Tribunal
 
-![Version 1.0.0](https://img.shields.io/badge/version-1.0.0-blue)
+![Version 1.0.1](https://img.shields.io/badge/version-1.0.1-blue)
 [![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![CI](https://github.com/kujolang/tribunal/actions/workflows/compatibility.yml/badge.svg)](https://github.com/kujolang/tribunal/actions/workflows/compatibility.yml)
 [![Built with Kujo](https://img.shields.io/badge/built%20with-Kujo-6f42c1)](https://github.com/kujolang/kujo)
@@ -15,7 +15,7 @@ Tribunal is also a practical showcase for [Kujo](https://github.com/kujolang/kuj
 
 ## Production-readiness statement
 
-Tribunal 1.0.0 is stable for local or operator-controlled decision evidence. The v1 guarantee covers the documented CLI, Kujo library API, configuration, local evidence, inspection, and portable bundle contracts on platforms with passing release receipts.
+Tribunal 1.0.1 is stable for local or operator-controlled decision evidence. The v1 guarantee covers the documented CLI, Kujo library API, configuration, local evidence, inspection, and portable bundle contracts on platforms with passing release receipts.
 
 This is not automatic certification for every enterprise, hosted, regulated, shared-filesystem, identity-provider, custody, or remote-storage environment. Managed identity and signing, policy/trust custody, target storage and filesystem semantics, live-provider behavior, backup/recovery, network controls, and organizational approval must be certified for the actual deployment. The independent security review is commissioned, not completed. See the [release checklist](docs/launch-checklist.md).
 
@@ -60,7 +60,7 @@ Supported release platforms are exactly those with v1 candidate receipts in [pla
 
 ## Version and compatibility boundaries
 
-- Product version and CLI version are `1.0.0`; `tribunal version` is authoritative for the running checkout.
+- Product version and CLI version are `1.0.1`; `tribunal version` is authoritative for the running checkout.
 - The Kujo library API is independently versioned `1.0.0`. Compatible additions may occur within API 1.x; removing or repurposing public functions or envelope fields requires API 2.0.
 - Evidence, event, signature, bundle, encryption, provenance, configuration, and other schema versions are independent contracts. Product 1.0.0 does not mechanically rename them.
 - The supported v1 CLI commands, options, exit meanings, compatibility guarantees, and breaking-change policy are defined in [the v1 compatibility contract](docs/V1_COMPATIBILITY.md). Generated command details live in [the command reference](docs/COMMAND_REFERENCE.md).
@@ -194,7 +194,7 @@ Optional PackWrite context enrichment is deterministic and redacted:
 
 ## Enterprise controls
 
-Tribunal 1.0.0 includes:
+Tribunal 1.0.1 includes:
 
 - default-deny service/user identity and role authorization;
 - external HSM/KMS signing-provider contracts and v1.2 signer provenance;

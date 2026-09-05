@@ -1,6 +1,6 @@
 [project]
 name = "tribunal"
-version = "1.0.0"
+version = "1.0.1"
 description = "Stable local-first decision evidence for Kujo programs and operators."
 
 [kujo]

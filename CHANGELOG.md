@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased — index coordination
+## 1.0.1 — 2026-09-05
+
+Patch release of the local/operator-controlled v1 contract. Includes fail-closed subprocess and evidence validation, complete credential redaction, compact model context, native hashing, index coordination and portable symlink cleanup. Existing evidence and library API versions are unchanged.
+
+### Index coordination
 
 - Serialize shared-index readers, writers and maintenance; refuse interrupted updates until explicit repair.
 - Use exclusive POSIX directory claims for run locks, run creation and imports; Kujo recursive directory creation does not establish ownership.
