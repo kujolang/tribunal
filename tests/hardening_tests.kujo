@@ -36,6 +36,10 @@ docket := {"title": "fixture", "scope": "fixture", "content": "fixture", "source
 cwd := os_getcwd()
 check(build_context(config, docket)["ok"] == false, "PackWrite process failure overrides success JSON")
 check(os_getcwd() == cwd, "bridge invocation preserves caller working directory")
+write_file(bridge, "#!/bin/sh\nprintf '%s\\n' '{\"ok\":false,\"error\":{\"code\":\"fixture_resolution_error\",\"message\":\"Synthetic model preference unavailable\",\"retryable\":false}}'\nexit 7\n", true)
+rejected := invoke(config, request)
+check(rejected["ok"] == false && rejected["error"]["code"] == "fixture_resolution_error" && rejected["error"]["message"] == "Synthetic model preference unavailable", "failed SDK process retains structured failure diagnostics")
+
 
 # Index verification must check the cached projection as well as its digest label.
 storage := join_path(root, "runs"); ensure_dir(join_path(storage, "fixture"))
