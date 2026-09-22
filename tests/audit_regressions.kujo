@@ -77,8 +77,8 @@ check(linked.success, "events symlink fixture ready")
 contracts = validate_run_contracts(os_getcwd(), config["tribunal"]["storage_dir"], result["runId"])
 check(contracts["ok"] == false && contains(to_json(contracts["errors"]), "events.jsonl is unsafe") == 1, "contract events reject symlinks")
 # The Python standard-library harness preserves literal HTTP path components.
-http_test := spawn_process(["python3", join_path(os_getcwd(), "tests/fixtures/http_boundaries.py")], {"inherit_env": false, "env": {"KUJO_BIN": env_or("KUJO_BIN", "kujo"), "PATH": env_or("PATH", "")}, "timeout_ms": 30000, "max_output_bytes": 16384})
-if http_test.success != true { print(http_test.stdout + http_test.stderr) }
+http_test := spawn_process(["python3", "-u", join_path(os_getcwd(), "tests/fixtures/http_boundaries.py")], {"inherit_env": false, "env": {"KUJO_BIN": env_or("KUJO_BIN", "kujo"), "PATH": env_or("PATH", "")}, "timeout_ms": 30000, "max_output_bytes": 16384})
+if http_test.success != true { print(to_json(http_test)) }
 check(http_test.success, "reference-store raw paths and telemetry continuation fail closed")
 remove_tree(root)
 print(to_json({"passed": passed, "failed": failed}))

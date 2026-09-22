@@ -9,6 +9,7 @@ import tempfile
 import time
 
 repo = Path.cwd()
+print('HTTP boundary fixture: starting reference store', flush=True)
 with tempfile.TemporaryDirectory(prefix='tribunal-store-boundary-') as tmp:
     root = Path(tmp)
     (root/'store').mkdir()
@@ -31,14 +32,18 @@ with tempfile.TemporaryDirectory(prefix='tribunal-store-boundary-') as tmp:
             finally: conn.close()
         try:
             deadline=time.monotonic()+10
+            last_status=None
             while True:
                 try:
-                    if request('GET','/healthz') == 200: break
+                    last_status=request('GET','/healthz')
+                    if last_status == 200: break
                 except OSError:
-                    if proc.poll() is not None or time.monotonic() >= deadline:
-                        log.seek(0); raise AssertionError('server readiness failed: '+log.read())
-                    # Readiness polling only; no workload race depends on elapsed sleep.
-                    time.sleep(.05)
+                    pass
+                if proc.poll() is not None or time.monotonic() >= deadline:
+                    log.seek(0); raise AssertionError(f'server readiness failed (status={last_status}): '+log.read())
+                # Readiness polling only; no workload race depends on elapsed sleep.
+                time.sleep(.05)
+            print('HTTP boundary fixture: store ready', flush=True)
             version='a'*64
             tenants=root/'store/tenants'
             stage=tenants/'fixture/staging/run'/version
@@ -65,6 +70,7 @@ with tempfile.TemporaryDirectory(prefix='tribunal-store-boundary-') as tmp:
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
 
+print('HTTP boundary fixture: starting telemetry collector', flush=True)
 with tempfile.TemporaryDirectory(prefix='tribunal-telemetry-boundary-') as tmp:
     root = Path(tmp)
     storage = root / 'runs'
@@ -92,6 +98,7 @@ with tempfile.TemporaryDirectory(prefix='tribunal-telemetry-boundary-') as tmp:
         thread=threading.Thread(target=server.serve_forever,daemon=True); thread.start()
         env=os.environ.copy(); env.pop('KUJO',None)
         try:
+            print('HTTP boundary fixture: invoking telemetry export', flush=True)
             proc=subprocess.run([str(repo/'bin/tribunal'),'telemetry-export','--storage-dir',str(storage),
                  '--collector','http','--destination',f'http://127.0.0.1:{server.server_port}', '--json'],
                  env=env,capture_output=True,text=True,timeout=20)
