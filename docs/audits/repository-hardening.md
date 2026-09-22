@@ -1,5 +1,7 @@
 # Tribunal repository hardening — 2026-09-04–05
 
+Later audit: [September 22 evidence-boundary hardening](repository-hardening-2026-09-22.md).
+
 Follow-up: [shared-index coordination](index-coordination.md) reproduces and addresses H12 and corrects the earlier exclusive-directory assumption. This receipt retains its original implementation scope.
 
 ## Repository and evidence scope
