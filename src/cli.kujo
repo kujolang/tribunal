@@ -276,6 +276,7 @@ func cmd_list(parsed, config) {
         if limit < 1 || limit > 10000 { return command_error("--limit must be between 1 and 10000.", 2) }
     }
     page := list_runs_page(config["tribunal"]["storage_dir"], flag(parsed, "status", ""), flag(parsed, "panel", ""), limit, flag(parsed, "cursor", ""))
+    if has_key(page, "error") == 1 { return command_error(page["error"], 1) }
     if page["cursorFound"] != true { return command_error("List cursor was not found.", 2) }
     runs := page["items"]
     if has_flag(parsed, "json") { print(to_json_pretty(page)); return 0 }

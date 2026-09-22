@@ -8,6 +8,14 @@
   "stop_on_failure": true,
   "tests": [
     {
+      "name": "Tribunal audit boundary regressions pass",
+      "check": "command_succeeds",
+      "timeout_seconds": 600,
+      "params": {
+        "command": "cd ../tribunal && TRIBUNAL_HOME=. KUJO_BIN=../kujo/target/release/kujo ../kujo/target/release/kujo run tests/audit_regressions.kujo --interpreter"
+      }
+    },
+    {
       "name": "Tribunal Kujo check passes",
       "check": "command_succeeds",
       "timeout_seconds": 600,

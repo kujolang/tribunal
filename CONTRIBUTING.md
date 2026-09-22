@@ -19,3 +19,5 @@ Changes to identity, signing, trust, locking, governance, artifact stores, telem
 Keep application code under `src/`. Root Kujo files are limited to the thin entrypoint and Spec contract; conventional release/project metadata remains at root. External outputs must never be written into `tribunal.storage_dir`.
 
 Commits should be small and describe one meaningful contract or capability. Keep generated evidence outside the repository.
+
+The audit regression suite (`tests/audit_regressions.kujo`) exercises secret rejection, encrypted metadata bounds, contract readers, and failure propagation. Its Python 3 standard-library HTTP fixture starts disposable loopback services, preserves literal traversal paths, and synchronizes telemetry failure injection on the first POST. No provider credentials or external network are needed.

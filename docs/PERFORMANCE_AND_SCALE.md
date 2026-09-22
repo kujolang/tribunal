@@ -4,7 +4,7 @@
 
 Run manifests are indexed under `<storage>/.index/` as atomic metadata plus 100-entry pages. Normal list, stats, telemetry, dashboard, and bulk verification paths load one index shard and one bounded result page at a time. Full inventory scans are reserved for explicit `index-rebuild`, `index-check`, and `index-repair`; repair removes abandoned atomic-write fragments and proves manifest digests.
 
-`scripts/index_perf_gate.kujo` creates 250 four-artifact runs and requires a 15-second rebuild, 2-second two-page lookup, 15-second aggregate fold, exactly three index pages, and a 100-run projection ceiling. The separate scale gate exercises the same cursor contract with a large hearing. Application memory is bounded independently of total run count; Kujo does not yet expose portable peak RSS, so byte/page limits are directly measured and OS RSS remains a platform receipt concern.
+`scripts/index_perf_gate.kujo` creates 250 four-artifact runs and requires a 15-second rebuild, 3-second two-page lookup, 15-second aggregate fold, exactly three index pages, and a 100-run projection ceiling. The separate scale gate exercises the same cursor contract with a large hearing. Application memory is bounded independently of total run count; Kujo does not yet expose portable peak RSS, so byte/page limits are directly measured and OS RSS remains a platform receipt concern.
 
 ## Blind-seat concurrency evaluation
 
@@ -23,3 +23,5 @@ Budgets are 10,000 artifacts, 64 MiB per artifact, 1 GiB aggregate bundle bytes,
 `scripts/load_chaos_gate.kujo` performs 500 acquisition/contention/release cycles, records wait and contention metrics, injects a terminated stale owner, and requires explicit recovery within a 5-second RTO and at least 15 cycles/second on a shared CI host. `scripts/multi_host_worker.kujo` runs for at least ten seconds on each distinct host against the same mounted storage; `scripts/multi_host_report.kujo` requires two unique host receipts, successful acquisitions, and observed contention. Multi-host receipts certify only the tested filesystem/mount and must accompany deployment evidence.
 
 No gate establishes universal NFS/distributed-filesystem semantics. If the target shared filesystem cannot prove atomic directory creation and coherent metadata under the worker harness, deploy a supported external coordination adapter before enabling multi-host writers.
+
+Contract validation loads the event schema once per call and reuses the parsed schema for every event. The cache ends with the call, so a later call observes schema changes. Contract JSON documents are limited to 4 MiB and event logs to 64 MiB before parsing; symlinks are rejected. Failed index pagination aborts statistics and telemetry rather than reporting incomplete results as complete.

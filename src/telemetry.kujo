@@ -25,7 +25,7 @@ export func telemetry_payload_page(storage_dir, cursor, limit, metrics) {
     if bounded_limit < 1 { bounded_limit = 100 }
     if bounded_limit > 500 { bounded_limit = 500 }
     page := list_runs_page(storage_dir, "", "", bounded_limit, cursor)
-    if page["cursorFound"] != true { return {"ok": false, "error": "Telemetry cursor was not found."} }
+    if page["cursorFound"] != true { return {"ok": false, "error": dict_get(page, "error", "Telemetry cursor was not found.")} }
     for manifest in page["items"] {
         for event in load_events(storage_dir, manifest["runId"]) { audit = push(audit, audit_event(event)) }
     }
@@ -36,7 +36,7 @@ export func telemetry_payload_page(storage_dir, cursor, limit, metrics) {
 
 export func telemetry_payload(storage_dir) {
     payload := telemetry_payload_page(storage_dir, "", 100, null)
-    payload["ok"] := null
+    if payload["ok"] != true { return payload }
     return {"schemaVersion": payload["schemaVersion"], "exportedAt": payload["exportedAt"], "metrics": payload["metrics"], "auditEvents": payload["auditEvents"], "runsProcessed": payload["runsProcessed"], "pageLimit": payload["pageLimit"], "cursor": payload["cursor"], "nextCursor": payload["nextCursor"], "hasMore": payload["hasMore"]}
 }
 
@@ -80,6 +80,7 @@ export func export_telemetry(storage_dir, collector, destination) {
             cursor = payload["nextCursor"]
             payload = telemetry_payload_page(storage_dir, cursor, 100, metrics)
         }
+        if payload["ok"] != true { return {"ok": false, "error": payload["error"], "pagesSent": pages} }
         return {"ok": true, "collector": collector, "destination": destination, "events": total_events, "pages": pages, "pageLimit": 100, "exportedAt": now_utc()}
     }
     return {"ok": false, "error": "Collector must be jsonl or http."}

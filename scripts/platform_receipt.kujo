@@ -11,6 +11,7 @@ gates := [
     "enterprise-tests",
     "property-tests",
     "hardening-tests",
+    "audit-regressions",
     "schema",
     "concord-drift",
     "strict-spec",

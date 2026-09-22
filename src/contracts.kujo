@@ -1,6 +1,6 @@
 # Tribunal :: complete emitted-artifact JSON Schema validation
 
-from src.common import dict_get, read_json
+from src.common import dict_get, read_json, safe_existing_file
 from src.storage import artifact_path, load_record
 
 func load_schema(home, name) {
@@ -14,15 +14,20 @@ func load_schema(home, name) {
 func validate_value(home, schema_name, value, artifact) {
     loaded := load_schema(home, schema_name)
     if loaded["ok"] != true { return loaded }
+    return validate_loaded(loaded["schema"], schema_name, value, artifact)
+}
+
+func validate_loaded(schema, schema_name, value, artifact) {
     checked := null
-    try { checked = json_schema_validate(value, loaded["schema"]) } except err { return {"ok": false, "error": "Schema engine rejected " + schema_name + ": " + to_string(err)} }
+    try { checked = json_schema_validate(value, schema) } except err { return {"ok": false, "error": "Schema engine rejected " + schema_name + ": " + to_string(err)} }
     if checked["valid"] != true { return {"ok": false, "error": artifact + " failed " + schema_name, "details": checked["errors"]} }
     return {"ok": true, "artifact": artifact, "schema": schema_name}
 }
 
 func validate_file(home, storage_dir, run_id, artifact, schema_name) {
     path := artifact_path(storage_dir, run_id, artifact)
-    if path == "" || file_exists(path) == false { return {"ok": false, "error": "Artifact is missing: " + artifact} }
+    checked := safe_existing_file(path, 4194304, "Artifact " + artifact)
+    if checked["ok"] != true { return checked }
     value := null
     try { value = read_json(path) } except err { return {"ok": false, "error": "Artifact is invalid JSON: " + artifact} }
     return validate_value(home, schema_name, value, artifact)
@@ -60,8 +65,12 @@ export func validate_run_contracts(home, storage_dir, run_id) {
     }
     events_path := artifact_path(storage_dir, run_id, "events.jsonl")
     mut index := 0
-    if events_path == "" || file_exists(events_path) == false {
-        invalid := {"ok": false, "error": "Artifact is missing: events.jsonl"}; results = push(results, invalid); errors = push(errors, invalid)
+    events_checked := safe_existing_file(events_path, 67108864, "Artifact events.jsonl")
+    event_schema := load_schema(home, "tribunal-event.schema.json")
+    if events_checked["ok"] != true {
+        results = push(results, events_checked); errors = push(errors, events_checked)
+    } else if event_schema["ok"] != true {
+        results = push(results, event_schema); errors = push(errors, event_schema)
     } else {
         for line in split(read_file(events_path), "\n") {
             if trim(line) != "" {
@@ -70,7 +79,7 @@ export func validate_run_contracts(home, storage_dir, run_id) {
                 if type(event) != "dict" {
                     invalid := {"ok": false, "error": "events.jsonl#" + to_string(index) + " is invalid JSON"}; results = push(results, invalid); errors = push(errors, invalid)
                 } else {
-                    result := validate_value(home, "tribunal-event.schema.json", event, "events.jsonl#" + to_string(index))
+                    result := validate_loaded(event_schema["schema"], "tribunal-event.schema.json", event, "events.jsonl#" + to_string(index))
                     results = push(results, result)
                     if result["ok"] != true { errors = push(errors, result) }
                 }

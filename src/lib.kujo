@@ -17,5 +17,10 @@ func envelope(operation, result) {
 export func review_docket(config, docket_path, panel_id, private_key, public_key) { return envelope("review", review(config, docket_path, panel_id, private_key, public_key)) }
 export func resume_hearing(config, prior_run_id, private_key, public_key) { return envelope("resume", resume(config, prior_run_id, private_key, public_key)) }
 export func compare_sealed_rulings(storage_dir, base_run_id, candidate_run_id, output_prefix) { return envelope("compare", compare_rulings(storage_dir, base_run_id, candidate_run_id, output_prefix)) }
-export func list_hearings(storage_dir, status, panel_id, limit, cursor) { return envelope("list", {"ok": true, "page": list_runs_page(storage_dir, status, panel_id, limit, cursor)}) }
+export func list_hearings(storage_dir, status, panel_id, limit, cursor) {
+    page := null
+    try { page = list_runs_page(storage_dir, status, panel_id, limit, cursor) } except err { return envelope("list", {"ok": false, "error": to_string(err)}) }
+    if page["cursorFound"] != true { return envelope("list", {"ok": false, "error": dict_get(page, "error", "List cursor was not found."), "page": page}) }
+    return envelope("list", {"ok": true, "page": page})
+}
 export func verify_hearing(storage_dir, run_id, public_key) { return envelope("verify", verify(storage_dir, run_id, public_key)) }

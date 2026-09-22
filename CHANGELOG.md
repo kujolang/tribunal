@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — September 22 audit
+
+- Screen constructed context and keep rejected model bodies out of stopped evidence.
+- Validate encrypted inventories and aggregate sizes before decryption; bound ciphertext and secondary artifact readers.
+- Reject unsafe reference-store route parameters and propagate failed index/telemetry pages.
+- Reuse event schemas within each contract-validation call and add offline boundary regressions to CI.
+
 ## 1.0.1 — 2026-09-05
 
 Patch release of the local/operator-controlled v1 contract. Includes fail-closed subprocess and evidence validation, complete credential redaction, compact model context, native hashing, index coordination and portable symlink cleanup. Existing evidence and library API versions are unchanged.

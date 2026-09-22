@@ -2,7 +2,7 @@
 # This deployment-neutral Kujo service exists for integration certification and
 # small controlled installations; production operators must add TLS in front.
 
-from src.common import dict_get, ensure_dir, read_json, remove_tree, safe_relative_path, safe_run_id, write_json
+from src.common import dict_get, ensure_dir, read_json, remove_tree, lower_hex, safe_relative_path, safe_run_id, write_json
 
 func header_value(headers, wanted) {
     for name in keys(headers) { if to_lower(name) == to_lower(wanted) { return to_string(headers[name]) } }
@@ -35,7 +35,7 @@ func staging(run_id, version) { return join_path(join_path(join_path(base(), "st
 func object_root(run_id, version) { return join_path(join_path(join_path(base(), "objects"), run_id), version) }
 func index_path(run_id) { return join_path(join_path(base(), "indexes"), run_id + ".json") }
 
-func safe_request(run_id, version) { return safe_run_id(run_id) && len(version) == 64 }
+func safe_request(run_id, version) { return safe_run_id(run_id) && lower_hex(version, 64) }
 
 func put_artifact(req, nested) {
     allowed := auth(req); if allowed["ok"] != true { return http_response(allowed["status"], "denied") }
@@ -101,6 +101,7 @@ func complete_chunks(req, nested) {
 
 func get_chunk(req, nested) {
     allowed := auth(req); if allowed["ok"] != true { return http_response(allowed["status"], "denied") }
+    if safe_request(req["params"]["run"], req["params"]["version"]) == false { return http_response(400, "unsafe") }
     name := artifact_name(req, nested); index := 0
     try { index = to_int(req["params"]["index"]) } except err { return http_response(400, "invalid chunk index") }
     if safe_relative_path(name) == false || index < 0 || index >= 64 { return http_response(400, "unsafe chunk") }
@@ -164,6 +165,8 @@ func finalize(req) {
 func get_metadata(req, current) {
     allowed := auth(req); if allowed["ok"] != true { return http_response(allowed["status"], "denied") }
     run_id := req["params"]["run"]
+    if safe_run_id(run_id) == false { return http_response(400, "unsafe") }
+    if current == false && safe_request(run_id, req["params"]["version"]) == false { return http_response(400, "unsafe") }
     path := index_path(run_id)
     if current == false { path = join_path(object_root(run_id, req["params"]["version"]), "bundle.json") }
     if file_exists(path) == false { return http_response(404, "missing") }
@@ -174,7 +177,7 @@ func get_artifact(req, nested) {
     allowed := auth(req); if allowed["ok"] != true { return http_response(allowed["status"], "denied") }
     name := req["params"]["name"]
     if nested { name = req["params"]["group"] + "/" + name }
-    if safe_relative_path(name) == false { return http_response(400, "unsafe") }
+    if safe_request(req["params"]["run"], req["params"]["version"]) == false || safe_relative_path(name) == false { return http_response(400, "unsafe") }
     path := join_path(join_path(object_root(req["params"]["run"], req["params"]["version"]), "artifacts"), name)
     if file_exists(path) == false { return http_response(404, "missing") }
     body := read_file(path)
@@ -184,6 +187,7 @@ func get_artifact(req, nested) {
 
 func cleanup(req) {
     allowed := auth(req); if allowed["ok"] != true { return http_response(allowed["status"], "denied") }
+    if safe_request(req["params"]["run"], req["params"]["version"]) == false { return http_response(400, "unsafe") }
     remove_tree(staging(req["params"]["run"], req["params"]["version"]))
     return http_response(204, "")
 }

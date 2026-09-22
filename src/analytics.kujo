@@ -1,6 +1,6 @@
 # Tribunal :: local aggregate decision analytics
 
-from src.common import dict_get
+from src.common import dict_get, safe_existing_file
 from src.storage import list_runs_page, load_record, artifact_path
 
 func increment(values, key) {
@@ -25,7 +25,7 @@ export func collect_stats_page(storage_dir, cursor, limit, prior_state) {
     if bounded_limit < 1 { bounded_limit = 100 }
     if bounded_limit > 500 { bounded_limit = 500 }
     page := list_runs_page(storage_dir, "", "", bounded_limit, cursor)
-    if page["cursorFound"] != true { return {"ok": false, "error": "Stats cursor was not found.", "stats": public_stats(state), "state": state, "nextCursor": "", "hasMore": false, "runsProcessed": 0} }
+    if page["cursorFound"] != true { return {"ok": false, "error": dict_get(page, "error", "Stats cursor was not found."), "stats": public_stats(state), "state": state, "nextCursor": "", "hasMore": false, "runsProcessed": 0} }
     manifests := page["items"]
     by_status := state["byStatus"]
     by_panel := state["byPanel"]
@@ -45,6 +45,8 @@ export func collect_stats_page(storage_dir, cursor, limit, prior_state) {
         }
         receipt_path := artifact_path(storage_dir, manifest["runId"], "receipt.json")
         if receipt_path != "" && file_exists(receipt_path) {
+            safe_receipt := safe_existing_file(receipt_path, 4194304, "Run receipt")
+            if safe_receipt["ok"] != true { throw(safe_receipt["error"]) }
             receipt := null
             try { receipt = parse_json(read_file(receipt_path)) } except err { receipt = null }
             if type(receipt) == "dict" {
@@ -68,5 +70,6 @@ export func collect_stats(storage_dir) {
         state = result["state"]
         result = collect_stats_page(storage_dir, cursor, 100, state)
     }
+    if result["ok"] != true { throw(result["error"]) }
     return result["stats"]
 }
