@@ -146,3 +146,9 @@ An initial release-extra run included an uncommitted audit draft whose linked re
 - **Deduplication:** skipped existing pin-drift capture `cap_b61594a7-c546-4ceb-a4d1-74721d4f3d45` / signal `sig_d0870233-3b96-4dec-90ad-59c2870ce992`. Rejected completed fixes, routine verification and implementation recaps as capture candidates. No downstream dispositions or handoffs were stored in SignalBox.
 - **Retrieval:** both new Captures and the new Signal passed exact-ID reads; concept searches `idempotency` and `serialized publication` returned their corresponding items. Recall the Strata episode for the consolidated next starting point.
 
+
+## PR merge preparation follow-up
+
+Hosted macOS exposed a timeout in the new HTTP test harness after the nine raw-store checks passed and before telemetry export began. The local baseline did not reproduce it. The collector used Python `HTTPServer`, whose bind method performs `socket.getfqdn` reverse DNS before returning. The loopback-only fixture now binds through `TCPServer` and uses its numeric bound address directly; an assertion rejects any DNS lookup during collector construction. The original timeout and all behavioral assertions remain unchanged. Stage output is unbuffered, readiness deadlines cover non-200 responses as well as connection errors, and timeout diagnostics serialize explicit process fields supported by the pinned runtime.
+
+These test-only changes passed all 17 local audit checks. Original hosted logs are preserved in `.tribunal/audit-20260922/pr6-intel-job.log` and `pr6-arm-job.log`; the latter localizes the stall and exposes the pinned runtime's inability to JSON-serialize a `ProcessResult` struct directly. Final hosted results and merge provenance belong to the PR and the Strata handoff; the original exact-implementation receipts above are unchanged.

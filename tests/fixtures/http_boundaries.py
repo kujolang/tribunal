@@ -68,7 +68,16 @@ with tempfile.TemporaryDirectory(prefix='tribunal-store-boundary-') as tmp:
 # Corrupt the continuation shard only after the first page reaches the collector.
 # This is synchronized on the POST, not on timing or a background writer.
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import TCPServer
+from unittest.mock import patch
 import threading
+
+class LoopbackHTTPServer(HTTPServer):
+    def server_bind(self):
+        # HTTPServer normally reverse-resolves the bound address. This fixture
+        # needs only a numeric loopback address; DNS can stall hosted macOS.
+        TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
 
 print('HTTP boundary fixture: starting telemetry collector', flush=True)
 with tempfile.TemporaryDirectory(prefix='tribunal-telemetry-boundary-') as tmp:
@@ -94,7 +103,10 @@ with tempfile.TemporaryDirectory(prefix='tribunal-telemetry-boundary-') as tmp:
             self.send_response(200); self.end_headers(); self.wfile.write(b'{}')
         def log_message(self, *args):
             pass
-    with HTTPServer(('127.0.0.1',0),Collector) as server:
+    # Keep fixture startup independent of the host's reverse-DNS configuration.
+    with patch('socket.getfqdn', side_effect=AssertionError('fixture must not resolve DNS')):
+        collector_server=LoopbackHTTPServer(('127.0.0.1',0),Collector)
+    with collector_server as server:
         thread=threading.Thread(target=server.serve_forever,daemon=True); thread.start()
         env=os.environ.copy(); env.pop('KUJO',None)
         try:
