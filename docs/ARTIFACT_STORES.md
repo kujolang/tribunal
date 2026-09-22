@@ -18,3 +18,7 @@ Tribunal validates bundle metadata before downloads/copies, rejects duplicate an
 Artifacts use the v1.1 binary file-transfer contract at `/artifacts/<path>`. Upload streams the file body with conditional create, content SHA-256, content length, and an idempotency key bound to version/path. Pull streams into a same-directory temporary file, enforces the 64 MiB limit, and atomically publishes only after completion. Tribunal verifies the transfer receipt's byte count and SHA-256 against the signed bundle descriptor before trusted import. Legacy base64 chunk routes remain server-side compatibility surfaces only and are no longer emitted by the Tribunal client.
 
 Tribunal's pull path reconstructs a temporary bundle, verifies it under the target trust policy, then atomically admits the run to empty local storage.
+
+Encrypted imports preflight envelope count, unique inventory, metadata/descriptor agreement, and the 1 GiB plaintext aggregate before reading a recipient key or staging plaintext. Integrity-only checks also enforce the existing 65 MiB ciphertext ceiling before hashing. Descriptor-free legacy bundles remain supported. The reference HTTP adapter rejects unsafe run IDs and non-hexadecimal versions on reads, writes, and staging cleanup.
+
+The local immutable reference store assumes serialized publication per run; its expected-version check and index publication are not a cross-process compare-and-swap transaction. Certify an atomic adapter before concurrent publication.

@@ -1,0 +1,85 @@
+# Offline regression coverage for the September 2026 evidence-boundary audit.
+from src.common import ensure_dir, remove_tree, write_json, relative_files, dict_get
+from src.config import default_config
+from src.tribunal import review
+from src.storage import rebuild_run_index
+from src.analytics import collect_stats
+from src.lib import list_hearings
+from src.bundles import import_encrypted_bundle
+from src.contracts import validate_run_contracts
+mut passed := 0
+mut failed := 0
+func check(value, label) { if value { passed = passed + 1 } else { failed = failed + 1; print("FAIL: " + label) } }
+root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-audit-regressions-" + uuid_v4()); ensure_dir(root)
+source := join_path(root, "docket.md"); write_file(source, "# Safe fixture\n\n## Scope\n\nReview a synthetic proposal.\n")
+patterns := join_path(root, "patterns.json"); write_json(patterns, {"patterns": [{"id": "synthetic", "regex": "ORGCONFIDENTIAL[0-9]{8}"}]})
+secret := "ORGCONFIDENTIAL12345678"
+bridge := join_path(root, "bridge")
+func set_bridge(payload) {
+    write_file(bridge, "#!/bin/sh\nprintf '%s\\n' '" + to_json(payload) + "'\n", true)
+    result := spawn_process(["/bin/chmod", "700", bridge], {"inherit_env": false, "timeout_ms": 10000, "max_output_bytes": 4096})
+    check(result.success, "fixture executable ready")
+}
+config := default_config(); settings := config["tribunal"]; settings["storage_dir"] := join_path(root, "runs"); config["tribunal"] := settings
+security := config["security"]; security["organization_secret_patterns_path"] := patterns; config["security"] := security
+context := config["context"]; context["provider"] := "packwrite"; context["packwrite_path"] := root; context["kujo_bin"] := bridge; config["context"] := context
+set_bridge({"ok": true, "markdown": secret, "warnings": []})
+result := review(config, source, "executioner-only", "", "")
+check(result["ok"] == false && contains(result["error"], "Context") == 1, "context rejected before model invocation")
+func absent_from_run(result, value) {
+    for path in relative_files(result["runDir"], "") { if contains(read_file(join_path(result["runDir"], path)), value) == 1 { return false } }
+    return true
+}
+check(absent_from_run(result, secret), "context secret never persisted")
+context["provider"] := "local"; config["context"] := context
+ai := config["kujo_ai"]; ai["mock_mode"] := false; ai["offline_fixture"] := true; ai["kujo_bin"] := bridge; ai["sdk_path"] := root; config["kujo_ai"] := ai
+set_bridge({"ok": true, "output_text": to_json({"position": secret, "arguments": [], "risks": [], "recommendation": "continue-review"})})
+result = review(config, source, "executioner-only", "", "")
+check(result["ok"] == false, "secret model response stops hearing")
+check(absent_from_run(result, secret), "rejected blind response never enters stopped evidence")
+# A corrupt index must not become successful empty stats or library output.
+storage := join_path(root, "index-runs"); ensure_dir(join_path(storage, "fixture")); write_json(join_path(storage, "fixture/manifest.json"), {"runId": "fixture", "status": "completed", "panelId": "executioner-only"}); rebuild_run_index(storage)
+write_file(join_path(storage, ".index/pages/00000001.json"), "{}", true)
+mut refused := false
+try { collect_stats(storage) } except err { refused = true }
+check(refused, "stats refuse corrupt index rather than partial success")
+listed := list_hearings(storage, "", "", 10, "")
+check(listed["ok"] == false, "library listing reports index failure")
+# Metadata must fail before any recipient key is opened or plaintext staged.
+bundle := join_path(root, "bundle"); ensure_dir(bundle)
+entry := {"path": "record.json", "bytes": 1, "plaintextSha256": repeat("a",64), "ciphertextSha256": repeat("b",64)}
+envelope := {"schemaVersion": "1.1.0", "runId": "fixture", "createdAt": "fixture", "cipher": "AES-256-GCM", "format": "KUJOAEAD1", "keyWrap": "RSA-OAEP", "manifestSha256": repeat("a",64), "signingKeyId": repeat("b",32), "wrappedKeys": [{"recipientKeyId": repeat("c",32), "purpose": "primary", "encryptedKey": repeat("d",40)}], "artifactCount": 2, "artifacts": [entry], "legalHold": false}
+metadata := {"schemaVersion": "1.0.0", "runId": "fixture", "exportedAt": "fixture", "manifestSha256": repeat("a",64), "keyId": repeat("b",32), "artifactCount": 1, "artifacts": ["record.json"]}
+write_json(join_path(bundle, "bundle.json"), metadata)
+func rejected_metadata(value, label) {
+    write_json(join_path(bundle, "envelope.json"), value)
+    rejected := import_encrypted_bundle(bundle, join_path(root, "imports"), {}, "bundle-import", join_path(root, "absent-key"))
+    check(rejected["ok"] == false && contains(rejected["error"], "Recipient private key") == 0, label)
+}
+rejected_metadata(envelope, "encrypted count mismatch rejected before key access")
+envelope["artifacts"] := [entry,entry]; rejected_metadata(envelope, "encrypted duplicate inventory rejected before key access")
+entries := []; mut i := 0
+while i < 17 { entries = push(entries, {"path": "part-" + to_string(i), "bytes": 67108864, "plaintextSha256": repeat("a",64), "ciphertextSha256": repeat("b",64)}); i = i + 1 }
+envelope["artifactCount"] := 17; envelope["artifacts"] := entries; rejected_metadata(envelope, "encrypted aggregate rejected before key access")
+# Safe files and schema reuse must preserve validation results and fail closed.
+contracts := validate_run_contracts(os_getcwd(), config["tribunal"]["storage_dir"], result["runId"])
+check(contracts["ok"], "stopped evidence retains valid contracts")
+receipt_path := join_path(result["runDir"], "receipt.json")
+write_file(receipt_path, repeat(" ", 4194305), true)
+contracts = validate_run_contracts(os_getcwd(), config["tribunal"]["storage_dir"], result["runId"])
+check(contracts["ok"] == false && contains(to_json(contracts["errors"]), "safety limit") == 1, "contract reader rejects oversized artifact before JSON parsing")
+mut unsafe_stats := false
+try { collect_stats(config["tribunal"]["storage_dir"]) } except err { unsafe_stats = contains(to_string(err), "safety limit") == 1 }
+check(unsafe_stats, "stats reject oversized receipts")
+events_path := join_path(result["runDir"], "events.jsonl"); delete_file(events_path)
+linked := spawn_process(["/bin/ln", "-s", source, events_path], {"inherit_env": false, "timeout_ms": 10000, "max_output_bytes": 4096})
+check(linked.success, "events symlink fixture ready")
+contracts = validate_run_contracts(os_getcwd(), config["tribunal"]["storage_dir"], result["runId"])
+check(contracts["ok"] == false && contains(to_json(contracts["errors"]), "events.jsonl is unsafe") == 1, "contract events reject symlinks")
+# The Python standard-library harness preserves literal HTTP path components.
+http_test := spawn_process(["python3", "-u", join_path(os_getcwd(), "tests/fixtures/http_boundaries.py")], {"inherit_env": false, "env": {"KUJO_BIN": env_or("KUJO_BIN", "kujo"), "PATH": env_or("PATH", "")}, "timeout_ms": 30000, "max_output_bytes": 16384})
+if http_test.success != true { print(to_json({"timedOut": http_test.timed_out, "exitCode": http_test.exitcode, "stdout": http_test.stdout, "stderr": http_test.stderr})) }
+check(http_test.success, "reference-store raw paths and telemetry continuation fail closed")
+remove_tree(root)
+print(to_json({"passed": passed, "failed": failed}))
+if failed > 0 { exit(1) }

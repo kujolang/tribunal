@@ -11,7 +11,7 @@ The result is inspectable evidence, not a disposable chat transcript. Every run 
 
 The previous TypeScript implementation is preserved on the pushed `typescript` branch. `main` has no Node, npm, TypeScript, JavaScript, or provider-SDK runtime dependency.
 
-Tribunal is also a practical showcase for [Kujo](https://github.com/kujolang/kujo): orchestration, JSON Schema, cryptography, process isolation, HTTP, compression, filesystem safety, testing, and release-evidence orchestration use Kujo language/runtime capabilities. Deterministic ZIP normalization uses the documented Python 3 release helper.
+Tribunal is also a practical showcase for [Kujo](https://github.com/kujolang/kujo): orchestration, JSON Schema, cryptography, process isolation, HTTP, compression, filesystem safety, testing, and release-evidence orchestration use Kujo language/runtime capabilities. Deterministic ZIP normalization and the raw HTTP regression harness use Python 3 helpers; the application runtime remains Kujo.
 
 ## Production-readiness statement
 
@@ -236,6 +236,7 @@ done
 "$KUJO_BIN" run tests/cli_integration.kujo
 "$KUJO_BIN" run tests/enterprise_tests.kujo
 "$KUJO_BIN" run tests/hardening_tests.kujo --interpreter
+"$KUJO_BIN" run tests/audit_regressions.kujo --interpreter
 "$KUJO_BIN" run tests/property_tests.kujo
 "$KUJO_BIN" run scripts/schema_gate.kujo
 "$KUJO_BIN" run scripts/drift_gate.kujo

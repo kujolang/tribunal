@@ -162,7 +162,7 @@ async func invoke_blind_job(job) {
     result := invoke_checked(job["config"], job["runId"], "blind-first-pass", job["seat"], job["input"], job["seat"]["requiredOutputSchema"], job["cancelFile"])
     if result["ok"] != true {
         write_file_atomic(job["cancelFile"], "cancel")
-        return error(to_json(result))
+        return error(result["error"])
     }
     return result
 }
@@ -270,6 +270,8 @@ func artifact_paths(state) {
 func stop_run(config, state, reason, private_key, public_key) {
     storage_dir := config["tribunal"]["storage_dir"]
     run_id := state["runId"]
+    reason_scan := secret_scan(reason, config["security"]["organization_secret_patterns_path"])
+    if reason_scan["ok"] != true || reason_scan["detected"] { reason = "Failure diagnostics withheld by secret screening." }
     completed_at := now_utc()
     emit(storage_dir, run_id, dict_get(state, "currentStage", "open-docket"), "stop_the_line_triggered", "Tribunal stopped on a fatal condition.", "", {"reason": reason})
     record := {
@@ -348,6 +350,8 @@ func review_internal(config, docket_path, panel_id, private_key, public_key, lin
     if context_result["ok"] != true { return stop_run(config, state, context_result["error"], private_key, public_key) }
     context := context_result["content"]
     if utf8_byte_length(context) > config["limits"]["max_context_bytes"] { return stop_run(config, state, "Context pack exceeds the configured safety limit.", private_key, public_key) }
+    context_scan := secret_scan(context, config["security"]["organization_secret_patterns_path"])
+    if context_scan["ok"] != true || context_scan["detected"] { return stop_run(config, state, "Context pack failed secret screening.", private_key, public_key) }
     state["context"] := context
     save_text(storage_dir, run_id, "context.md", context)
     emit(storage_dir, run_id, "build-context-pack", "context_pack_created", "Immutable context pack created.", "", {"provider": context_result["provider"], "warnings": context_result["warnings"], "sources": dict_get(context_result, "sources", [])})

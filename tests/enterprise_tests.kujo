@@ -249,6 +249,12 @@ if signed["ok"] == true {
     encrypted_import_storage := join_path(ROOT, "encrypted-import-runs")
     encrypted_import := import_encrypted_bundle(encrypted_path, encrypted_import_storage, trust, "bundle-import", recipient["privateKey"])
     check(encrypted_import["ok"] == true && encrypted_import["verification"]["signature"] == "verified", "primary envelope key decrypts and imports authenticated evidence")
+    bounded_cipher := join_path(join_path(encrypted_path, "artifacts"), encrypted["envelope"]["artifacts"][0]["path"] + ".enc")
+    saved_cipher := io_read_bytes(bounded_cipher, file_size(bounded_cipher))
+    oversized_cipher := spawn_process(["python3", "-c", "import sys; f=open(sys.argv[1], 'wb'); f.truncate(68157441); f.close()", bounded_cipher], {"inherit_env": false, "env": {"PATH": env_or("PATH", "")}, "timeout_ms": 10000, "max_output_bytes": 4096})
+    bounded_check := verify_encrypted_bundle_integrity(encrypted_path, signed["publicKey"])
+    check(oversized_cipher.success && bounded_check["ok"] == false && contains(bounded_check["error"], "oversized"), "encrypted integrity rejects oversized ciphertext before hashing")
+    io_write_bytes(bounded_cipher, saved_cipher)
     first_cipher := encrypted["envelope"]["artifacts"][0]["path"]
     cipher_path := join_path(join_path(encrypted_path, "artifacts"), first_cipher + ".enc")
     cipher_before_rotation := sha256_file(cipher_path)

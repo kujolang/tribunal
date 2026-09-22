@@ -88,6 +88,7 @@ worker := join_path(os_getcwd(), "tests/fixtures/index_concurrency_worker.kujo")
 kujo := env_or("KUJO_BIN", "kujo")
 script := "\"$1\" run \"$2\" --interpreter \"$3\" write a & a=$!; \"$1\" run \"$2\" --interpreter \"$3\" write b & b=$!; \"$1\" run \"$2\" --interpreter \"$3\" rebuild r & r=$!; \"$1\" run \"$2\" --interpreter \"$3\" read q & q=$!; failed=0; for pid in \"$a\" \"$b\" \"$r\" \"$q\"; do wait \"$pid\" || failed=1; done; exit \"$failed\""
 process := spawn_process(["/bin/sh", "-c", script, "tribunal-index-test", kujo, worker, concurrent], {"inherit_env": false, "timeout_ms": 120000, "max_output_bytes": 16384})
+if process.success != true { print(process.stdout + process.stderr) }
 check(process.success, "independent writers, rebuilds and readers complete without partial pages")
 verified := verify_run_index(concurrent)
 check(verified["ok"] && verified["indexed"] == 30, "concurrent index retains every manifest exactly once")
