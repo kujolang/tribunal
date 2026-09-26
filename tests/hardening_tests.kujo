@@ -83,6 +83,11 @@ claimed := join_path(root, "claim")
 check(claim_directory(claimed), "exclusive directory claim succeeds once")
 check(claim_directory(claimed) == false, "exclusive directory claim rejects an existing owner")
 check(path_is_dir(claimed), "failed claim preserves existing owner")
+invalid_lock_root := join_path(root, "invalid-lock"); ensure_dir(invalid_lock_root)
+invalid_lock := join_path(invalid_lock_root, ".index.lock"); write_file(invalid_lock, "preserve")
+mut invalid_lock_refused := false
+try { list_runs_page(invalid_lock_root, "", "", 1, "") } except err { invalid_lock_refused = contains(to_string(err), "not a directory") == 1 }
+check(invalid_lock_refused && read_file(invalid_lock) == "preserve", "non-directory lock fails without altering its contents")
 concurrent := join_path(root, "concurrent"); ensure_dir(concurrent)
 worker := join_path(os_getcwd(), "tests/fixtures/index_concurrency_worker.kujo")
 kujo := env_or("KUJO_BIN", "kujo")

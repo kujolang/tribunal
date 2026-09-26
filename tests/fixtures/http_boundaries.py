@@ -95,6 +95,9 @@ with tempfile.TemporaryDirectory(prefix='tribunal-telemetry-boundary-') as tmp:
                'updatedAt':'fixture','runCount':101,'pageCount':2,'pageSize':100})
     write_json(pages/'00000001.json', {'schemaVersion':'1.0.0','page':1,'entries':entries[:1]})
     write_json(pages/'00000002.json', {'schemaVersion':'1.0.0','page':2,'entries':entries[1:]})
+    for entry in entries:
+        run = storage / entry['runId']; run.mkdir()
+        (run / 'events.jsonl').write_text('{}\n')
     received = []
     class Collector(BaseHTTPRequestHandler):
         def do_POST(self):

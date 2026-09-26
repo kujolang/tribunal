@@ -1,0 +1,72 @@
+# Governance and audit-projection boundary regressions; invoked by audit_regressions.
+from src.common import ensure_dir, write_json, read_json, remove_tree
+from src.governance import set_legal_hold, deletion_eligibility, governance_metadata, delete_run
+from src.telemetry import export_telemetry
+from src.storage import rebuild_run_index
+from src.config import default_config
+
+mut passed := 0; mut failed := 0
+func check(value, label) { if value { passed = passed + 1 } else { failed = failed + 1; print("FAIL: " + label) } }
+
+export func run_projection_regressions() {
+    passed = 0; failed = 0
+    root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-projection-" + uuid_v4()); storage := join_path(root, "runs"); run := join_path(storage, "fixture"); ensure_dir(run)
+    write_json(join_path(run, "manifest.json"), {"runId": "fixture", "status": "completed", "panelId": "executioner-only"})
+    write_json(join_path(run, "record.json"), {"runId": "fixture", "governance": {"legalHold": false}})
+    check(deletion_eligibility(storage, "fixture", false)["ok"] == false, "missing retention deadline cannot authorize deletion")
+    hold := join_path(storage, ".governance/fixture.json"); write_json(hold, {"legalHold": true})
+    original := read_file(hold)
+    result := set_legal_hold(storage, "fixture", "operator", false, "test")
+    check(result["ok"] == false && read_file(hold) == original, "malformed legal hold is preserved and rejected")
+    write_file(hold, repeat(" ", 4194305), true); original = read_file(hold)
+    result = set_legal_hold(storage, "fixture", "operator", true, "test")
+    check(result["ok"] == false && read_file(hold) == original, "oversized legal hold is preserved and rejected")
+    delete_file(hold)
+    result = set_legal_hold(storage, "fixture", "operator", true, "test")
+    check(result["ok"] == true, "failed updates release ownership for valid retry")
+    rebuild_run_index(storage)
+    for body in ["not json\n", "42\n"] {
+     write_file(join_path(run, "events.jsonl"), body, true)
+     output := join_path(root, "telemetry-" + uuid_v4() + ".jsonl")
+     result = export_telemetry(storage, "jsonl", output)
+     check(result["ok"] == false && file_exists(output) == false, "invalid events cannot become successful empty audit export")
+     cli := spawn_process([env_or("KUJO_BIN", "kujo"), "run", join_path(os_getcwd(), "tribunal.kujo"), "--interpreter", "--", "export", "fixture", "--storage-dir", storage, "--format", "jsonl"], {"inherit_env": false, "env": {"TRIBUNAL_HOME": os_getcwd(), "KUJO_BIN": env_or("KUJO_BIN", "kujo"), "PATH": env_or("PATH", "")}, "timeout_ms": 10000, "max_output_bytes": 4096})
+     check(cli.exitcode == 1, "CLI JSONL export reports runtime failure on invalid events")
+    }
+
+    # A failed index mutation must leave reconciliation evidence, not an abandoned owner.
+    failed_root := join_path(root, "deletion-runs"); ensure_dir(join_path(failed_root, "fixture"))
+    write_json(join_path(failed_root, "fixture/record.json"), {"runId": "fixture", "governance": governance_metadata(default_config(), "operator")})
+    write_file(join_path(failed_root, ".index-dirty"), "interrupted")
+    deleted := delete_run(failed_root, "fixture", "operator", "fixture", true)
+    check(deleted["ok"] == false && contains(deleted["error"], "index-repair"), "partial deletion reports actionable reconciliation")
+    check(path_is_dir(join_path(failed_root, ".locks/fixture.lock")) == false, "partial deletion releases its lock")
+    check(read_json(join_path(failed_root, ".deletions/fixture.json"))["status"] == "deleting", "partial deletion preserves pending tombstone")
+    # Symlinked and inconsistent hold records must never be adopted as history.
+    delete_file(hold)
+    target := join_path(root, "hold-target.json"); write_json(target, {"legalHold": true})
+    linked := spawn_process(["/bin/ln", "-s", target, hold], {"inherit_env": false, "timeout_ms": 10000, "max_output_bytes": 4096})
+    check(linked.success, "legal-hold symlink fixture created")
+    result = set_legal_hold(storage, "fixture", "operator", false, "fixture")
+    check(result["ok"] == false && read_json(target)["legalHold"] == true, "legal hold rejects symlink and preserves target")
+    remove_tree(join_path(storage, ".governance"))
+    result = set_legal_hold(storage, "fixture", "operator", true, "fixture")
+    result = set_legal_hold(storage, "fixture", "operator", false, "fixture")
+    check(result["ok"] && len(result["governance"]["history"]) == 2, "valid legal-hold history remains append-only")
+    # Growing history must not cross the existing reader's bound.
+    large_hold := result["governance"]; large_hold["history"] := [{"padding": repeat("x", 4192000)}]
+    write_json(hold, large_hold); before_growth := sha256_file(hold)
+    check(file_size(hold) < 4194304, "history growth fixture starts within reader bound")
+    grown := set_legal_hold(storage, "fixture", "operator", true, repeat("r", 4096))
+    check(grown["ok"] == false && sha256_file(hold) == before_growth, "oversized history update preserves the last readable record")
+    # Missing logs fail; intentionally empty logs remain a valid empty projection.
+    delete_file(join_path(run, "events.jsonl"))
+    result = export_telemetry(storage, "jsonl", join_path(root, "missing.jsonl"))
+    check(result["ok"] == false, "missing event evidence is an export failure")
+    write_file(join_path(run, "events.jsonl"), "")
+    result = export_telemetry(storage, "jsonl", join_path(root, "empty.jsonl"))
+    check(result["ok"] && result["events"] == 0, "valid empty event log remains supported")
+
+    remove_tree(root)
+    return {"passed": passed, "failed": failed}
+}

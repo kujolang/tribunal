@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — September 26 hardening
+
+- Avoid false index-lock type failures when a concurrent owner releases the lock.
+- Serialize conditional local-store publication per run and enforce its existing history limit.
+- Preserve and validate governance history; reject incomplete retention metadata and release deletion ownership on recoverable failures.
+- Fail telemetry exports on unreadable or malformed event evidence instead of reporting empty success.
+- Check tracked Kujo sources without scanning generated evidence and release copies.
+
 ## Unreleased — September 22 audit
 
 - Screen constructed context and keep rejected model bodies out of stopped evidence.
