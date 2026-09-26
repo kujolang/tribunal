@@ -105,7 +105,7 @@ jobs:
         run: |
           command -v python3
           command -v unzip
-          for file in $(find . -name '*.kujo' -not -path './.git/*'); do "$KUJO_BIN" check "$file"; done
+          git ls-files -z '*.kujo' | while IFS= read -r -d '' file; do "$KUJO_BIN" check "$file" || exit $?; done
           "$KUJO_BIN" run tests/tribunal_tests.kujo --interpreter
           "$KUJO_BIN" run tests/cli_integration.kujo --interpreter
           "$KUJO_BIN" run tests/enterprise_tests.kujo --interpreter
