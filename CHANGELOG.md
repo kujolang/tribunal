@@ -7,6 +7,7 @@ Current released Tribunal version: **1.0.1**. Unreleased changes and dependency 
 - Target official Kujo 1.5.0 consistently in CI, the integration matrix, installation docs and measured platform receipts.
 - Verify serialized store and legal-hold histories remain readable by the running JSON parser before replacement.
 
+- Avoid repeatedly traversing existing directory parents while preserving creation and failure behavior.
 - Avoid false index-lock type failures when a concurrent owner releases the lock.
 - Reject missing, malformed or conflicting HTTP-store publication conditions before state changes.
 - Serialize conditional local-store publication per run and enforce its existing history limit.

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "repository": "kujolang/tribunal",
   "startingRevision": "415b9de53d36e89bf8459b73f2e8cbc076a0a2f5",
-  "endingImplementationRevision": "0ab868d072a3ee536f28858f9dbdd2f2aefeec4e",
+  "endingImplementationRevision": "f8febe9352891bcc7431a757825370825c88644b",
   "runtime": {
     "repository": "kujolang/tribunal",
     "startingBranch": "main",
@@ -6952,5 +6952,66 @@
     "exit": 0,
     "log": ".tribunal/audit-20260925/drift-product-version.log",
     "sha256": "9618411270cc8b49256ab6324d0565771dd5713a5340109d124673159dbe528d"
+  },
+  "directoryFollowup": {
+    "revision": "f8febe9352891bcc7431a757825370825c88644b",
+    "focusedBefore": {
+      "elapsedMs": 1217,
+      "exists": true,
+      "iterations": 1000
+    },
+    "focusedAfter": {
+      "elapsedMs": 770,
+      "exists": true,
+      "iterations": 1000
+    },
+    "pairedLoad": [
+      {
+        "phase": "before",
+        "command": [
+          "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/audit-20260925/kujo-v1.5.0/kujo",
+          "run",
+          "load_chaos_gate.kujo",
+          "--interpreter"
+        ],
+        "cwd": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/audit-20260925/paired-directory-load/before",
+        "exit": 1,
+        "seconds": 35.960487863994786,
+        "output": "{\"acquired\":500,\"chaos\":\"stale-owner-after-termination\",\"contentions\":500,\"cycles\":500,\"elapsedMs\":35747,\"maxContentionWaitMs\":27,\"ok\":false,\"operationsPerSecond\":13,\"recoveryMs\":9,\"recoveryTimeObjectiveMs\":5000,\"schemaVersion\":\"1.0.0\",\"throughputFloor\":15}\n"
+      },
+      {
+        "phase": "after",
+        "command": [
+          "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/audit-20260925/kujo-v1.5.0/kujo",
+          "run",
+          "load_chaos_gate.kujo",
+          "--interpreter"
+        ],
+        "cwd": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/audit-20260925/paired-directory-load/after",
+        "exit": 1,
+        "seconds": 34.865855952004495,
+        "output": "{\"acquired\":500,\"chaos\":\"stale-owner-after-termination\",\"contentions\":500,\"cycles\":500,\"elapsedMs\":34726,\"maxContentionWaitMs\":36,\"ok\":false,\"operationsPerSecond\":14,\"recoveryMs\":5,\"recoveryTimeObjectiveMs\":5000,\"schemaVersion\":\"1.0.0\",\"throughputFloor\":15}\n"
+      }
+    ],
+    "componentProfile": {
+      "claimMs": 2479,
+      "iterations": 100,
+      "readMs": 204,
+      "removeMs": 102,
+      "writeMs": 2360
+    },
+    "focusedSuite": {
+      "failed": 0,
+      "passed": 38
+    },
+    "armHostedFailure": {
+      "run": 36219092918,
+      "job": 108340822879,
+      "log": ".tribunal/audit-20260925/pr7-final-arm.log",
+      "sha256": "bdd4db0fd559170ae016efec3032fc147c627f289847f21ad0aea9aa4e8e103a",
+      "floor": 15,
+      "actual": 14
+    },
+    "status": "Directory work reduced; throughput remains unresolved pending changed-code hosted gates."
   }
 }
