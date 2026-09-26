@@ -5,7 +5,7 @@ from src.config import load_config, apply_overrides, validate_config
 from src.catalog import PANELS, SEATS
 from src.tribunal import review, resume, validate_docket
 from src.compare import compare_rulings, re_review
-from src.storage import artifact_path, list_runs_page, load_record, load_events, rebuild_run_index, repair_run_index, verify_run_index
+from src.storage import artifact_path, list_runs_page, load_record, load_events_checked, rebuild_run_index, repair_run_index, verify_run_index
 from src.render import summary
 from src.integrity import generate_keys, recover_seal_transactions, seal, verify, verify_runs_page
 from src.integrations import ingest_runledger, ingest_casefile
@@ -307,8 +307,9 @@ func cmd_replay(parsed, config) {
     }
     if checked["ok"] != true { return command_error("Replay verification failed: " + to_json(checked), 3) }
     print("integrity\t" + to_string(checked["artifactsChecked"]) + " artifacts\t" + checked["signature"])
-    events := load_events(config["tribunal"]["storage_dir"], run_id)
-    for event in events { print(event["timestamp"] + "\t" + event["stageId"] + "\t" + dict_get(event, "seatId", "-") + "\t" + event["eventType"] + "\t" + event["summary"]) }
+    loaded_events := load_events_checked(config["tribunal"]["storage_dir"], run_id)
+    if loaded_events["ok"] != true { return command_error(loaded_events["error"], 3) }
+    for event in loaded_events["events"] { print(event["timestamp"] + "\t" + event["stageId"] + "\t" + dict_get(event, "seatId", "-") + "\t" + event["eventType"] + "\t" + event["summary"]) }
     return 0
 }
 
@@ -401,7 +402,9 @@ func cmd_export(parsed, config) {
         return 0
     }
     if format == "jsonl" {
-        for event in load_events(config["tribunal"]["storage_dir"], run_id) { print(to_json(event)) }
+        loaded_events := load_events_checked(config["tribunal"]["storage_dir"], run_id)
+        if loaded_events["ok"] != true { return command_error(loaded_events["error"], 1) }
+        for event in loaded_events["events"] { print(to_json(event)) }
         return 0
     }
     return command_error("Export format must be json or jsonl.", 2)

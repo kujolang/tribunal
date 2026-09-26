@@ -52,12 +52,17 @@ func with_index_lock(storage_dir, recovery, operation) {
     lock := join_path(storage_dir, ".index.lock")
     started := current_timestamp()
     mut acquired := false
+    mut probe_error := ""
     while acquired == false {
         if index_symlink(lock) { throw("Run-index lock is unsafe.") }
         acquired = claim_directory(lock)
         if acquired == false {
-            if file_exists(lock) && path_is_dir(lock) == false { throw("Run-index lock is not a directory.") }
-            if current_timestamp() - started >= 30000 { throw("Run-index lock timed out. Stop all storage users before recovering an abandoned .index.lock directory.") }
+            # One snapshot: a cooperating owner can remove its directory between
+            # separate existence/type probes without creating an invalid lock.
+            non_directory := false
+            try { metadata := io_file_metadata(lock); non_directory = metadata["is_dir"] == false; probe_error = "" } except err { probe_error = to_string(err) }
+            if non_directory { throw("Run-index lock is not a directory.") }
+            if current_timestamp() - started >= 30000 { throw("Run-index lock timed out. Stop all storage users before recovering an abandoned .index.lock directory. Last metadata probe: " + probe_error) }
             sleep(10)
         }
     }
@@ -381,16 +386,32 @@ export func load_manifest(storage_dir, run_id) {
     try { return read_json(path) } except err { return null }
 }
 
-export func load_events(storage_dir, run_id) {
+export func load_events_checked(storage_dir, run_id) {
     path := artifact_path(storage_dir, run_id, "events.jsonl")
-    if safe_existing_file(path, 67108864, "Run events")["ok"] != true { return [] }
+    checked := safe_existing_file(path, 67108864, "Run events")
+    if checked["ok"] != true { return checked }
     mut events := []
-    for line in split(read_file(path), "\n") {
+    mut line_number := 0
+    text := ""
+    try { text = read_file(path) } except err { return {"ok": false, "error": "Run events could not be read."} }
+    for line in split(text, "\n") {
+        line_number = line_number + 1
         if trim(line) != "" {
-            try { events = push(events, parse_json(line)) } except err { return [] }
+            event := null
+            try { event = parse_json(line) } except err { event = null }
+            if type(event) != "dict" { return {"ok": false, "error": "Run events contain an invalid object at line " + to_string(line_number) + "."} }
+            events = push(events, event)
         }
     }
-    return events
+    return {"ok": true, "events": events}
+}
+
+# Preserve the established best-effort reader contract for embedded callers.
+# Exports that promise completeness use load_events_checked instead.
+export func load_events(storage_dir, run_id) {
+    loaded := load_events_checked(storage_dir, run_id)
+    if loaded["ok"] != true { return [] }
+    return loaded["events"]
 }
 
 export func list_runs(storage_dir) {

@@ -1,8 +1,32 @@
 # Tribunal :: retention, legal hold, and policy-driven whole-run deletion
 
-from src.common import dict_get, ensure_dir, read_json, remove_tree, safe_existing_file, write_json
+from src.common import dict_get, ensure_dir, read_json, redact, remove_tree, safe_existing_file, utf8_byte_length, write_json, write_text
 from src.storage import artifact_path, remove_run_from_index, run_dir
 from src.locking import acquire_lock, release_lock
+
+# Reuse the published schemas; malformed records must never become new history.
+func valid_governance(value, schema_name) {
+    schema := read_json(join_path(join_path(path_absolute(env_or("TRIBUNAL_HOME", ".")), "schemas"), schema_name))
+    return json_schema_validate(value, schema)["valid"] == true
+}
+
+func governance_symlink(path) {
+    try { return path_is_symlink(path) } except err { if file_exists(path) || path_is_dir(path) { throw(err) } }
+    return false
+}
+
+func read_hold(storage_dir, run_id) {
+    root := join_path(storage_dir, ".governance")
+    path := join_path(root, run_id + ".json")
+    if governance_symlink(root) || governance_symlink(path) { return {"ok": false, "error": "External governance record is unsafe."} }
+    if file_exists(path) == false { return {"ok": true, "record": null} }
+    checked := safe_existing_file(path, 4194304, "External governance record")
+    if checked["ok"] != true { return checked }
+    value := null
+    try { value = read_json(path) } except err { return {"ok": false, "error": "External governance record is unreadable."} }
+    if valid_governance(value, "legal-hold.schema.json") == false || value["runId"] != run_id { return {"ok": false, "error": "External governance record is invalid."} }
+    return {"ok": true, "record": value}
+}
 
 export func governance_metadata(config, actor) {
     policy := config["governance"]
@@ -26,16 +50,11 @@ export func deletion_eligibility(storage_dir, run_id, force_expired) {
     try { record = read_json(path) } except err { return {"ok": false, "error": "Run record is invalid."} }
     if type(record) != "dict" || dict_get(record, "runId", "") != run_id { return {"ok": false, "error": "Run record identity is invalid."} }
     governance := dict_get(record, "governance", {})
-    if type(governance) != "dict" || len(keys(governance)) == 0 { return {"ok": false, "error": "Run has no retention metadata."} }
+    if valid_governance(governance, "governance.schema.json") == false { return {"ok": false, "error": "Run retention metadata is invalid."} }
     if dict_get(governance, "legalHold", false) == true { return {"ok": false, "error": "Run is under legal hold."} }
-    hold_path := join_path(join_path(storage_dir, ".governance"), run_id + ".json")
-    if file_exists(hold_path) {
-        if safe_existing_file(hold_path, 4194304, "External governance record")["ok"] != true { return {"ok": false, "error": "External governance record is unsafe."} }
-        hold := null
-        try { hold = read_json(hold_path) } except err { return {"ok": false, "error": "External governance record is unreadable."} }
-        if type(hold) != "dict" || dict_get(hold, "runId", "") != run_id || type(dict_get(hold, "legalHold", null)) != "bool" { return {"ok": false, "error": "External governance record is invalid."} }
-        if dict_get(hold, "legalHold", false) == true { return {"ok": false, "error": "Run is under externally applied legal hold."} }
-    }
+    loaded := read_hold(storage_dir, run_id)
+    if loaded["ok"] != true { return loaded }
+    if dict_get(loaded["record"], "legalHold", false) == true { return {"ok": false, "error": "Run is under externally applied legal hold."} }
     if force_expired != true && current_timestamp() < dict_get(governance, "retainUntilMs", 0) { return {"ok": false, "error": "Run retention period has not expired."} }
     return {"ok": true, "record": record, "governance": governance}
 }
@@ -45,19 +64,30 @@ export func set_legal_hold(storage_dir, run_id, actor, enabled, reason) {
     if path_is_dir(run_dir(storage_dir, run_id)) == false { return {"ok": false, "error": "Run does not exist."} }
     locked := acquire_lock(storage_dir, run_id, "legal-hold:" + actor, 300000)
     if locked["ok"] != true { return locked }
-    root := join_path(storage_dir, ".governance")
-    if file_exists(root) && path_is_symlink(root) { release_lock(storage_dir, run_id, locked["lock"]["token"]); return {"ok": false, "error": "External governance root is unsafe."} }
-    ensure_dir(root)
-    path := join_path(root, run_id + ".json")
-    history := []
-    if file_exists(path) {
-        try { history = dict_get(read_json(path), "history", []) } except err { release_lock(storage_dir, run_id, locked["lock"]["token"]); return {"ok": false, "error": "External governance record is unreadable."} }
-    }
+    result := null
+    try { result = update_hold_locked(storage_dir, run_id, actor, enabled, reason) } except err { result = {"ok": false, "error": "Unable to update external governance record; prior evidence must be reconciled.", "cause": redact(to_string(err))} }
+    released := release_lock(storage_dir, run_id, locked["lock"]["token"])
+    if released["ok"] != true { return released }
+    return result
+}
+
+func update_hold_locked(storage_dir, run_id, actor, enabled, reason) {
+    if path_is_dir(run_dir(storage_dir, run_id)) == false { return {"ok": false, "error": "Run does not exist."} }
+    loaded := read_hold(storage_dir, run_id)
+    if loaded["ok"] != true { return loaded }
+    history := dict_get(loaded["record"], "history", [])
     action := {"actor": actor, "legalHold": enabled, "reason": reason, "changedAt": now_utc()}
     history = push(history, action)
     record := {"schemaVersion": "1.0.0", "runId": run_id, "legalHold": enabled, "updatedAt": action["changedAt"], "updatedBy": actor, "reason": reason, "history": history}
-    try { write_json(path, record) } except err { release_lock(storage_dir, run_id, locked["lock"]["token"]); return {"ok": false, "error": "Unable to persist external governance record."} }
-    release_lock(storage_dir, run_id, locked["lock"]["token"])
+    if valid_governance(record, "legal-hold.schema.json") == false { return {"ok": false, "error": "External governance update is invalid."} }
+    # The writer must not create a record the existing 4 MiB reader will refuse.
+    serialized := to_json_pretty(record) + "\n"
+    if utf8_byte_length(serialized) > 4194304 { return {"ok": false, "error": "External governance history exceeds the safety limit; preserve it for operator reconciliation."} }
+    readable := false
+    try { readable = type(parse_json(serialized)) == "dict" } except err { readable = false }
+    if readable == false { return {"ok": false, "error": "External governance history exceeds the runtime JSON safety limit; preserve it for operator reconciliation."} }
+    path := join_path(join_path(storage_dir, ".governance"), run_id + ".json")
+    write_text(path, serialized)
     return {"ok": true, "governance": record, "path": path}
 }
 
@@ -67,10 +97,25 @@ export func delete_run(storage_dir, run_id, actor, reason, force_expired) {
     if eligible["ok"] != true { return eligible }
     locked := acquire_lock(storage_dir, run_id, "delete:" + actor, 300000)
     if locked["ok"] != true { return locked }
-    eligible = deletion_eligibility(storage_dir, run_id, force_expired)
-    if eligible["ok"] != true { release_lock(storage_dir, run_id, locked["lock"]["token"]); return eligible }
+    result := null
+    try { result = delete_run_locked(storage_dir, run_id, actor, reason, force_expired) } except err { result = {"ok": false, "error": "Deletion was interrupted; preserve the tombstone and run index-repair before operator reconciliation.", "cause": redact(to_string(err))} }
+    released := release_lock(storage_dir, run_id, locked["lock"]["token"])
+    if released["ok"] != true { return released }
+    return result
+}
+
+func delete_run_locked(storage_dir, run_id, actor, reason, force_expired) {
+    eligible := deletion_eligibility(storage_dir, run_id, force_expired)
+    if eligible["ok"] != true { return eligible }
     manifest_path := artifact_path(storage_dir, run_id, "artifact-manifest.json")
     signature_path := artifact_path(storage_dir, run_id, "signature.json")
+    for path in [manifest_path, signature_path] {
+        if governance_symlink(path) { return {"ok": false, "error": "Deletion evidence metadata is unsafe."} }
+        if file_exists(path) {
+            checked := safe_existing_file(path, 4194304, "Deletion evidence metadata")
+            if checked["ok"] != true { return checked }
+        }
+    }
     tombstone := {
         "schemaVersion": "1.0.0",
         "status": "deleting",
@@ -78,26 +123,26 @@ export func delete_run(storage_dir, run_id, actor, reason, force_expired) {
         "actor": actor,
         "reason": reason,
         "deletedAt": now_utc(),
-        "recordSha256": sha256(read_file(artifact_path(storage_dir, run_id, "record.json"))),
+        "recordSha256": sha256_file(artifact_path(storage_dir, run_id, "record.json")),
         "manifestSha256": "",
         "keyId": "",
         "governance": eligible["governance"]
     }
-    if file_exists(manifest_path) { tombstone["manifestSha256"] := sha256(read_file(manifest_path)) }
+    if file_exists(manifest_path) { tombstone["manifestSha256"] := sha256_file(manifest_path) }
     if file_exists(signature_path) {
         try { tombstone["keyId"] := dict_get(read_json(signature_path), "keyId", "") } except err { tombstone["keyId"] := "" }
     }
     deletion_root := join_path(storage_dir, ".deletions")
-    if file_exists(deletion_root) && path_is_symlink(deletion_root) { release_lock(storage_dir, run_id, locked["lock"]["token"]); return {"ok": false, "error": "Deletion registry is unsafe."} }
+    if file_exists(deletion_root) && path_is_symlink(deletion_root) { return {"ok": false, "error": "Deletion registry is unsafe."} }
     ensure_dir(deletion_root)
     tombstone_path := join_path(deletion_root, run_id + ".json")
-    if file_exists(tombstone_path) { release_lock(storage_dir, run_id, locked["lock"]["token"]); return {"ok": false, "error": "Deletion tombstone already exists; operator reconciliation is required."} }
-    try { write_json(tombstone_path, tombstone) } except err { release_lock(storage_dir, run_id, locked["lock"]["token"]); return {"ok": false, "error": "Unable to persist pre-deletion tombstone."} }
+    if file_exists(tombstone_path) { return {"ok": false, "error": "Deletion tombstone already exists; operator reconciliation is required."} }
+    try { write_json(tombstone_path, tombstone) } except err { return {"ok": false, "error": "Unable to persist pre-deletion tombstone."} }
     root := run_dir(storage_dir, run_id)
     remove_tree(root)
-    remove_run_from_index(storage_dir, run_id)
+    indexed := remove_run_from_index(storage_dir, run_id)
+    if indexed["ok"] != true { return indexed }
     tombstone["status"] := "deleted"
     write_json(tombstone_path, tombstone)
-    release_lock(storage_dir, run_id, locked["lock"]["token"])
     return {"ok": true, "tombstone": tombstone}
 }

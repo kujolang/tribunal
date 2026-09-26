@@ -1,5 +1,21 @@
 # Changelog
 
+Current released Tribunal version: **1.0.1**. Unreleased changes and dependency versions below do not change the product version.
+
+## Unreleased — September 26 hardening
+
+- Verify compatibility with checksum-pinned official runtime archives; retain the release workflow source build and every Tribunal gate.
+- Target official Kujo 1.5.0 consistently in CI, the integration matrix, installation docs and measured platform receipts.
+- Verify serialized store and legal-hold histories remain readable by the running JSON parser before replacement.
+
+- Avoid repeatedly traversing existing directory parents while preserving creation and failure behavior.
+- Avoid false index-lock type failures when a concurrent owner releases the lock.
+- Reject missing, malformed or conflicting HTTP-store publication conditions before state changes.
+- Serialize conditional local-store publication per run and enforce its existing history limit.
+- Preserve and validate governance history; reject incomplete retention metadata and release deletion ownership on recoverable failures.
+- Fail telemetry exports on unreadable or malformed event evidence instead of reporting empty success.
+- Check tracked Kujo sources without scanning generated evidence and release copies.
+
 ## Unreleased — September 22 audit
 
 - Screen constructed context and keep rejected model bodies out of stopped evidence.

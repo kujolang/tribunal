@@ -7,6 +7,7 @@ from src.analytics import collect_stats
 from src.lib import list_hearings
 from src.bundles import import_encrypted_bundle
 from src.contracts import validate_run_contracts
+from tests.projection_regressions import run_projection_regressions
 mut passed := 0
 mut failed := 0
 func check(value, label) { if value { passed = passed + 1 } else { failed = failed + 1; print("FAIL: " + label) } }
@@ -80,6 +81,11 @@ check(contracts["ok"] == false && contains(to_json(contracts["errors"]), "events
 http_test := spawn_process(["python3", "-u", join_path(os_getcwd(), "tests/fixtures/http_boundaries.py")], {"inherit_env": false, "env": {"KUJO_BIN": env_or("KUJO_BIN", "kujo"), "PATH": env_or("PATH", "")}, "timeout_ms": 30000, "max_output_bytes": 16384})
 if http_test.success != true { print(to_json({"timedOut": http_test.timed_out, "exitCode": http_test.exitcode, "stdout": http_test.stdout, "stderr": http_test.stderr})) }
 check(http_test.success, "reference-store raw paths and telemetry continuation fail closed")
+store_test := spawn_process(["python3", "-u", join_path(os_getcwd(), "tests/fixtures/store_concurrency.py")], {"inherit_env": false, "env": {"KUJO_BIN": env_or("KUJO_BIN", "kujo"), "PATH": env_or("PATH", "")}, "timeout_ms": 90000, "max_output_bytes": 16384})
+if store_test.success != true { print(to_json({"stdout": store_test.stdout, "stderr": store_test.stderr, "timedOut": store_test.timed_out})) }
+check(store_test.success, "conditional local publication admits one winner and preserves subsequent history")
+projection := run_projection_regressions()
+passed = passed + projection["passed"]; failed = failed + projection["failed"]
 remove_tree(root)
 print(to_json({"passed": passed, "failed": failed}))
 if failed > 0 { exit(1) }

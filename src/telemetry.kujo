@@ -2,7 +2,7 @@
 
 from src.analytics import collect_stats
 from src.common import dict_get, ensure_dir, external_path_outside, parent_dir, redact, safe_http_url, write_json
-from src.storage import list_runs_page, load_events
+from src.storage import list_runs_page, load_events_checked
 
 func audit_event(event) {
     return {
@@ -27,7 +27,9 @@ export func telemetry_payload_page(storage_dir, cursor, limit, metrics) {
     page := list_runs_page(storage_dir, "", "", bounded_limit, cursor)
     if page["cursorFound"] != true { return {"ok": false, "error": dict_get(page, "error", "Telemetry cursor was not found.")} }
     for manifest in page["items"] {
-        for event in load_events(storage_dir, manifest["runId"]) { audit = push(audit, audit_event(event)) }
+        loaded := load_events_checked(storage_dir, manifest["runId"])
+        if loaded["ok"] != true { return {"ok": false, "error": loaded["error"], "runId": manifest["runId"]} }
+        for event in loaded["events"] { audit = push(audit, audit_event(event)) }
     }
     resolved_metrics := metrics
     if type(resolved_metrics) != "dict" { resolved_metrics = collect_stats(storage_dir) }
@@ -46,6 +48,7 @@ export func export_telemetry(storage_dir, collector, destination) {
     metrics := collect_stats(storage_dir)
     cursor := ""
     payload := telemetry_payload_page(storage_dir, cursor, 100, metrics)
+    if payload["ok"] != true { return payload }
     mut total_events := 0
     mut pages := 0
     if collector == "jsonl" {
@@ -58,6 +61,7 @@ export func export_telemetry(storage_dir, collector, destination) {
             payload = telemetry_payload_page(storage_dir, cursor, 100, metrics)
         }
         receipt := {"ok": payload["ok"], "collector": collector, "destination": path_absolute(destination), "events": total_events, "pages": pages, "pageLimit": 100, "exportedAt": now_utc()}
+        if payload["ok"] != true { receipt["error"] := payload["error"] }
         write_json(destination + ".receipt.json", receipt)
         return receipt
     }

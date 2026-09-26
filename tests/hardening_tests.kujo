@@ -13,6 +13,15 @@ func check(condition, name) {
 }
 root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-hardening-" + uuid_v4())
 ensure_dir(root)
+# Existing directories avoid traversal; absent and invalid paths retain their contracts.
+directory_target := join_path(root, "directory-contract/child")
+check(ensure_dir(directory_target) == directory_target && path_is_dir(directory_target), "ensure_dir creates missing parents")
+write_file(join_path(directory_target, "preserved.txt"), "preserved")
+check(ensure_dir(directory_target) == directory_target && read_file(join_path(directory_target, "preserved.txt")) == "preserved", "ensure_dir preserves existing directory contents")
+blocked_path := join_path(root, "directory-file"); write_file(blocked_path, "preserved")
+refused_directory := false
+try { ensure_dir(join_path(blocked_path, "child")) } except err { refused_directory = true }
+check(refused_directory && read_file(blocked_path) == "preserved", "ensure_dir refuses a non-directory parent without replacing it")
 for header in ["Authorization: Bearer synthetic-credential-value", "authorization: Basic c3ludGhldGljOnNlY3JldA==", "{\"Authorization\":\"Bearer synthetic-credential-value\"}"] {
     clean := redact(header)
     check(truthy(contains(clean, "synthetic-credential-value")) == false && truthy(contains(clean, "c3ludGhldGljOnNlY3JldA==")) == false, "authorization value is fully redacted")
@@ -83,6 +92,11 @@ claimed := join_path(root, "claim")
 check(claim_directory(claimed), "exclusive directory claim succeeds once")
 check(claim_directory(claimed) == false, "exclusive directory claim rejects an existing owner")
 check(path_is_dir(claimed), "failed claim preserves existing owner")
+invalid_lock_root := join_path(root, "invalid-lock"); ensure_dir(invalid_lock_root)
+invalid_lock := join_path(invalid_lock_root, ".index.lock"); write_file(invalid_lock, "preserve")
+mut invalid_lock_refused := false
+try { list_runs_page(invalid_lock_root, "", "", 1, "") } except err { invalid_lock_refused = contains(to_string(err), "not a directory") == 1 }
+check(invalid_lock_refused && read_file(invalid_lock) == "preserve", "non-directory lock fails without altering its contents")
 concurrent := join_path(root, "concurrent"); ensure_dir(concurrent)
 worker := join_path(os_getcwd(), "tests/fixtures/index_concurrency_worker.kujo")
 kujo := env_or("KUJO_BIN", "kujo")

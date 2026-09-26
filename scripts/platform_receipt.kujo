@@ -4,6 +4,8 @@ platform := env_or("TRIBUNAL_PLATFORM", ""); revision := env_or("TRIBUNAL_SOURCE
 kujo := env_or("KUJO_BIN", "")
 runtime_revision := env_or("TRIBUNAL_KUJO_REVISION", "")
 if platform == "" || len(revision) != 40 || len(runtime_revision) != 40 || output == "" || file_exists(kujo) == false { print("Platform receipt inputs are required."); exit(2) }
+runtime_version := spawn_process([kujo, "--version"], {"inherit_env": true, "timeout_ms": 10000, "max_output_bytes": 4096})
+if runtime_version.success != true || trim(runtime_version.stdout) != "kujo 1.5.0" { print("Platform receipt requires verified Kujo 1.5.0."); exit(2) }
 gates := [
     "kujo-check-all",
     "tribunal-tests",
@@ -34,5 +36,5 @@ environment := {
     "osRelease": env_or("TRIBUNAL_OS_RELEASE", "not-recorded"),
     "kernel": env_or("TRIBUNAL_KERNEL", "not-recorded")
 }
-receipt := {"schemaVersion": "1.1.0", "tribunalVersion": VERSION, "sourceRevision": revision, "platform": platform, "environment": environment, "kujoVersion": "1.0.0", "kujoRevision": runtime_revision, "kujoSha256": sha256_file(kujo), "measuredAt": now_utc(), "gates": gates, "result": "pass", "claimBoundary": "This receipt covers only the named revision, pinned runtime commit and digest, measured environment, architecture, and completed gates."}
+receipt := {"schemaVersion": "1.1.0", "tribunalVersion": VERSION, "sourceRevision": revision, "platform": platform, "environment": environment, "kujoVersion": "1.5.0", "kujoRevision": runtime_revision, "kujoSha256": sha256_file(kujo), "measuredAt": now_utc(), "gates": gates, "result": "pass", "claimBoundary": "This receipt covers only the named revision, pinned runtime commit and digest, measured environment, architecture, and completed gates."}
 write_json(output, receipt); print(to_json(receipt)); exit(0)
