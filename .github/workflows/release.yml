@@ -40,7 +40,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: kujolang/kujo
-          ref: 9b77dce592047121cb71066629836ad89252f3ce
+          ref: cc2d7dbb59a8dc05f00d629e100932f56f4062f6
           path: kujo
           token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -131,7 +131,7 @@ jobs:
 
       - name: Run Kujo release gates
         run: |
-          for file in $(find . -name '*.kujo' -not -path './.git/*'); do "$KUJO_BIN" check "$file"; done
+          git ls-files -z '*.kujo' | while IFS= read -r -d '' file; do "$KUJO_BIN" check "$file" || exit $?; done
           "$KUJO_BIN" run tests/tribunal_tests.kujo --interpreter
           "$KUJO_BIN" run tests/cli_integration.kujo --interpreter
           "$KUJO_BIN" run tests/enterprise_tests.kujo --interpreter

@@ -52,7 +52,7 @@ export KUJO_BIN=../kujo/target/release/kujo
 ./bin/tribunal list --status completed --limit 5
 ```
 
-Install Kujo 1.0.0 first, then place `kujo` on `PATH` or set `KUJO_BIN`/`KUJO` to its executable. Use the exact runtime revision in the [integration matrix](docs/INTEGRATION_MATRIX.md) for release reproduction. Mock mode is deterministic, offline, credential-free, and the default. The launcher resolves this repository and executes `kujo run tribunal.kujo`.
+Install Kujo 1.5.0 first, then place `kujo` on `PATH` or set `KUJO_BIN`/`KUJO` to its executable. Use the exact runtime revision in the [integration matrix](docs/INTEGRATION_MATRIX.md) for release reproduction. Mock mode is deterministic, offline, credential-free, and the default. The launcher resolves this repository and executes `kujo run tribunal.kujo`.
 
 Tribunal is also a validated [Kennel package](kennel.toml). See [installation, archive installation, compatibility, upgrade, and rollback](docs/INSTALLATION.md), or import the stable [Kujo library API 1.0](docs/LIBRARY_API.md). The [example gallery](examples/gallery/README.md) covers six common decision types.
 
@@ -229,8 +229,8 @@ See [Security](SECURITY.md), [Operations](docs/OPERATIONS.md), and [Enterprise r
 export TRIBUNAL_HOME="$PWD"
 export KUJO_BIN=../kujo/target/release/kujo
 
-for file in $(find . -name '*.kujo' -not -path './.git/*'); do
-  "$KUJO_BIN" check "$file"
+git ls-files -z '*.kujo' | while IFS= read -r -d '' file; do
+  "$KUJO_BIN" check "$file" || exit $?
 done
 "$KUJO_BIN" run tests/tribunal_tests.kujo
 "$KUJO_BIN" run tests/cli_integration.kujo
@@ -255,7 +255,9 @@ done
 (cd ../eval && "$KUJO_BIN" run main.kujo run "$TRIBUNAL_HOME/tests/tribunal_eval.json")
 ```
 
-The offline gates cover every Kujo source, four main test suites plus focused hardening regressions, 35+ executable schemas, signing/tamper/recovery, authorization, governance, encrypted and streamed bundles, provenance rollback, bounded authenticated stores, index repair, resumed lineage, custom catalogs/connectors, policy checks, adversarial peers, accessibility, telemetry/dashboard isolation, PackWrite, RunLedger, CaseFile, the AI SDK fixture, Spec, Concord, Eval, Kennel, gallery, and performance/scale/chaos budgets. See [Contributing](CONTRIBUTING.md).
+Check new, untracked Kujo files explicitly before staging them. The tracked inventory avoids recursively checking generated evidence and unpacked release copies.
+
+The offline gates cover every tracked Kujo source, four main test suites plus focused hardening regressions, 35+ executable schemas, signing/tamper/recovery, authorization, governance, encrypted and streamed bundles, provenance rollback, bounded authenticated stores, index repair, resumed lineage, custom catalogs/connectors, policy checks, adversarial peers, accessibility, telemetry/dashboard isolation, PackWrite, RunLedger, CaseFile, the AI SDK fixture, Spec, Concord, Eval, Kennel, gallery, and performance/scale/chaos budgets. See [Contributing](CONTRIBUTING.md).
 
 ## Repository layout
 

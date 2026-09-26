@@ -49,6 +49,8 @@ export func parent_dir(path) {
 
 export func ensure_dir(path) {
     if path == "" || path == "." { return path }
+    # Validate the existing destination once; only missing paths need parent traversal.
+    if path_is_dir(path) { return path }
     parts := split(path, "/")
     mut current := ""
     if starts_with(path, "/") { current = "/" }

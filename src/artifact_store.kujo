@@ -1,8 +1,9 @@
 # Tribunal :: immutable artifact-store providers with conditional writes and versions
 
 from src.bundles import export_bundle, import_bundle, validate_bundle_metadata
-from src.common import dict_get, ensure_dir, external_path_outside, lower_hex, read_json, redact, remove_tree, safe_run_id, safe_http_url, utf8_byte_length, write_json
+from src.common import dict_get, ensure_dir, external_path_outside, lower_hex, read_json, redact, remove_tree, safe_run_id, safe_http_url, utf8_byte_length, write_json, write_text
 from src.integrity import verify
+from src.locking import acquire_lock, release_lock
 from src.adversarial import inspect_remote_envelope
 
 func request_once(url, options) {
@@ -112,12 +113,25 @@ export func publish_local(storage_dir, run_id, root, expected_version) {
     if expected_version != "" && lower_hex(expected_version, 64) == false { return {"ok": false, "error": "Expected version must be a lowercase SHA-256 digest."} }
     if trim(root) == "" || (file_exists(root) && path_is_symlink(root)) { return {"ok": false, "error": "Artifact-store root is unsafe."} }
     if external_path_outside(storage_dir, root) == false { return {"ok": false, "error": "Artifact-store root must be outside Tribunal run storage without symbolic-link aliases."} }
+    locked := acquire_lock(root, run_id, "artifact-store-publish", 0)
+    if locked["ok"] != true { return locked }
+    result := null
+    try { result = publish_local_locked(storage_dir, run_id, root, expected_version) } except err { result = {"ok": false, "error": "Local publication failed; reconcile any unindexed object before retrying.", "cause": redact(to_string(err))} }
+    released := release_lock(root, run_id, locked["lock"]["token"])
+    if released["ok"] != true { return released }
+    return result
+}
+
+# Hold the store lock from the conditional read through the atomic index write.
+# Readers select only finalized index entries; object directories precede them.
+func publish_local_locked(storage_dir, run_id, root, expected_version) {
     loaded_index := current_index(root, run_id)
     if loaded_index["ok"] != true { return loaded_index }
     existing := loaded_index["index"]
     current := ""
     if type(existing) == "dict" { current = dict_get(existing, "currentVersion", "") }
     if expected_version != current { return {"ok": false, "error": "Conditional write failed: expected version '" + expected_version + "' but current is '" + current + "'."} }
+    if type(existing) == "dict" && len(existing["versions"]) >= 10000 { return {"ok": false, "error": "Artifact-store version history reached its safety limit."} }
     signature_path := join_path(join_path(storage_dir, run_id), "signature.json")
     if file_exists(signature_path) == false { return {"ok": false, "error": "Immutable publication requires a signed run."} }
     integrity := verify(storage_dir, run_id, "")
@@ -136,7 +150,12 @@ export func publish_local(storage_dir, run_id, root, expected_version) {
     versions = push(versions, {"version": version, "publishedAt": exported["bundle"]["exportedAt"], "keyId": exported["bundle"]["keyId"], "path": destination})
     index := {"schemaVersion": "1.0.0", "runId": run_id, "currentVersion": version, "versions": versions}
     ensure_dir(dirname(local_index(root, run_id)))
-    write_json(local_index(root, run_id), index)
+    serialized := to_json_pretty(index) + "\n"
+    if utf8_byte_length(serialized) > 4194304 { return {"ok": false, "error": "Artifact-store index exceeds its safety limit; reconcile the unindexed object."} }
+    readable := false
+    try { readable = type(parse_json(serialized)) == "dict" } except err { readable = false }
+    if readable == false { return {"ok": false, "error": "Artifact-store index exceeds the runtime JSON safety limit; reconcile the unindexed object."} }
+    write_text(local_index(root, run_id), serialized)
     return {"ok": true, "provider": "local-immutable", "version": version, "index": index}
 }
 

@@ -11,6 +11,8 @@ The HTTP contract uses:
 - `GET /runs/{run}/current` or `GET /runs/{run}/versions/{version}` for metadata;
 - `GET /runs/{run}/versions/{version}/artifacts/{path}` for exact objects.
 
+Finalization requires exactly one condition: `If-None-Match: *` or `If-Match` containing the current lowercase SHA-256 digest. Missing, malformed or conflicting conditions and invalid bundle metadata return HTTP 400 before publication.
+
 The server must authenticate identities, enforce tenant/run ownership, preserve immutable versions, implement conditional writes atomically, verify body digests, bound request sizes, and log all operations. Non-loopback endpoints must use HTTPS. Partial uploads are not current until finalization succeeds.
 
 Tribunal validates bundle metadata before downloads/copies, rejects duplicate and unsafe paths, and caps artifact count, individual size, and aggregate bundle size. The local store root must remain outside run storage.
@@ -21,4 +23,8 @@ Tribunal's pull path reconstructs a temporary bundle, verifies it under the targ
 
 Encrypted imports preflight envelope count, unique inventory, metadata/descriptor agreement, and the 1 GiB plaintext aggregate before reading a recipient key or staging plaintext. Integrity-only checks also enforce the existing 65 MiB ciphertext ceiling before hashing. Descriptor-free legacy bundles remain supported. The reference HTTP adapter rejects unsafe run IDs and non-hexadecimal versions on reads, writes, and staging cleanup.
 
-The local immutable reference store assumes serialized publication per run; its expected-version check and index publication are not a cross-process compare-and-swap transaction. Certify an atomic adapter before concurrent publication.
+Local publication holds an exclusive `<store-root>/.locks/<run-id>.lock` from the expected-version check through object export and atomic index publication. A contending writer fails explicitly; retry only after reading the current version and deciding whether that update is still intended. Different run IDs use separate locks. Do not run older writers against the same store concurrently: they bypass this coordination. This is a cooperating-process local-filesystem contract, not shared-filesystem certification.
+
+Version history is capped at the existing 10,000-entry schema limit before exporting another object. The serialized index is also capped at the existing 4 MiB read limit before replacing the prior index; a refusal preserves the readable prior history. Failed publication can leave an unindexed object; preserve and reconcile it instead of deleting immutable evidence automatically. After a confirmed crash, stop all publishers for that store, preserve the lock/index/object evidence, and reconcile ownership before removing its preserved `owner.json` and then the empty run lock directory. An unexpected extra file must be reconciled rather than recursively removed. Normal publication never steals a lock by age.
+
+JSON history writes also verify readability with the running Kujo parser before replacement. The current verification target is Kujo 1.5.0. Runtime parser limits can reject growth below Tribunal's 4 MiB file ceiling. Existing records remain unchanged on refusal.
