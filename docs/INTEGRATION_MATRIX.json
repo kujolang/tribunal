@@ -3,7 +3,7 @@
   "tribunalVersion": "1.0.1",
   "certifiedAt": "2026-08-08",
   "integrations": [
-    { "name": "Kujo Runtime", "version": "1.0.0", "revision": "9b77dce592047121cb71066629836ad89252f3ce", "path": "../kujo", "gate": "all release commands", "scope": "interpreter, VM, cryptography, filesystem, process, HTTP streaming, archive, and schema primitives" },
+    { "name": "Kujo Runtime", "version": "1.5.0", "revision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6", "path": "../kujo", "gate": "all release commands", "scope": "interpreter, VM, cryptography, filesystem, process, HTTP streaming, archive, and schema primitives" },
     { "name": "Kujo AI SDK", "version": "1.0.0", "revision": "d3c6def0f7844f8b42bd92d3b176e80283af8e79", "path": "../ai-sdk", "gate": "tests/tribunal_tests.kujo", "scope": "real SDK bridge, provider-neutral resolution, offline provider fixture" },
     { "name": "PackWrite", "version": "1.0.0", "revision": "0cb9487e4c02218bb4a18efe68b8a0c22998f715", "path": "../packwrite", "gate": "tests/tribunal_tests.kujo", "scope": "real repository context bridge with isolated process environment" },
     { "name": "RunLedger", "version": "1.0.0", "revision": "5cf186c9b56b540970f75e33a06f50d3dac833a8", "path": "../runledger", "gate": "tests/tribunal_tests.kujo", "scope": "trusted signed-run ingestion and external receipt" },

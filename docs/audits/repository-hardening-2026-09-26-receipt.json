@@ -5734,5 +5734,20 @@
     ],
     "note": "Contemporaneous shared-host observation; does not prove causality or invalidate failed budget results."
   },
-  "hostedVerification": "Consult pull request checks for final report commit; required before merge."
+  "hostedVerification": "Consult pull request checks for final report commit; required before merge.",
+  "targetCorrection": {
+    "authority": "User explicitly requested Kujo 1.5 without weakening tests",
+    "version": "1.5.0",
+    "releaseUrl": "https://github.com/kujolang/kujo/releases/tag/v1.5.0",
+    "tagObject": "83fbdd4f39db68c5bc2196318e993e0ff202d514",
+    "revision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+    "obsoleteRuntimeFailure": {
+      "run": 36218152284,
+      "job": 108338159203,
+      "log": ".tribunal/audit-20260925/pr7-linux.log",
+      "reason": "Kujo 1.0 parser 1 MiB input limit; strict 10,000-entry fixture failed.",
+      "status": "retained; not counted as pass"
+    },
+    "assertions": "Strict count and 4 MiB fixtures retained; no gate/budget weakened."
+  }
 }

@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: kujolang/kujo
-          ref: 9b77dce592047121cb71066629836ad89252f3ce
+          ref: cc2d7dbb59a8dc05f00d629e100932f56f4062f6
           path: kujo
           token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -143,7 +143,7 @@ jobs:
           KUJO_BIN: ${{ github.workspace }}/kujo/target/release/kujo
           TRIBUNAL_PLATFORM: ${{ matrix.platform }}
           TRIBUNAL_SOURCE_REVISION: ${{ github.sha }}
-          TRIBUNAL_KUJO_REVISION: 9b77dce592047121cb71066629836ad89252f3ce
+          TRIBUNAL_KUJO_REVISION: cc2d7dbb59a8dc05f00d629e100932f56f4062f6
           TRIBUNAL_COMPATIBILITY_OUTPUT: ${{ runner.temp }}/compatibility-${{ matrix.platform }}.json
           TRIBUNAL_RUNNER_IMAGE: github-hosted:${{ matrix.runner }}
         run: |

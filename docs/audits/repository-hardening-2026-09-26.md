@@ -121,3 +121,11 @@ Coverage is an engineering review of the important implementation and contracts,
 
 
 The [machine-readable receipt](repository-hardening-2026-09-26-receipt.json) retains exact commands, exits, durations, log paths and SHA-256 digests. Large logs remain under the ignored evidence root. No release or certification claim should be inferred from a historical or different-commit receipt.
+
+## Kujo 1.5 verification target correction
+
+The user explicitly required Kujo 1.5 after the initial hosted workflow still built the historical 1.0 pin. Official `v1.5.0` resolves through annotated tag `83fbdd4f39db68c5bc2196318e993e0ff202d514` to commit `cc2d7dbb59a8dc05f00d629e100932f56f4062f6`. Both workflows, the current integration matrix, installation/operations guidance and platform receipt version now target 1.5.0. Historical receipts above retain their original identities; other integration revisions remain unchanged. The matrix still enforces exact expected versions and checkout revisions, and platform receipts now verify the executable's actual version output.
+
+The obsolete-runtime Linux job `108338159203` in run `36218152284` failed the new 10,000-entry fixture because Kujo 1.0's JSON parser caps input at 1 MiB. Its log is preserved in `.tribunal/audit-20260925/pr7-linux.log`. This is not a pass and does not justify weakening the fixture: the strict 10,000-entry and 4 MiB assertions remain. Store and hold writers additionally verify that serialized JSON can be read by the executing runtime before replacement. The hold-growth fixture now proves the original record is readable and requires the specific safety-limit failure, rather than accepting any failure. No timeout, threshold, suite or assertion was removed.
+
+Current verification must use the official 1.5 source pin or checksum-verified release artifact. The original local measurements used a different 1.5.0-labeled binary and remain separately attributed. Follow-up command receipts and PR #7 checks record the new proof; they must pass before merge-ready claims.
