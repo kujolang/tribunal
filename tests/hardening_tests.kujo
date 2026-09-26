@@ -13,6 +13,15 @@ func check(condition, name) {
 }
 root := join_path(env_or("TMPDIR", "/tmp"), "tribunal-hardening-" + uuid_v4())
 ensure_dir(root)
+# Existing directories avoid traversal; absent and invalid paths retain their contracts.
+directory_target := join_path(root, "directory-contract/child")
+check(ensure_dir(directory_target) == directory_target && path_is_dir(directory_target), "ensure_dir creates missing parents")
+write_file(join_path(directory_target, "preserved.txt"), "preserved")
+check(ensure_dir(directory_target) == directory_target && read_file(join_path(directory_target, "preserved.txt")) == "preserved", "ensure_dir preserves existing directory contents")
+blocked_path := join_path(root, "directory-file"); write_file(blocked_path, "preserved")
+refused_directory := false
+try { ensure_dir(join_path(blocked_path, "child")) } except err { refused_directory = true }
+check(refused_directory && read_file(blocked_path) == "preserved", "ensure_dir refuses a non-directory parent without replacing it")
 for header in ["Authorization: Bearer synthetic-credential-value", "authorization: Basic c3ludGhldGljOnNlY3JldA==", "{\"Authorization\":\"Bearer synthetic-credential-value\"}"] {
     clean := redact(header)
     check(truthy(contains(clean, "synthetic-credential-value")) == false && truthy(contains(clean, "c3ludGhldGljOnNlY3JldA==")) == false, "authorization value is fully redacted")
