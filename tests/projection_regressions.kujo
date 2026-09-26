@@ -56,9 +56,9 @@ export func run_projection_regressions() {
     # Growing history must not cross the existing reader's bound.
     large_hold := result["governance"]; large_hold["history"] := [{"padding": repeat("x", 4192000)}]
     write_json(hold, large_hold); before_growth := sha256_file(hold)
-    check(file_size(hold) < 4194304, "history growth fixture starts within reader bound")
+    check(file_size(hold) < 4194304 && type(read_json(hold)) == "dict", "history growth fixture starts within runtime reader bound")
     grown := set_legal_hold(storage, "fixture", "operator", true, repeat("r", 4096))
-    check(grown["ok"] == false && sha256_file(hold) == before_growth, "oversized history update preserves the last readable record")
+    check(grown["ok"] == false && contains(grown["error"], "safety limit") && sha256_file(hold) == before_growth, "oversized history update preserves the last readable record")
     # Missing logs fail; intentionally empty logs remain a valid empty projection.
     delete_file(join_path(run, "events.jsonl"))
     result = export_telemetry(storage, "jsonl", join_path(root, "missing.jsonl"))

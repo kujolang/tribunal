@@ -83,6 +83,9 @@ func update_hold_locked(storage_dir, run_id, actor, enabled, reason) {
     # The writer must not create a record the existing 4 MiB reader will refuse.
     serialized := to_json_pretty(record) + "\n"
     if utf8_byte_length(serialized) > 4194304 { return {"ok": false, "error": "External governance history exceeds the safety limit; preserve it for operator reconciliation."} }
+    readable := false
+    try { readable = type(parse_json(serialized)) == "dict" } except err { readable = false }
+    if readable == false { return {"ok": false, "error": "External governance history exceeds the runtime JSON safety limit; preserve it for operator reconciliation."} }
     path := join_path(join_path(storage_dir, ".governance"), run_id + ".json")
     write_text(path, serialized)
     return {"ok": true, "governance": record, "path": path}
