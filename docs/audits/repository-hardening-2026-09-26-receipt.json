@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "repository": "kujolang/tribunal",
   "startingRevision": "415b9de53d36e89bf8459b73f2e8cbc076a0a2f5",
-  "endingImplementationRevision": "f8febe9352891bcc7431a757825370825c88644b",
+  "endingImplementationRevision": "a31f660127c8c30c0ebd7ef12ec418aa6cd5ec11",
   "runtime": {
     "repository": "kujolang/tribunal",
     "startingBranch": "main",
@@ -8184,5 +8184,40 @@
     },
     "status": "Directory work reduced; throughput remains unresolved pending changed-code hosted gates.",
     "finalLocalStatus": "388 checks and archive checks pass; local performance gates still fail. Hosted changed-code result required."
+  },
+  "compatibilityInstaller": {
+    "revision": "a31f660127c8c30c0ebd7ef12ec418aa6cd5ec11",
+    "tests": {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_ci_runtime.py"
+      ],
+      "passed": 7,
+      "failed": 0
+    },
+    "realInstall": {
+      "version": "1.5.0",
+      "sourceRevision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+      "asset": "kujo-v1.5.0-macos-x64.tar.gz",
+      "archiveSha256": "1aebcd482125031104b2df79abae6db57973f1874ceb196f95989b14e287d820",
+      "binarySha256": "3e1e475ea165c8b4a714495596fe8661ad970b27119ad44f1db4d9779f7f05d4"
+    },
+    "realInstallCommand": [
+      "python3",
+      "scripts/install_ci_runtime.py",
+      "--platform",
+      "macos-x86_64",
+      "--destination",
+      ".tribunal/audit-20260925/installed-ci-runtime"
+    ],
+    "realInstallExit": 0,
+    "releaseSourceBuildRetained": true,
+    "tribunalGatesUnchanged": true
   }
 }
