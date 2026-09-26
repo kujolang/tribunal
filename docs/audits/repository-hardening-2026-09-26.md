@@ -5,7 +5,7 @@
 - Repository: `kujolang/tribunal`, a local/operator-controlled decision-evidence engine with a stable CLI, Kujo embedding API and independently versioned sealed evidence.
 - Starting branch/revision: clean `main`, `415b9de53d36e89bf8459b73f2e8cbc076a0a2f5` (September 22 work already merged).
 - Implementation branch: `codex/tribunal-hardening-20260926`.
-- Ending implementation revision: `94dac09edf5d1ac73bdc48e5dce595b9cc7f88d6`. This report is a subsequent documentation commit; resolve its containing revision with `git log -1 -- docs/audits/repository-hardening-2026-09-26.md`.
+- Ending implementation revision: `0ab868d072a3ee536f28858f9dbdd2f2aefeec4e` (including the user-requested official Kujo 1.5 target). This report is a subsequent documentation commit; resolve its containing revision with `git log -1 -- docs/audits/repository-hardening-2026-09-26.md`.
 - Local evidence root: `.tribunal/audit-20260925/` (the session began September 25 local time and continued September 26). Baseline, failed experiments, intermediate runs and final receipts are retained separately. Sealed historical evidence was not modified.
 - Local runtime: Kujo 1.5.0 at `../kujo/target/release/kujo`; SHA-256 `5c1240ab6cce77323edf420a1b28df98669d246f9c8212999b0f3c1bca192ec2`. Adjacent checkout `761c75a060c1f765933c5f9586836528871ad0f1` identifies the checkout, not a build attestation. The configured release pin remains `9b77dce592047121cb71066629836ad89252f3ce`.
 - Integrations: Kujo, AI SDK, PackWrite, RunLedger, CaseFile, Concord, Spec, Eval, Kennel and Workcell; Watchdog remains the explicit matrix exclusion. No sibling source, release tag, public release, credential, signing service or branch protection was changed.
@@ -129,3 +129,25 @@ The user explicitly required Kujo 1.5 after the initial hosted workflow still bu
 The obsolete-runtime Linux job `108338159203` in run `36218152284` failed the new 10,000-entry fixture because Kujo 1.0's JSON parser caps input at 1 MiB. Its log is preserved in `.tribunal/audit-20260925/pr7-linux.log`. This is not a pass and does not justify weakening the fixture: the strict 10,000-entry and 4 MiB assertions remain. Store and hold writers additionally verify that serialized JSON can be read by the executing runtime before replacement. The hold-growth fixture now proves the original record is readable and requires the specific safety-limit failure, rather than accepting any failure. No timeout, threshold, suite or assertion was removed.
 
 Current verification must use the official 1.5 source pin or checksum-verified release artifact. The original local measurements used a different 1.5.0-labeled binary and remain separately attributed. Follow-up command receipts and PR #7 checks record the new proof; they must pass before merge-ready claims.
+
+## Official Kujo 1.5 verification receipt
+
+The official macOS x64 archive matches the release tag's SHA-256 `1aebcd482125031104b2df79abae6db57973f1874ceb196f95989b14e287d820`; its executable digest is `3e1e475ea165c8b4a714495596fe8661ad970b27119ad44f1db4d9779f7f05d4`, and `--version` reports `kujo 1.5.0`.
+
+All **385 Kujo checks**, all **77 tracked source checks**, and performance/scale/index/load gates pass on this official executable. The 99-command pass initially had two failures: the known local integration-revision mismatch and Concord's dependency-version false positive. The changelog now explicitly identifies Tribunal 1.0.1 before describing dependency versions; the unchanged drift gate passes on rerun. No performance budget, assertion, parser boundary, failure or test was suppressed. A negative version fixture confirms platform-receipt generation exits 2 and writes nothing for a 1.0 executable.
+
+Official-release measurements (separate binary and host observation; not an attributable speedup):
+
+| Measurement | Result | Existing budget |
+|---|---:|---:|
+| Five-seat hearing (ms) | 2,438 | 15000 |
+| Large hearing (ms) | 29,901 | 45000 |
+| Scale two pages (ms) | 3,467 | 6000 |
+| Index two pages (ms) | 2,316 | 3000 |
+| Index rebuild (ms) | 1,660 | 15000 |
+| Stats (ms) | 9,672 | 15000 |
+| Lock cycles/sec | 15 | minimum 15 |
+
+Artifact size remains 7,800,199 bytes; context remains 512,220 bytes; index remains 163,084 bytes. The earlier scale failures remain evidence about those executions; the official 1.5 measurements do not erase or retrospectively pass them. The remaining local matrix failure is an environment mismatch; isolated hosted CI checks the unchanged adjacent pins plus the explicitly requested official runtime pin.
+
+**Additional P2 cross-repository follow-up — Concord:** `src/checks/version_consistency.kujo` reads the entire changelog through `extract_version_from_text`, which takes its first semantic-version regex match. An Unreleased dependency upgrade can therefore be mistaken for the product release. Evidence: `official-1.5/086.log`; clarifying the current product version passes the same gate. Recommend parsing product release headings or explicit product metadata with a dependency-upgrade regression and preserved missing-version diagnostics. Tribunal does not require an upstream change to operate. No Concord source was modified. SignalBox capture `cap_5a4644c8-1560-4b25-961f-5c1567880156`, signal `sig_e6e44424-1bbe-4390-bf7a-af989f2d6380` preserve this finding; exact-ID and concept retrieval were verified.

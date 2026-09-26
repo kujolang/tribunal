@@ -1,5 +1,7 @@
 # Changelog
 
+Current released Tribunal version: **1.0.1**. Unreleased changes and dependency versions below do not change the product version.
+
 ## Unreleased — September 26 hardening
 
 - Target official Kujo 1.5.0 consistently in CI, the integration matrix, installation docs and measured platform receipts.
