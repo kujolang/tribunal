@@ -4,6 +4,7 @@ Current released Tribunal version: **1.0.1**. Unreleased changes and dependency 
 
 ## Unreleased — September 26 hardening
 
+- Verify compatibility with checksum-pinned official runtime archives; retain the release workflow source build and every Tribunal gate.
 - Target official Kujo 1.5.0 consistently in CI, the integration matrix, installation docs and measured platform receipts.
 - Verify serialized store and legal-hold histories remain readable by the running JSON parser before replacement.
 

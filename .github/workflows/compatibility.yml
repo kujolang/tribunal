@@ -93,10 +93,12 @@ jobs:
           ref: 7c46cd0bf1680d037c24506be4ed0a2405a9841f
           path: watchdog
           token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Build pinned Kujo runtime
-        working-directory: kujo
-        run: cargo build --release --locked
+      - name: Validate runtime installer boundaries
+        working-directory: tribunal
+        run: python3 -m unittest discover -s tests -p test_ci_runtime.py
+      - name: Install checksum-pinned official Kujo runtime
+        working-directory: tribunal
+        run: python3 scripts/install_ci_runtime.py --platform "${{ matrix.platform }}" --destination "${{ github.workspace }}/kujo/target/release/kujo"
       - name: Run platform gates
         working-directory: tribunal
         env:

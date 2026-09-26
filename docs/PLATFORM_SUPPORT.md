@@ -17,3 +17,5 @@ The existing `linux-x86_64-ubuntu-24.04.json` and `macos-x86_64-local.json` file
 Current source requires `/bin/mkdir` for exclusive directory claims on macOS/Linux. Doctor checks its presence; this change does not expand platform certification or add Windows support.
 
 Current hardening candidate: Kujo 1.5.0 at `cc2d7dbb59a8dc05f00d629e100932f56f4062f6`. Its platform support requires new passing receipts; the v1.0.0 evidence above remains historical and is not relabeled.
+
+Current compatibility jobs use checksum-pinned official 1.5.0 native archives, and record the installed binary digest. Release verification still builds the pinned source. Neither path removes Tribunal suites or performance gates.
