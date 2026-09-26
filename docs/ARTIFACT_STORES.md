@@ -11,6 +11,8 @@ The HTTP contract uses:
 - `GET /runs/{run}/current` or `GET /runs/{run}/versions/{version}` for metadata;
 - `GET /runs/{run}/versions/{version}/artifacts/{path}` for exact objects.
 
+Finalization requires exactly one condition: `If-None-Match: *` or `If-Match` containing the current lowercase SHA-256 digest. Missing, malformed or conflicting conditions and invalid bundle metadata return HTTP 400 before publication.
+
 The server must authenticate identities, enforce tenant/run ownership, preserve immutable versions, implement conditional writes atomically, verify body digests, bound request sizes, and log all operations. Non-loopback endpoints must use HTTPS. Partial uploads are not current until finalization succeeds.
 
 Tribunal validates bundle metadata before downloads/copies, rejects duplicate and unsafe paths, and caps artifact count, individual size, and aggregate bundle size. The local store root must remain outside run storage.

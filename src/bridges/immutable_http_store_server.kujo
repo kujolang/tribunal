@@ -2,6 +2,7 @@
 # This deployment-neutral Kujo service exists for integration certification and
 # small controlled installations; production operators must add TLS in front.
 
+from src.bundles import validate_bundle_metadata
 from src.common import dict_get, ensure_dir, read_json, remove_tree, lower_hex, safe_relative_path, safe_run_id, write_json
 
 func header_value(headers, wanted) {
@@ -144,7 +145,11 @@ func finalize(req) {
     try { metadata = parse_json(to_string(dict_get(req, "body", ""))) } except err { return http_response(400, "invalid metadata") }
     version := dict_get(metadata, "manifestSha256", "")
     if safe_request(run_id, version) == false || dict_get(metadata, "runId", "") != run_id || type(dict_get(metadata, "artifacts", null)) != "array" { return http_response(400, "invalid metadata") }
+    if validate_bundle_metadata(metadata)["ok"] != true { return http_response(400, "invalid bundle metadata") }
     headers := dict_get(req, "headers", {})
+    create_condition := header_value(headers, "If-None-Match")
+    update_condition := header_value(headers, "If-Match")
+    if (create_condition != "*" || update_condition != "") && (create_condition != "" || lower_hex(update_condition, 64) == false) { return http_response(400, "exactly one valid publication condition is required") }
     index := index_path(run_id)
     if header_value(headers, "If-None-Match") == "*" && file_exists(index) { return http_response(412, "conditional write failed") }
     if header_value(headers, "If-Match") != "" {

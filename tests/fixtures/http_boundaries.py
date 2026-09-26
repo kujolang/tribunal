@@ -57,7 +57,22 @@ with tempfile.TemporaryDirectory(prefix='tribunal-store-boundary-') as tmp:
             if not sentinel.exists(): failures.append('tenant sentinel removed')
             if request('DELETE',f'/runs/run/versions/{version}/staging') != 204: failures.append('valid cleanup rejected')
             if stage.exists(): failures.append('valid staging not removed')
-            print(json.dumps({'checks':len(cases)+3,'failures':failures}))
+            # Finalization must require one valid compare-and-swap condition.
+            for number, condition in enumerate([{}, {'If-Match':'bad'}, {'If-None-Match':'*','If-Match':'b'*64}]):
+                run_id=f'condition-{number}'
+                local_stage=tenants/'fixture/staging'/run_id/version
+                local_stage.mkdir(parents=True); (local_stage/'record.json').write_text('{}')
+                metadata={'schemaVersion':'1.0.0','runId':run_id,'exportedAt':'fixture','manifestSha256':version,'keyId':'b'*32,'artifactCount':1,'artifacts':['record.json']}
+                code=request('POST',f'/runs/{run_id}/versions',json.dumps(metadata),condition)
+                if code != 400: failures.append(f'bad finalization condition {number}: {code}')
+                if (tenants/'fixture/indexes'/f'{run_id}.json').exists(): failures.append(f'bad condition {number} published an index')
+            run_id='valid-condition'
+            local_stage=tenants/'fixture/staging'/run_id/version
+            local_stage.mkdir(parents=True); (local_stage/'record.json').write_text('{}')
+            metadata={'schemaVersion':'1.0.0','runId':run_id,'exportedAt':'fixture','manifestSha256':version,'keyId':'b'*32,'artifactCount':1,'artifacts':['record.json']}
+            if request('POST',f'/runs/{run_id}/versions',json.dumps(metadata),{'If-None-Match':'*'}) != 201: failures.append('valid conditional publication rejected')
+            if request('POST',f'/runs/{run_id}/versions',json.dumps(metadata),{'If-Match':'c'*64}) != 412: failures.append('stale conditional update accepted')
+            print(json.dumps({'checks':len(cases)+11,'failures':failures}))
             if failures:
                 log.seek(0); print(log.read()); raise SystemExit(1)
         finally:

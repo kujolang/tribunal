@@ -3,6 +3,7 @@
 ## Unreleased — September 26 hardening
 
 - Avoid false index-lock type failures when a concurrent owner releases the lock.
+- Reject missing, malformed or conflicting HTTP-store publication conditions before state changes.
 - Serialize conditional local-store publication per run and enforce its existing history limit.
 - Preserve and validate governance history; reject incomplete retention metadata and release deletion ownership on recoverable failures.
 - Fail telemetry exports on unreadable or malformed event evidence instead of reporting empty success.
