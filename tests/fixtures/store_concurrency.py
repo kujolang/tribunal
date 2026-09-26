@@ -8,7 +8,7 @@ from src.integrity import generate_keys, seal
 root := env_or("RACE_ROOT", "")
 priv := join_path(root, "private.pem"); pub := join_path(root, "public.pem")
 if generate_keys(priv, pub, 2048)["ok"] != true { exit(1) }
-for name in ["a", "b"] {
+for name in ["a", "b", "c"] {
  storage := join_path(root, name); run := join_path(storage, "fixture"); ensure_dir(run)
  write_file(join_path(run, "record.json"), "{}")
  write_file(join_path(run, "payload.txt"), repeat(name, 8388608))
@@ -54,7 +54,15 @@ print(to_json(publish_local(join_path(root, name), "fixture", join_path(root, "s
   assert limited.returncode==0, limited.stdout+limited.stderr
   refusal=json.loads(limited.stdout.strip().splitlines()[-1]); assert not refusal['ok'] and 'safety limit' in refusal['error'], refusal
   assert index_path.read_bytes()==original
-  print(json.dumps({'versionLimitRefused':True,'conditionalRetryHistory':2,'successfulWriters':sum(r['ok'] for r in results),'historyEntries':len(index['versions']),'objectVersions':len(list((root/'store/objects/fixture').iterdir())),'results':results}))
+  # A long historical path can reach the byte bound before the entry bound.
+  near={'schemaVersion':'1.0.0','runId':'fixture','currentVersion':versions[0]['version'],'versions':[dict(versions[0])]}
+  near['versions'][0]['path']='x'*(4194304-len(json.dumps(near).encode())-100)
+  index_path.write_text(json.dumps(near)); original=index_path.read_bytes(); assert len(original)<4194304
+  bounded=subprocess.run([binary,'run',str(worker),'--interpreter'],env={**env,'RACE_NAME':'c','RACE_EXPECTED':near['currentVersion']},capture_output=True,text=True,timeout=60)
+  assert bounded.returncode==0, bounded.stdout+bounded.stderr
+  refusal=json.loads(bounded.stdout.strip().splitlines()[-1]); assert not refusal['ok'] and 'safety limit' in refusal['error'], refusal
+  assert index_path.read_bytes()==original
+  print(json.dumps({'indexByteLimitRefused':True,'versionLimitRefused':True,'conditionalRetryHistory':2,'successfulWriters':sum(r['ok'] for r in results),'historyEntries':len(index['versions']),'initialObjectVersions':1,'finalObjectVersions':len(list((root/'store/objects/fixture').iterdir())),'results':results}))
  finally:
   for p in procs:
    if p.poll() is None: p.kill(); p.wait()

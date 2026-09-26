@@ -1,7 +1,7 @@
 # Tribunal :: immutable artifact-store providers with conditional writes and versions
 
 from src.bundles import export_bundle, import_bundle, validate_bundle_metadata
-from src.common import dict_get, ensure_dir, external_path_outside, lower_hex, read_json, redact, remove_tree, safe_run_id, safe_http_url, utf8_byte_length, write_json
+from src.common import dict_get, ensure_dir, external_path_outside, lower_hex, read_json, redact, remove_tree, safe_run_id, safe_http_url, utf8_byte_length, write_json, write_text
 from src.integrity import verify
 from src.locking import acquire_lock, release_lock
 from src.adversarial import inspect_remote_envelope
@@ -150,7 +150,9 @@ func publish_local_locked(storage_dir, run_id, root, expected_version) {
     versions = push(versions, {"version": version, "publishedAt": exported["bundle"]["exportedAt"], "keyId": exported["bundle"]["keyId"], "path": destination})
     index := {"schemaVersion": "1.0.0", "runId": run_id, "currentVersion": version, "versions": versions}
     ensure_dir(dirname(local_index(root, run_id)))
-    write_json(local_index(root, run_id), index)
+    serialized := to_json_pretty(index) + "\n"
+    if utf8_byte_length(serialized) > 4194304 { return {"ok": false, "error": "Artifact-store index exceeds its safety limit; reconcile the unindexed object."} }
+    write_text(local_index(root, run_id), serialized)
     return {"ok": true, "provider": "local-immutable", "version": version, "index": index}
 }
 
