@@ -1,0 +1,1146 @@
+{
+  "candidateRevision": "95eb5665c21ab86712cb0cc0baea12ad3a47dd08",
+  "productVersion": "1.0.2",
+  "published": false,
+  "runtimeRevision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+  "workcellRevision": "91b9f066ad32b6fffb8f456d8613c0379ac48b04",
+  "workcell": [
+    {
+      "kind": "success",
+      "runId": "wc-cd160351168d41eca36ecebc5a83fe6f",
+      "command": [
+        "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/release-review-20261007/workcell/bin/workcell",
+        "run",
+        "--file",
+        "docs/workcell-launch-gate.json",
+        "--repo",
+        ".",
+        "--no-pull"
+      ],
+      "processExit": 0,
+      "verifyCommand": [
+        "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/release-review-20261007/workcell/bin/workcell",
+        "verify",
+        "--run",
+        ".workcell/runs/wc-cd160351168d41eca36ecebc5a83fe6f",
+        "--json"
+      ],
+      "verification": {
+        "manifest": {
+          "bytes": 24582,
+          "files": 6,
+          "ok": true,
+          "schema_version": "workcell-manifest/v1"
+        },
+        "ok": true,
+        "run_dir": ".workcell/runs/wc-cd160351168d41eca36ecebc5a83fe6f"
+      },
+      "receipt": ".workcell/runs/wc-cd160351168d41eca36ecebc5a83fe6f/receipt.json",
+      "receiptDocument": {
+        "artifact_bytes": 8518,
+        "artifact_files": 1,
+        "cancelled": false,
+        "change_report_path": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.workcell/runs/wc-cd160351168d41eca36ecebc5a83fe6f/changes.json",
+        "changed_files": [
+          "tribunal-workcell-proof.txt"
+        ],
+        "cleanup_status": "complete",
+        "command": [
+          "sh",
+          "-lc",
+          "set -eu; test \"$(kujo --version)\" = \"kujo 1.5.0\"; kujo --version > tribunal-workcell-proof.txt; ./bin/tribunal version >> tribunal-workcell-proof.txt; ./bin/tribunal doctor --json >> tribunal-workcell-proof.txt; ./bin/tribunal validate examples/product-decision.md --json >> tribunal-workcell-proof.txt; if ./bin/tribunal validate /tmp/tribunal-missing-docket.md --json >/tmp/invalid.out 2>&1; then exit 1; fi; printf 'failure-path-exit: nonzero\\n' >> tribunal-workcell-proof.txt; ./bin/tribunal review examples/product-decision.md --panel executioner-only --mock --storage-dir /tmp/tribunal-runs >> tribunal-workcell-proof.txt; test -f /tmp/tribunal-runs/*/record.json; printf 'happy-path: pass\\n' >> tribunal-workcell-proof.txt"
+        ],
+        "container_image": "kujolang/workcell-kujo:tribunal-kujo-1.5.0-cc2d7db",
+        "container_image_digest": "kujolang/workcell-kujo@sha256:4305c871600b637e20fbf698173ae216b9eccd0dfea762febd435017a1308aa9",
+        "container_image_digest_source": "repo_digest",
+        "container_image_id": "sha256:4305c871600b637e20fbf698173ae216b9eccd0dfea762febd435017a1308aa9",
+        "container_image_labels": {
+          "org.opencontainers.image.revision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+          "org.opencontainers.image.source": "https://github.com/kujolang/kujo",
+          "org.opencontainers.image.version": "1.5.0"
+        },
+        "container_image_platform": "linux/amd64",
+        "container_name": "kujo-workcell-wc-cd160351168d41eca36ecebc5a83fe6f",
+        "definition_version": 1,
+        "effective_security_policy": {
+          "artifact_export_boundary": "host output directory only",
+          "capabilities_dropped": "ALL",
+          "devices": false,
+          "docker_socket": false,
+          "host_home_mount": false,
+          "host_ipc": false,
+          "host_pid": false,
+          "host_root_mount": false,
+          "host_user_namespace": false,
+          "network_mode": "none",
+          "network_policy": {
+            "configured_egress": {
+              "dns": "blocked",
+              "enforcement_profile": "none",
+              "policy": "deny-by-default",
+              "proxy": "none"
+            },
+            "egress": {
+              "dns": "blocked",
+              "enforcement_profile": "none",
+              "policy": "deny-by-default",
+              "proxy": "none"
+            },
+            "enforcement_profile": "none",
+            "mode": "none",
+            "name": "",
+            "warnings": []
+          },
+          "no_new_privileges": true,
+          "non_root_user": "501:20",
+          "privileged": false,
+          "read_only_root": true,
+          "workspace_identity": "host",
+          "workspace_mount": "/workspace:rw"
+        },
+        "elapsed": 3017,
+        "elapsed_ms": 3017,
+        "end_time": "2026-10-07T13:01:39Z",
+        "errors": [],
+        "exit_code": 0,
+        "exported_artifacts": [
+          "tribunal-workcell-proof.txt"
+        ],
+        "final_status": "completed",
+        "image_provenance_policy": {
+          "registry_allowlist": [],
+          "require_digest": false,
+          "require_signature": false
+        },
+        "integration_status": "passed",
+        "integrations": [
+          {
+            "enabled": false,
+            "name": "runledger",
+            "ok": true,
+            "report_path": null,
+            "schema_version": "workcell-integration/v1",
+            "status": "disabled"
+          },
+          {
+            "enabled": false,
+            "name": "changebucket",
+            "ok": true,
+            "report_path": null,
+            "schema_version": "workcell-integration/v1",
+            "status": "disabled"
+          },
+          {
+            "enabled": false,
+            "name": "shipcheck",
+            "ok": true,
+            "report_path": null,
+            "schema_version": "workcell-integration/v1",
+            "status": "disabled"
+          },
+          {
+            "enabled": false,
+            "name": "fence",
+            "ok": true,
+            "report_path": null,
+            "schema_version": "workcell-integration/v1",
+            "status": "disabled"
+          },
+          {
+            "enabled": false,
+            "name": "packwrite",
+            "ok": true,
+            "report_path": null,
+            "schema_version": "workcell-integration/v1",
+            "status": "disabled"
+          },
+          {
+            "enabled": false,
+            "name": "muzzle",
+            "ok": true,
+            "report_path": null,
+            "schema_version": "workcell-integration/v1",
+            "status": "disabled"
+          }
+        ],
+        "lifecycle": [
+          "created",
+          "validated",
+          "preparing",
+          "prepared",
+          "starting",
+          "running",
+          "collecting",
+          "verifying",
+          "exporting",
+          "completed",
+          "cleaning",
+          "cleaned"
+        ],
+        "logs_path": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.workcell/runs/wc-cd160351168d41eca36ecebc5a83fe6f",
+        "manifest_path": "manifest.json",
+        "manifest_schema_version": "workcell-manifest/v1",
+        "mounts": [
+          "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/release-review-20261007/workspaces/kujo-workcell-wc-cd160351168d41eca36ecebc5a83fe6f:/workspace:rw"
+        ],
+        "network_mode": "none",
+        "network_policy": {
+          "configured_egress": {
+            "dns": "blocked",
+            "enforcement_profile": "none",
+            "policy": "deny-by-default",
+            "proxy": "none"
+          },
+          "egress": {
+            "dns": "blocked",
+            "enforcement_profile": "none",
+            "policy": "deny-by-default",
+            "proxy": "none"
+          },
+          "enforcement_profile": "none",
+          "mode": "none",
+          "name": "",
+          "warnings": []
+        },
+        "patch_bytes": 8971,
+        "patch_path": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.workcell/runs/wc-cd160351168d41eca36ecebc5a83fe6f/changes.patch",
+        "resource_limits": {
+          "cpus": 1,
+          "max_output_bytes": 4000000,
+          "memory": "512m",
+          "pids": 128,
+          "timeout_ms": 120000
+        },
+        "run_id": "wc-cd160351168d41eca36ecebc5a83fe6f",
+        "runtime_backend": "docker",
+        "schema_version": "workcell-receipt/v1",
+        "secret_names": [],
+        "source_commit": "95eb5665c21ab86712cb0cc0baea12ad3a47dd08",
+        "source_repository": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal",
+        "start_time": "2026-10-07T13:01:36Z",
+        "stderr_truncated": false,
+        "stdout_truncated": false,
+        "timeout": false,
+        "verification": {
+          "artifacts_exported": true,
+          "checks": [],
+          "cleanup_succeeded": true,
+          "execution_succeeded": true,
+          "verification_succeeded": true
+        },
+        "warnings": [],
+        "workcell_definition_hash": "17f56f04091c92174abf17d29752e4e2751ec73f381e5fa96fbebc558030675e",
+        "workcell_definition_path": "docs/workcell-launch-gate.json",
+        "workcell_name": "tribunal-launch-gate",
+        "workcell_version": "1.0.0",
+        "workspace_path": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/release-review-20261007/workspaces/kujo-workcell-wc-cd160351168d41eca36ecebc5a83fe6f",
+        "workspace_strategy": "git-worktree"
+      },
+      "manifestDocument": {
+        "excluded_paths": [
+          "manifest.json"
+        ],
+        "files": [
+          {
+            "bytes": 0,
+            "path": "stderr.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "bytes": 8971,
+            "path": "changes.patch",
+            "sha256": "a56a31561ce0c688c0a7681a61d524c1a4a1f6bd3ecc9c7e98430296608d3cfb"
+          },
+          {
+            "bytes": 0,
+            "path": "stdout.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "bytes": 362,
+            "path": "changes.json",
+            "sha256": "eee42471e4511f9b5a590b2b7ad6f87e13eeee509a8fbaabf0b155954804d24b"
+          },
+          {
+            "bytes": 6731,
+            "path": "receipt.json",
+            "sha256": "55baec15dd8fc5906bd038dc63c421b82e1f1943ce1ce3c661287f30b1dac8b9"
+          },
+          {
+            "bytes": 8518,
+            "path": "artifacts/tribunal-workcell-proof.txt",
+            "sha256": "501d35144e91139a065281dc92597976129889e24b0aed4a4932195bd83ffed1"
+          }
+        ],
+        "manifest_path": "manifest.json",
+        "run_id": "wc-cd160351168d41eca36ecebc5a83fe6f",
+        "schema_version": "workcell-manifest/v1",
+        "scope": "immutable run evidence; manifest.json is excluded because it contains this manifest",
+        "total_bytes": 24582,
+        "total_files": 6
+      },
+      "exportedProof": "kujo 1.5.0\nTribunal v1.0.2\n{\n  \"checks\": [\n    {\n      \"message\": \"/bin/mkdir\",\n      \"name\": \"Exclusive directory helper\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/bin/rm\",\n      \"name\": \"Symlink cleanup helper\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/usr/local/bin/kujo\",\n      \"name\": \"Kujo runtime\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/tribunal.kujo\",\n      \"name\": \"Tribunal entrypoint\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/kujo.toml\",\n      \"name\": \"Kujo project manifest\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/src\",\n      \"name\": \"Application source directory\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas\",\n      \"name\": \"Schema directory\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/access-policy.schema.json\",\n      \"name\": \"Schema access-policy.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/adoption-aggregate.schema.json\",\n      \"name\": \"Schema adoption-aggregate.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/algorithm-registry.schema.json\",\n      \"name\": \"Schema algorithm-registry.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/artifact-manifest.schema.json\",\n      \"name\": \"Schema artifact-manifest.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/artifact-store-index.schema.json\",\n      \"name\": \"Schema artifact-store-index.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/audit-report.schema.json\",\n      \"name\": \"Schema audit-report.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/bulk-verification.schema.json\",\n      \"name\": \"Schema bulk-verification.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/bundle.schema.json\",\n      \"name\": \"Schema bundle.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/context-connector.schema.json\",\n      \"name\": \"Schema context-connector.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/decision-packet.schema.json\",\n      \"name\": \"Schema decision-packet.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/decision-template.schema.json\",\n      \"name\": \"Schema decision-template.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/encrypted-bundle.schema.json\",\n      \"name\": \"Schema encrypted-bundle.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/governance.schema.json\",\n      \"name\": \"Schema governance.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/http-store-conformance-report.schema.json\",\n      \"name\": \"Schema http-store-conformance-report.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/ingestion-receipt.schema.json\",\n      \"name\": \"Schema ingestion-receipt.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/kms-conformance-report.schema.json\",\n      \"name\": \"Schema kms-conformance-report.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/legal-hold.schema.json\",\n      \"name\": \"Schema legal-hold.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/library-result.schema.json\",\n      \"name\": \"Schema library-result.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/organization-policy.schema.json\",\n      \"name\": \"Schema organization-policy.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/panel-catalog.schema.json\",\n      \"name\": \"Schema panel-catalog.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/provenance-anchor.schema.json\",\n      \"name\": \"Schema provenance-anchor.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/provenance.schema.json\",\n      \"name\": \"Schema provenance.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/receipt.schema.json\",\n      \"name\": \"Schema receipt.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/ruling-comparison.schema.json\",\n      \"name\": \"Schema ruling-comparison.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/ruling.schema.json\",\n      \"name\": \"Schema ruling.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/run-index-page.schema.json\",\n      \"name\": \"Schema run-index-page.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/run-index.schema.json\",\n      \"name\": \"Schema run-index.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/security-findings.schema.json\",\n      \"name\": \"Schema security-findings.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/signature.schema.json\",\n      \"name\": \"Schema signature.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/signing-provider.schema.json\",\n      \"name\": \"Schema signing-provider.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/telemetry.schema.json\",\n      \"name\": \"Schema telemetry.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/tribunal-config.schema.json\",\n      \"name\": \"Schema tribunal-config.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/tribunal-event.schema.json\",\n      \"name\": \"Schema tribunal-event.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/tribunal-record.schema.json\",\n      \"name\": \"Schema tribunal-record.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/schemas/trust-policy.schema.json\",\n      \"name\": \"Schema trust-policy.schema.json\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"Optional directory not found: /workspace/../ai-sdk\",\n      \"name\": \"Kujo AI SDK\",\n      \"status\": \"warn\"\n    },\n    {\n      \"message\": \"Optional directory not found: /workspace/../packwrite\",\n      \"name\": \"PackWrite\",\n      \"status\": \"warn\"\n    },\n    {\n      \"message\": \"/workspace/.github/workflows/release.yml\",\n      \"name\": \"Release workflow\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"Will be created under .\",\n      \"name\": \"Run storage\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"/workspace/VERSION\",\n      \"name\": \"VERSION file\",\n      \"status\": \"pass\"\n    },\n    {\n      \"message\": \"1.0.2\",\n      \"name\": \"Version consistency\",\n      \"status\": \"pass\"\n    }\n  ],\n  \"failures\": 0,\n  \"ok\": true,\n  \"version\": \"1.0.2\",\n  \"warnings\": 2\n}\n{\n  \"docket\": {\n    \"content\": \"# Add deterministic release evidence to the agent workflow\\n\\n## Scope\\n\\nRequire each completed implementation task to attach the exact validation commands, exit status, and artifact paths used to establish completion.\\n\\n## Non-goals\\n\\n- Building a hosted dashboard\\n- Replacing existing CI\\n- Requiring live model credentials\\n\\n## Proposal\\n\\nAdd a small local receipt contract that agents can produce and downstream tools can index. Begin with offline fixtures and one repository before broader adoption.\\n\\n## Decision requested\\n\\nShould the team implement the bounded receipt contract now, redesign it, pause for evidence, or reject it?\\n\",\n    \"contentSha256\": \"7636c40762bdf0beedcf38557652e2d1619f4f3e8128edb887bc9b4832ba8f44\",\n    \"id\": \"7636c40762bdf0be\",\n    \"nonGoals\": [\n      \"Building a hosted dashboard\",\n      \"Replacing existing CI\",\n      \"Requiring live model credentials\"\n    ],\n    \"openedAt\": \"2026-10-07T13:01:38Z\",\n    \"scope\": \"Require each completed implementation task to attach the exact validation commands, exit status, and artifact paths used to establish completion.\",\n    \"sourcePath\": \"/workspace/examples/product-decision.md\",\n    \"title\": \"Add deterministic release evidence to the agent workflow\"\n  },\n  \"ok\": true\n}\nfailure-path-exit: nonzero\n2026-10-07-product-decision-md-4628\nproceed: The proposal survives the focused Executioner review with required conditions.\n/tmp/tribunal-runs/2026-10-07-product-decision-md-4628\nhappy-path: pass\n",
+      "receiptSha256": "55baec15dd8fc5906bd038dc63c421b82e1f1943ce1ce3c661287f30b1dac8b9"
+    },
+    {
+      "kind": "intentional-failure",
+      "runId": "wc-07f5c9a89d8e4c45b0ea90ab49011fa8",
+      "command": [
+        "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/release-review-20261007/workcell/bin/workcell",
+        "run",
+        "--file",
+        "docs/workcell-failure-gate.json",
+        "--repo",
+        ".",
+        "--no-pull"
+      ],
+      "processExit": 7,
+      "verifyCommand": [
+        "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/release-review-20261007/workcell/bin/workcell",
+        "verify",
+        "--run",
+        ".workcell/runs/wc-07f5c9a89d8e4c45b0ea90ab49011fa8",
+        "--json"
+      ],
+      "verification": {
+        "manifest": {
+          "bytes": 6892,
+          "files": 6,
+          "ok": true,
+          "schema_version": "workcell-manifest/v1"
+        },
+        "ok": true,
+        "run_dir": ".workcell/runs/wc-07f5c9a89d8e4c45b0ea90ab49011fa8"
+      },
+      "receipt": ".workcell/runs/wc-07f5c9a89d8e4c45b0ea90ab49011fa8/receipt.json",
+      "receiptDocument": {
+        "artifact_bytes": 29,
+        "artifact_files": 1,
+        "cancelled": false,
+        "change_report_path": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.workcell/runs/wc-07f5c9a89d8e4c45b0ea90ab49011fa8/changes.json",
+        "changed_files": [
+          "tribunal-workcell-proof.txt"
+        ],
+        "cleanup_status": "complete",
+        "command": [
+          "sh",
+          "-lc",
+          "printf \"intentional-workload-failure\\n\" > tribunal-workcell-proof.txt; exit 17"
+        ],
+        "container_image": "kujolang/workcell-kujo:tribunal-kujo-1.5.0-cc2d7db",
+        "container_image_digest": "kujolang/workcell-kujo@sha256:4305c871600b637e20fbf698173ae216b9eccd0dfea762febd435017a1308aa9",
+        "container_image_digest_source": "repo_digest",
+        "container_image_id": "sha256:4305c871600b637e20fbf698173ae216b9eccd0dfea762febd435017a1308aa9",
+        "container_image_labels": {
+          "org.opencontainers.image.revision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+          "org.opencontainers.image.source": "https://github.com/kujolang/kujo",
+          "org.opencontainers.image.version": "1.5.0"
+        },
+        "container_image_platform": "linux/amd64",
+        "container_name": "kujo-workcell-wc-07f5c9a89d8e4c45b0ea90ab49011fa8",
+        "definition_version": 1,
+        "effective_security_policy": {
+          "artifact_export_boundary": "host output directory only",
+          "capabilities_dropped": "ALL",
+          "devices": false,
+          "docker_socket": false,
+          "host_home_mount": false,
+          "host_ipc": false,
+          "host_pid": false,
+          "host_root_mount": false,
+          "host_user_namespace": false,
+          "network_mode": "none",
+          "network_policy": {
+            "configured_egress": {
+              "dns": "blocked",
+              "enforcement_profile": "none",
+              "policy": "deny-by-default",
+              "proxy": "none"
+            },
+            "egress": {
+              "dns": "blocked",
+              "enforcement_profile": "none",
+              "policy": "deny-by-default",
+              "proxy": "none"
+            },
+            "enforcement_profile": "none",
+            "mode": "none",
+            "name": "",
+            "warnings": []
+          },
+          "no_new_privileges": true,
+          "non_root_user": "501:20",
+          "privileged": false,
+          "read_only_root": true,
+          "workspace_identity": "host",
+          "workspace_mount": "/workspace:rw"
+        },
+        "elapsed": 1626,
+        "elapsed_ms": 1626,
+        "end_time": "2026-10-07T13:01:41Z",
+        "errors": [
+          {
+            "message": "container exited with code 17",
+            "stage": "running"
+          },
+          {
+            "message": "verification checks skipped because the workload failed",
+            "stage": "verifying"
+          }
+        ],
+        "exit_code": 17,
+        "exported_artifacts": [
+          "tribunal-workcell-proof.txt"
+        ],
+        "final_status": "workload-failed",
+        "image_provenance_policy": {
+          "registry_allowlist": [],
+          "require_digest": false,
+          "require_signature": false
+        },
+        "integration_status": "passed",
+        "integrations": [
+          {
+            "enabled": false,
+            "name": "runledger",
+            "ok": true,
+            "report_path": null,
+            "schema_version": "workcell-integration/v1",
+            "status": "disabled"
+          },
+          {
+            "enabled": false,
+            "name": "changebucket",
+            "ok": true,
+            "report_path": null,
+            "schema_version": "workcell-integration/v1",
+            "status": "disabled"
+          },
+          {
+            "enabled": false,
+            "name": "shipcheck",
+            "ok": true,
+            "report_path": null,
+            "schema_version": "workcell-integration/v1",
+            "status": "disabled"
+          },
+          {
+            "enabled": false,
+            "name": "fence",
+            "ok": true,
+            "report_path": null,
+            "schema_version": "workcell-integration/v1",
+            "status": "disabled"
+          },
+          {
+            "enabled": false,
+            "name": "packwrite",
+            "ok": true,
+            "report_path": null,
+            "schema_version": "workcell-integration/v1",
+            "status": "disabled"
+          },
+          {
+            "enabled": false,
+            "name": "muzzle",
+            "ok": true,
+            "report_path": null,
+            "schema_version": "workcell-integration/v1",
+            "status": "disabled"
+          }
+        ],
+        "lifecycle": [
+          "created",
+          "validated",
+          "preparing",
+          "prepared",
+          "starting",
+          "running",
+          "collecting",
+          "verifying",
+          "exporting",
+          "failed",
+          "cleaning",
+          "cleaned"
+        ],
+        "logs_path": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.workcell/runs/wc-07f5c9a89d8e4c45b0ea90ab49011fa8",
+        "manifest_path": "manifest.json",
+        "manifest_schema_version": "workcell-manifest/v1",
+        "mounts": [
+          "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/release-review-20261007/workspaces/kujo-workcell-wc-07f5c9a89d8e4c45b0ea90ab49011fa8:/workspace:rw"
+        ],
+        "network_mode": "none",
+        "network_policy": {
+          "configured_egress": {
+            "dns": "blocked",
+            "enforcement_profile": "none",
+            "policy": "deny-by-default",
+            "proxy": "none"
+          },
+          "egress": {
+            "dns": "blocked",
+            "enforcement_profile": "none",
+            "policy": "deny-by-default",
+            "proxy": "none"
+          },
+          "enforcement_profile": "none",
+          "mode": "none",
+          "name": "",
+          "warnings": []
+        },
+        "patch_bytes": 207,
+        "patch_path": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.workcell/runs/wc-07f5c9a89d8e4c45b0ea90ab49011fa8/changes.patch",
+        "resource_limits": {
+          "cpus": 1,
+          "max_output_bytes": 4000000,
+          "memory": "512m",
+          "pids": 128,
+          "timeout_ms": 120000
+        },
+        "run_id": "wc-07f5c9a89d8e4c45b0ea90ab49011fa8",
+        "runtime_backend": "docker",
+        "schema_version": "workcell-receipt/v1",
+        "secret_names": [],
+        "source_commit": "95eb5665c21ab86712cb0cc0baea12ad3a47dd08",
+        "source_repository": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal",
+        "start_time": "2026-10-07T13:01:40Z",
+        "stderr_truncated": false,
+        "stdout_truncated": false,
+        "timeout": false,
+        "verification": {
+          "artifacts_exported": true,
+          "checks": [],
+          "cleanup_succeeded": true,
+          "execution_succeeded": false,
+          "verification_succeeded": false
+        },
+        "warnings": [],
+        "workcell_definition_hash": "fd5abd35e943f42bbb4263b4129a85254f1bdc0ea5aa12375a206fa8a0b317db",
+        "workcell_definition_path": "docs/workcell-failure-gate.json",
+        "workcell_name": "tribunal-intentional-failure",
+        "workcell_version": "1.0.0",
+        "workspace_path": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/release-review-20261007/workspaces/kujo-workcell-wc-07f5c9a89d8e4c45b0ea90ab49011fa8",
+        "workspace_strategy": "git-worktree"
+      },
+      "manifestDocument": {
+        "excluded_paths": [
+          "manifest.json"
+        ],
+        "files": [
+          {
+            "bytes": 0,
+            "path": "stderr.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "bytes": 207,
+            "path": "changes.patch",
+            "sha256": "9d48fb3e04af168b233af138bf9af206b4a794d1ca3d0d54baf85818ad6d9032"
+          },
+          {
+            "bytes": 0,
+            "path": "stdout.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "bytes": 361,
+            "path": "changes.json",
+            "sha256": "88eacdec770e3d84f43bbaceb0a74f6b0d7ec0108de3817344295fbe3e18d4a2"
+          },
+          {
+            "bytes": 6295,
+            "path": "receipt.json",
+            "sha256": "77533449fd78733e95aa47c30c2adf3e1459b77876e2d1979822035a3d00abd6"
+          },
+          {
+            "bytes": 29,
+            "path": "artifacts/tribunal-workcell-proof.txt",
+            "sha256": "3763b5dcf60339686126b51d89a5a983f49c887cdc01e58e4a530daa45fb52b8"
+          }
+        ],
+        "manifest_path": "manifest.json",
+        "run_id": "wc-07f5c9a89d8e4c45b0ea90ab49011fa8",
+        "schema_version": "workcell-manifest/v1",
+        "scope": "immutable run evidence; manifest.json is excluded because it contains this manifest",
+        "total_bytes": 6892,
+        "total_files": 6
+      },
+      "exportedProof": "intentional-workload-failure\n",
+      "receiptSha256": "77533449fd78733e95aa47c30c2adf3e1459b77876e2d1979822035a3d00abd6"
+    }
+  ],
+  "localVerification": [
+    {
+      "command": [
+        "./bin/tribunal",
+        "version"
+      ],
+      "exit": 0,
+      "seconds": 0.195,
+      "log": ".tribunal/release-review-20261007/local-00.log",
+      "sha256": "c60df80dbcaaecc680f9b34b1a113214acf2eeb36acdd6efac3fe8556534b836"
+    },
+    {
+      "command": [
+        "./bin/tribunal",
+        "doctor",
+        "--json"
+      ],
+      "exit": 0,
+      "seconds": 0.264,
+      "log": ".tribunal/release-review-20261007/local-01.log",
+      "sha256": "0ca8640bfc63543d3f602d307513ab90f504e09b124449b2dff091cec1af2570"
+    },
+    {
+      "command": [
+        "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/audit-20260925/kujo-v1.5.0/kujo",
+        "check",
+        "tribunal.kujo"
+      ],
+      "exit": 0,
+      "seconds": 0.02,
+      "log": ".tribunal/release-review-20261007/local-02.log",
+      "sha256": "856f157a66b9efd698c0aa847ac9ff9b796ea8fb812c7e637a9190bcefca7247"
+    },
+    {
+      "command": [
+        "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/audit-20260925/kujo-v1.5.0/kujo",
+        "run",
+        "tests/tribunal_tests.kujo",
+        "--interpreter"
+      ],
+      "exit": 0,
+      "seconds": 25.523,
+      "log": ".tribunal/release-review-20261007/local-03.log",
+      "sha256": "30a58f490f0b626c64a15d8223a47b98ecbd30edeffb96e089618bb47d92052f"
+    },
+    {
+      "command": [
+        "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/audit-20260925/kujo-v1.5.0/kujo",
+        "run",
+        "tests/cli_integration.kujo",
+        "--interpreter"
+      ],
+      "exit": 0,
+      "seconds": 23.182,
+      "log": ".tribunal/release-review-20261007/local-04.log",
+      "sha256": "c58b6ad26fb5fa65014b1c1787791e443eed16816e65d84b0c08dae1c5e054ce"
+    },
+    {
+      "command": [
+        "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/audit-20260925/kujo-v1.5.0/kujo",
+        "run",
+        "scripts/schema_gate.kujo",
+        "--interpreter"
+      ],
+      "exit": 0,
+      "seconds": 2.58,
+      "log": ".tribunal/release-review-20261007/local-05.log",
+      "sha256": "bcc52b54c751ef08c35ed65bfddc6a7c5d21c96a72f2a6ab6bb1b26eddc970cc"
+    },
+    {
+      "command": [
+        "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/audit-20260925/kujo-v1.5.0/kujo",
+        "run",
+        "scripts/docs_link_gate.kujo",
+        "--interpreter"
+      ],
+      "exit": 0,
+      "seconds": 0.091,
+      "log": ".tribunal/release-review-20261007/local-06.log",
+      "sha256": "3f1785ce03bfc46843809f276b6e5d321530db1fe6cad6d424f36ede503bfee9"
+    },
+    {
+      "command": [
+        "python3",
+        "tests/fixtures/http_receive_bounds.py"
+      ],
+      "exit": 0,
+      "seconds": 0.779,
+      "log": ".tribunal/release-review-20261007/local-07.log",
+      "sha256": "ca603dd846c04f866dfe6b2da0f05b8687b0db02efb0739f1b136bb541027ace"
+    },
+    {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_ci_runtime.py"
+      ],
+      "exit": 0,
+      "seconds": 0.319,
+      "log": ".tribunal/release-review-20261007/local-08.log",
+      "sha256": "fd49aba5f35c938be43436424bc3c2f9f2397a091da4f7e2a3cf10e5b4ba5abf"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit": 0,
+      "seconds": 0.025,
+      "log": ".tribunal/release-review-20261007/local-09.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "image": {
+    "Id": "sha256:4305c871600b637e20fbf698173ae216b9eccd0dfea762febd435017a1308aa9",
+    "RepoTags": [
+      "kujolang/workcell-kujo:tribunal-kujo-1.5.0-cc2d7db"
+    ],
+    "RepoDigests": [
+      "kujolang/workcell-kujo@sha256:4305c871600b637e20fbf698173ae216b9eccd0dfea762febd435017a1308aa9"
+    ],
+    "Comment": "buildkit.dockerfile.v0",
+    "Created": "2026-10-07T08:36:13.272866747-04:00",
+    "Config": {
+      "User": "65532:65532",
+      "Env": [
+        "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      ],
+      "Cmd": [
+        "/bin/bash"
+      ],
+      "Labels": {
+        "org.opencontainers.image.revision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+        "org.opencontainers.image.source": "https://github.com/kujolang/kujo",
+        "org.opencontainers.image.version": "1.5.0"
+      }
+    },
+    "Architecture": "amd64",
+    "Os": "linux",
+    "Size": 54658728,
+    "RootFS": {
+      "Type": "layers",
+      "Layers": [
+        "sha256:d81fb2a7c6ee3be05fdefaa7fd223be219c1ab172083ec1b994c3ecda33ac0a8",
+        "sha256:38bbc4636d8a73a5fdb2c1b250808e001af83588865d96c92f80178a7c80731f",
+        "sha256:1e96f960ddca6cb024ed1e177c4cc9ffb46db623e58c85c2ec60e730baa5dd93",
+        "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+      ]
+    },
+    "Metadata": {
+      "LastTagTime": "2026-10-07T12:36:16.358550522Z"
+    },
+    "Descriptor": {
+      "mediaType": "application/vnd.oci.image.index.v1+json",
+      "digest": "sha256:4305c871600b637e20fbf698173ae216b9eccd0dfea762febd435017a1308aa9",
+      "size": 856
+    },
+    "Identity": {
+      "Build": [
+        {
+          "Ref": "wkucwbsds2jxcas48wlssvwud",
+          "CreatedAt": "2026-10-07T08:36:16.947137171-04:00"
+        }
+      ]
+    }
+  },
+  "initialFailure": {
+    "runId": "wc-588311ebf4174aa9bd7ec35d6a036efd",
+    "exit": 6,
+    "cause": "Pinned Workcell strips DOCKER_HOST/DOCKER_CONFIG before invoking docker run; explicit Docker CLI endpoint wrapper corrects host selection without changing container policy or timeout."
+  },
+  "hostControllerWrapper": "#!/bin/sh\nif [ \"$1\" = run ]; then\n  shift\n  exec /usr/local/bin/docker --host unix:///Users/robertdevore/.colima/kujo-workcell/docker.sock --config /Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/release-review-20261007/docker-config run --pull=never \"$@\"\nfi\nexec /usr/local/bin/docker --host unix:///Users/robertdevore/.colima/kujo-workcell/docker.sock --config /Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/release-review-20261007/docker-config \"$@\"\n",
+  "logs": [
+    {
+      "path": ".tribunal/release-review-20261007/archive-candidate-smoke.log",
+      "sha256": "a77a554d180c0c74012b03ed7dcc8031007372d9b4700573d7d1ac4edc0e60db"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/archive-candidate.log",
+      "sha256": "866628ab01da255fc227ef3814e3c7b047d05cb30269622c9a474e25c0c10f89"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/archive-corrected-smoke.log",
+      "sha256": "a77a554d180c0c74012b03ed7dcc8031007372d9b4700573d7d1ac4edc0e60db"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/archive-corrected.log",
+      "sha256": "e777d01718406177ba7527c497c34497095cd8e442fa563049928f47665c9e5b"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/archive-fixed-smoke.log",
+      "sha256": "a77a554d180c0c74012b03ed7dcc8031007372d9b4700573d7d1ac4edc0e60db"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/archive-fixed.log",
+      "sha256": "15e08eddd679a54339640a53e198bbc4971106ddcc971b890edc89e551811815"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/colima-resume.log",
+      "sha256": "91c90fd184bceb6785795a890cedebb7eab60f8d070d722909d7e270f646ee48"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/colima-start.log",
+      "sha256": "59aff645af932f44149253bb5e4323d5e427d76791fb93f3fe9fbfacefae427c"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/colima-stop.log",
+      "sha256": "c732e939887682579f03202e6aaab3bc3c9453e9de89076f580fefc62e6e2f17"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/container-os.log",
+      "sha256": "1ed59d9a3d5d232df526243deb8222a319d1c71c9c87fe3aaa83e395e2bf56d3"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/e137-pr-linux.log",
+      "sha256": "c437a3e71c065e21c4002e4b8ecba38cf673f4c15c952adc87d35eb9b5579591"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/e2-pr-intel.log",
+      "sha256": "9b421f4bc5fa2e02d72b7fbf7a685adab0dbd2fb81f67d4097d4f92879bada34"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/hardening-final.log",
+      "sha256": "f37b702a7e136bff9af919b27be71bb7190caae89cb1be21047caccb60195d13"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/hardening-race-fix-consumed.log",
+      "sha256": "f37b702a7e136bff9af919b27be71bb7190caae89cb1be21047caccb60195d13"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/hardening-race-fix.log",
+      "sha256": "c1b5ed4d0524b52a998b485701617c280112d64320ccaa37af17836cf0e48276"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/image-build.log",
+      "sha256": "eb0fb6461a752dd99552d3b95788abacd14b1d2ae2a7a70879a3cc25f6cdc361"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/image-packages.log",
+      "sha256": "d1a1057989b4fee009e3756523ccdbd8da7e4f893d734a26f85c600e5d44bd93"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/local-00.log",
+      "sha256": "c60df80dbcaaecc680f9b34b1a113214acf2eeb36acdd6efac3fe8556534b836"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/local-01.log",
+      "sha256": "0ca8640bfc63543d3f602d307513ab90f504e09b124449b2dff091cec1af2570"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/local-02.log",
+      "sha256": "856f157a66b9efd698c0aa847ac9ff9b796ea8fb812c7e637a9190bcefca7247"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/local-03.log",
+      "sha256": "30a58f490f0b626c64a15d8223a47b98ecbd30edeffb96e089618bb47d92052f"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/local-04.log",
+      "sha256": "c58b6ad26fb5fa65014b1c1787791e443eed16816e65d84b0c08dae1c5e054ce"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/local-05.log",
+      "sha256": "bcc52b54c751ef08c35ed65bfddc6a7c5d21c96a72f2a6ab6bb1b26eddc970cc"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/local-06.log",
+      "sha256": "3f1785ce03bfc46843809f276b6e5d321530db1fe6cad6d424f36ede503bfee9"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/local-07.log",
+      "sha256": "ca603dd846c04f866dfe6b2da0f05b8687b0db02efb0739f1b136bb541027ace"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/local-08.log",
+      "sha256": "fd49aba5f35c938be43436424bc3c2f9f2397a091da4f7e2a3cf10e5b4ba5abf"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/local-09.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/workcell-corrected-intentional-failure.log",
+      "sha256": "9fa3ad5290f95767c01ddc84a73f87656d69955d924115264c4964ab7b7a34a2"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/workcell-corrected-success.log",
+      "sha256": "6aaa022a7f69f099ee18e15aae9867a7213ad08b7a0dff686c83a39dfa45b416"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/workcell-failure.log",
+      "sha256": "9d8f98e8975f208c7493c7697c7da347736649136879098447dff9c2ae555ab1"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/workcell-final-failure.log",
+      "sha256": "235120298db1276eded04c87d30bb3dcffe2d69605e5c4a1b374f291da19fb11"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/workcell-final-success-clean.log",
+      "sha256": "ed55f9b227e39d6d22a771e7e18f7b35eea880a20a05e0cb7611de6556c9b75d"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/workcell-final-success.log",
+      "sha256": "6e1928bacf817a27428d8eaf26a45056b3e1c1530662142b19d8c13a6880404c"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/workcell-fixed-failure.log",
+      "sha256": "4f1386bf2bbac925cf1c946b1e8feb1a4fb4072fbcd2e7cf0169bc9dd4900c64"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/workcell-fixed-success.log",
+      "sha256": "77e4747fc4df5734e97b70d4502ed9e241b4b0506fd080f2679e3d03f09231ac"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/workcell-success-endpoint.log",
+      "sha256": "544d5b38657d1ed38d7319fd0a2234786a968ed9c9ace2eeca01eea7d31418f0"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/workcell-success.log",
+      "sha256": "46a501b82961eb253d67b7ccc5492aa3c916e00dadeda122efe7a221245c8639"
+    },
+    {
+      "path": ".tribunal/release-review-20261007/wrong-revision.log",
+      "sha256": "de386ebb4b385c2b3c3ed5a0e1b403e4f8a881b84962dd1bd7ea1e18f8b771fb"
+    }
+  ],
+  "finalWorkcellRevision": "95eb5665c21ab86712cb0cc0baea12ad3a47dd08",
+  "wrapperSha256": "aa525cc10e25b7b00d460bac1f845656545b15cc83ee54f0ed16a0017e67b906",
+  "platformRun": 37622194528,
+  "platformReceipts": [
+    {
+      "claimBoundary": "This receipt covers only the named revision, pinned runtime commit and digest, measured environment, architecture, and completed gates.",
+      "environment": {
+        "kernel": "Linux 6.17.0-1022-azure",
+        "osRelease": "Ubuntu 24.04.5 LTS",
+        "runnerImage": "github-hosted:ubuntu-24.04"
+      },
+      "gates": [
+        "kujo-check-all",
+        "tribunal-tests",
+        "cli-integration",
+        "enterprise-tests",
+        "property-tests",
+        "hardening-tests",
+        "audit-regressions",
+        "schema",
+        "concord-drift",
+        "strict-spec",
+        "eval",
+        "performance",
+        "scale-performance",
+        "index-performance",
+        "load-chaos",
+        "adversarial",
+        "dashboard-accessibility",
+        "security-review-register",
+        "integration-matrix",
+        "kennel-package",
+        "gallery",
+        "reproducible-release-archive",
+        "doctor"
+      ],
+      "kujoRevision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+      "kujoSha256": "93d5b2e5591a20fe56ec9a5312c045d53c5dc3e4abe3b3a6765cc1ecd2b71381",
+      "kujoVersion": "1.5.0",
+      "measuredAt": "2026-10-07T12:37:56Z",
+      "platform": "linux-x86_64",
+      "result": "pass",
+      "schemaVersion": "1.1.0",
+      "sourceRevision": "e2b18966ee7558961e3869e8ef9b15b53c9332cd",
+      "tribunalVersion": "1.0.2"
+    },
+    {
+      "claimBoundary": "This receipt covers only the named revision, pinned runtime commit and digest, measured environment, architecture, and completed gates.",
+      "environment": {
+        "kernel": "Darwin 24.6.0",
+        "osRelease": "macOS 15.7.9",
+        "runnerImage": "github-hosted:macos-15-intel"
+      },
+      "gates": [
+        "kujo-check-all",
+        "tribunal-tests",
+        "cli-integration",
+        "enterprise-tests",
+        "property-tests",
+        "hardening-tests",
+        "audit-regressions",
+        "schema",
+        "concord-drift",
+        "strict-spec",
+        "eval",
+        "performance",
+        "scale-performance",
+        "index-performance",
+        "load-chaos",
+        "adversarial",
+        "dashboard-accessibility",
+        "security-review-register",
+        "integration-matrix",
+        "kennel-package",
+        "gallery",
+        "reproducible-release-archive",
+        "doctor"
+      ],
+      "kujoRevision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+      "kujoSha256": "3e1e475ea165c8b4a714495596fe8661ad970b27119ad44f1db4d9779f7f05d4",
+      "kujoVersion": "1.5.0",
+      "measuredAt": "2026-10-07T12:42:42Z",
+      "platform": "macos-x86_64",
+      "result": "pass",
+      "schemaVersion": "1.1.0",
+      "sourceRevision": "e2b18966ee7558961e3869e8ef9b15b53c9332cd",
+      "tribunalVersion": "1.0.2"
+    },
+    {
+      "claimBoundary": "This receipt covers only the named revision, pinned runtime commit and digest, measured environment, architecture, and completed gates.",
+      "environment": {
+        "kernel": "Darwin 24.6.0",
+        "osRelease": "macOS 15.7.9",
+        "runnerImage": "github-hosted:macos-15"
+      },
+      "gates": [
+        "kujo-check-all",
+        "tribunal-tests",
+        "cli-integration",
+        "enterprise-tests",
+        "property-tests",
+        "hardening-tests",
+        "audit-regressions",
+        "schema",
+        "concord-drift",
+        "strict-spec",
+        "eval",
+        "performance",
+        "scale-performance",
+        "index-performance",
+        "load-chaos",
+        "adversarial",
+        "dashboard-accessibility",
+        "security-review-register",
+        "integration-matrix",
+        "kennel-package",
+        "gallery",
+        "reproducible-release-archive",
+        "doctor"
+      ],
+      "kujoRevision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+      "kujoSha256": "327b59a1f584581963a9ed3dcb853783ed431c8fe4c36953278520c3e432e98b",
+      "kujoVersion": "1.5.0",
+      "measuredAt": "2026-10-07T12:39:58Z",
+      "platform": "macos-arm64",
+      "result": "pass",
+      "schemaVersion": "1.1.0",
+      "sourceRevision": "e2b18966ee7558961e3869e8ef9b15b53c9332cd",
+      "tribunalVersion": "1.0.2"
+    }
+  ],
+  "localArchive": {
+    "archive": "tribunal-v1.0.2.zip",
+    "archiveBuilder": "scripts/deterministic_zip.py",
+    "archiveBytes": 450045,
+    "archiveSha256": "10aec712f727a83e94225286ddbf3cf3b6ec74b0e1fd109c6e6b0695a070d70d",
+    "files": 214,
+    "provenanceSha256": "73b26cb28c03a4d4e60ec65dfa238992e0c6ee4fbbd42f58056d2a5620ce8bf1",
+    "rebuildSha256": "10aec712f727a83e94225286ddbf3cf3b6ec74b0e1fd109c6e6b0695a070d70d",
+    "reproducible": true,
+    "runtimeRevision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+    "runtimeSha256": "3e1e475ea165c8b4a714495596fe8661ad970b27119ad44f1db4d9779f7f05d4",
+    "sbomSha256": "1ce53f4d09985005284062ea630c5268c3141ec5b61125442db45855219e87f9",
+    "schemaVersion": "1.0.0",
+    "sourceDateEpoch": "1791378047",
+    "sourceRevision": "95eb5665c21ab86712cb0cc0baea12ad3a47dd08",
+    "version": "1.0.2"
+  },
+  "localArchiveSmoke": {
+    "archive": "tribunal-v1.0.2.zip",
+    "doctorExit": 0,
+    "failurePathExit": 1,
+    "ok": true,
+    "reviewExit": 0,
+    "version": "1.0.2",
+    "versionExit": 0
+  },
+  "hostCleanup": {
+    "colima": "stopped after evidence capture; image retained for review",
+    "activeDockerContext": "desktop-linux",
+    "sourceWorktrees": "only original repository remains",
+    "containerOs": "Linux 6.8.0-117-generic\nPRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n"
+  },
+  "earlierWorkcell": [
+    {
+      "kind": "success",
+      "runId": "wc-4e0c0440c0864cb4afebcb680b4a843c",
+      "processExit": 0,
+      "receiptSha256": "2439950e4124d667f0a4ae3ff4b36c88cba2756dd57176e278a61b848a731b6d"
+    },
+    {
+      "kind": "intentional-failure",
+      "runId": "wc-542ea1e4f1c7440a9eeb3353fc5d9b20",
+      "processExit": 7,
+      "receiptSha256": "4a2e071b8d70aed927dde1a293ec98c5b6c2dfa2008d040022b9b48cf23be735"
+    },
+    {
+      "kind": "success",
+      "runId": "wc-974a08992aeb4d5ba134a12986481e12",
+      "processExit": 0,
+      "receiptSha256": "2927e9442db14dce5abe8956f965725b06a219ae470bc64bc03215b15c8614ea"
+    },
+    {
+      "kind": "intentional-failure",
+      "runId": "wc-65c42c5c5fe2454ca689c81b3b61cb71",
+      "processExit": 7,
+      "receiptSha256": "1e43b2201fd8a1cfcaa4b262c0db90679782b26a9c1fc6e3770f618b80f08f49"
+    }
+  ],
+  "archiveRegressionTests": {
+    "passed": 4
+  },
+  "hardeningRegressionTests": {
+    "failed": 0,
+    "passed": 40
+  },
+  "knownSupersededFailures": [
+    {
+      "run": 37622641774,
+      "job": 112796469920,
+      "source": "e2b18966ee7558961e3869e8ef9b15b53c9332cd",
+      "failure": "Intel macOS lock symlink-probe race",
+      "log": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/release-review-20261007/e2-pr-intel.log"
+    },
+    {
+      "source": "e1370fb94113737cbd26c0473678ece1c63cf7aa",
+      "failure": "Native error assignment retained an error in the probe flag after catch",
+      "log": "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/release-review-20261007/hardening-race-fix.log"
+    }
+  ],
+  "supersededArchives": [
+    {
+      "archive": "tribunal-v1.0.2.zip",
+      "archiveBuilder": "scripts/deterministic_zip.py",
+      "archiveBytes": 452623,
+      "archiveSha256": "e2d3713e557555865249c7e9b93bb9e19d3c51c772434d6002d1cd7b7992fc8f",
+      "files": 214,
+      "provenanceSha256": "a466f9e74d4bf1201091f4a1bc357eeda41ba0e5eef989410616e999dc3f394c",
+      "rebuildSha256": "e2d3713e557555865249c7e9b93bb9e19d3c51c772434d6002d1cd7b7992fc8f",
+      "reproducible": true,
+      "runtimeRevision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+      "runtimeSha256": "3e1e475ea165c8b4a714495596fe8661ad970b27119ad44f1db4d9779f7f05d4",
+      "sbomSha256": "7978bcb3e1879e26abfd0ba76aa90f0d94303ef917215cfcccc056042cb43877",
+      "schemaVersion": "1.0.0",
+      "sourceDateEpoch": "1791377007",
+      "sourceRevision": "4cfe1f3d0f482fd39cb9c01491152c490139aa1e",
+      "version": "1.0.2"
+    }
+  ],
+  "archiveCorrection": {
+    "finding": "Recursive source selection included two ignored Python bytecode files in the original local candidate archive. Prior reproducibility success did not prove source-only contents.",
+    "implementation": "Git committed regular-file inventory; same HEAD and no changed tracked release inputs required.",
+    "testsPassed": 4,
+    "wrongRevisionRefusedBeforeOutput": true
+  },
+  "priorVerificationOnlyWorkflow": {
+    "run": 37622246144,
+    "source": "e2b18966ee7558961e3869e8ef9b15b53c9332cd",
+    "verify": "success",
+    "publish": "skipped",
+    "qualification": "Predates archive and index-probe corrections; not final-head proof."
+  }
+}

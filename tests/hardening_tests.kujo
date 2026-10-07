@@ -97,6 +97,20 @@ invalid_lock := join_path(invalid_lock_root, ".index.lock"); write_file(invalid_
 mut invalid_lock_refused := false
 try { list_runs_page(invalid_lock_root, "", "", 1, "") } except err { invalid_lock_refused = contains(to_string(err), "not a directory") == 1 }
 check(invalid_lock_refused && read_file(invalid_lock) == "preserve", "non-directory lock fails without altering its contents")
+# Failed exclusive claims must reject both live and dangling symlinks, without
+# entering the pointed-to directory or removing the link.
+link_target := join_path(root, "lock-link-target"); ensure_dir(link_target)
+write_file(join_path(link_target, "sentinel"), "preserve")
+for name in ["live", "dangling"] {
+    link_storage := join_path(root, "lock-symlink-" + name); ensure_dir(link_storage)
+    link_path := join_path(link_storage, ".index.lock")
+    target := link_target
+    if name == "dangling" { target = join_path(root, "missing-lock-target") }
+    linked := spawn_process(["/bin/ln", "-s", target, link_path], {"inherit_env": false, "timeout_ms": 10000, "max_output_bytes": 4096})
+    refused := false
+    try { list_runs_page(link_storage, "", "", 1, "") } except err { refused = contains(to_string(err), "unsafe") == 1 }
+    check(linked.success && refused && path_is_symlink(link_path) && read_file(join_path(link_target, "sentinel")) == "preserve" && path_is_dir(join_path(link_storage, ".index")) == false, "index lock refuses " + name + " symlink without changing evidence")
+}
 concurrent := join_path(root, "concurrent"); ensure_dir(concurrent)
 worker := join_path(os_getcwd(), "tests/fixtures/index_concurrency_worker.kujo")
 kujo := env_or("KUJO_BIN", "kujo")
