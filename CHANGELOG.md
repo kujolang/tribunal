@@ -1,8 +1,10 @@
 # Changelog
 
-Current released Tribunal version: **1.0.1**. Unreleased changes and dependency versions below do not change the product version.
+Current Tribunal candidate: **1.0.2 (unreleased)**. The latest published release remains 1.0.1. API and evidence format versions are unchanged.
 
-## Unreleased — September 26 hardening
+## 1.0.2 — Unreleased
+
+### September 26 hardening
 
 - Verify compatibility with checksum-pinned official runtime archives; retain the release workflow source build and every Tribunal gate.
 - Target official Kujo 1.5.0 consistently in CI, the integration matrix, installation docs and measured platform receipts.
@@ -16,7 +18,7 @@ Current released Tribunal version: **1.0.1**. Unreleased changes and dependency 
 - Fail telemetry exports on unreadable or malformed event evidence instead of reporting empty success.
 - Check tracked Kujo sources without scanning generated evidence and release copies.
 
-## Unreleased — September 22 audit
+### September 22 audit
 
 - Screen constructed context and keep rejected model bodies out of stopped evidence.
 - Validate encrypted inventories and aggregate sizes before decryption; bound ciphertext and secondary artifact readers.
