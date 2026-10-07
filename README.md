@@ -1,25 +1,24 @@
 # Tribunal
 
-![Version 1.0.2](https://img.shields.io/badge/version-1.0.2-blue)
-[![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![CI](https://github.com/kujolang/tribunal/actions/workflows/compatibility.yml/badge.svg)](https://github.com/kujolang/tribunal/actions/workflows/compatibility.yml)
-[![Built with Kujo](https://img.shields.io/badge/built%20with-Kujo-6f42c1)](https://github.com/kujolang/kujo)
+[![Version](https://img.shields.io/badge/version-1.0.2-black)](https://github.com/kujolang/tribunal/releases/tag/v1.0.2)
+[![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+[![Built with Kujo](https://img.shields.io/badge/built%20with-Kujo-white.svg)](https://github.com/kujolang/kujo)
 
-Tribunal is a local-first decision review engine whose application runtime is written in the Kujo programming language. It turns a consequential proposal into a durable, adversarial hearing: independent specialist testimony, cross-examination, an explicit fatal-flaw pass, a ruling, and an execution-ready decision packet.
+Tribunal reviews proposals through structured hearings. Independent specialists examine a proposal, question each other's findings, look for fatal flaws, and produce a ruling with a decision packet you can act on.
 
-The result is inspectable evidence, not a disposable chat transcript. Every run is structured, replayable, SHA-256 sealed, optionally RSA-signed, and ready for Kujo ecosystem handoff.
+Each run keeps the prompts, testimony, ruling, and supporting evidence. You can inspect and replay the record, check its SHA-256 manifest, and optionally sign it with RSA.
 
-The previous TypeScript implementation is preserved on the pushed `typescript` branch. `main` has no Node, npm, TypeScript, JavaScript, or provider-SDK runtime dependency.
+The application runs locally and is written in [Kujo](https://github.com/kujolang/kujo). It uses Kujo for process isolation, HTTP, cryptography, JSON Schema validation, and filesystem controls. Python 3 helpers normalize release ZIPs and test raw HTTP requests. The application has no Node, npm, TypeScript, JavaScript, or provider-SDK runtime dependency. The earlier TypeScript implementation remains on the `typescript` branch.
 
-Tribunal is also a practical showcase for [Kujo](https://github.com/kujolang/kujo): orchestration, JSON Schema, cryptography, process isolation, HTTP, compression, filesystem safety, testing, and release-evidence orchestration use Kujo language/runtime capabilities. Deterministic ZIP normalization and the raw HTTP regression harness use Python 3 helpers; the application runtime remains Kujo.
+See the [1.0.2 release and verification receipt](https://github.com/kujolang/tribunal/releases/tag/v1.0.2) and [CI results](https://github.com/kujolang/tribunal/actions/workflows/compatibility.yml).
 
 ## Production-readiness statement
 
-Tribunal 1.0.2 is a patch release. Its supported profile is stable for local or operator-controlled decision evidence. The v1 guarantee covers the documented CLI, Kujo library API, configuration, local evidence, inspection, and portable bundle contracts on platforms with passing release receipts.
+Tribunal 1.0.2 is a patch release for local or operator-controlled decision evidence. The stable v1 contract covers the documented CLI, Kujo library API, configuration, local evidence, inspection, and portable bundles on platforms with passing release receipts.
 
-This is not automatic certification for every enterprise, hosted, regulated, shared-filesystem, identity-provider, custody, or remote-storage environment. Managed identity and signing, policy/trust custody, target storage and filesystem semantics, live-provider behavior, backup/recovery, network controls, and organizational approval must be certified for the actual deployment. The independent security review is commissioned, not completed. See the [release checklist](docs/launch-checklist.md).
+Each deployment must certify its own identity, signing, policy custody, storage, filesystem, live-provider, backup, and network controls, and obtain organizational approval. The independent security review has been commissioned but is not complete.
 
-| Use case | Posture |
+| Use case | Status |
 | --- | --- |
 | Offline mock review and sealed local evidence | ready and fully regression-tested |
 | Single-operator local production use | ready with documented filesystem, key, backup, and verification controls |
@@ -38,9 +37,7 @@ Use Tribunal when a decision deserves more than one model response:
 - product bets and roadmap tradeoffs;
 - agent-generated plans that need explicit evidence and stop conditions.
 
-Three panels cover focused through strategic review: `executioner-only`, `fast-two-model`, and `strategic-five`. The five seats—Judge, Executioner, Builder, Operator, and Market Lens—have distinct authority, non-goals, output contracts, and provider-neutral model preferences.
-
-See [Tribunal v1.0.2](https://github.com/kujolang/tribunal/releases/tag/v1.0.2) for the source archive and its exact-commit verification receipt.
+Choose from three panels: `executioner-only`, `fast-two-model`, or `strategic-five`. The five seats—Judge, Executioner, Builder, Operator, and Market Lens—each have defined responsibilities, limits, output contracts, and model preferences that do not depend on a particular provider.
 
 ## Quick start
 
@@ -54,17 +51,27 @@ export KUJO_BIN=../kujo/target/release/kujo
 ./bin/tribunal list --status completed --limit 5
 ```
 
-Use the current Kujo 1.8.0 runtime, then place `kujo` on `PATH` or set `KUJO_BIN`/`KUJO` to its executable. The tagged 1.0.2 source also passed [supplemental Kujo 1.8.0 verification](docs/compatibility/kujo-1.8.0-2026-10-07.json) on macOS Intel. The original three-platform release reproduction matrix retains its Kujo 1.5.0 pin; use the exact runtime revision in the [integration matrix](docs/INTEGRATION_MATRIX.md) to reproduce those receipts. Mock mode is deterministic, offline, credential-free, and the default. The launcher resolves this repository and executes `kujo run tribunal.kujo`.
+Use Kujo 1.8.0. Put `kujo` on `PATH` or set `KUJO_BIN`/`KUJO` to its executable. The launcher runs `kujo run tribunal.kujo` from this repository. Mock mode is the default: it runs offline, needs no credentials, and produces deterministic results.
 
-Tribunal is also a validated [Kennel package](kennel.toml). See [installation, archive installation, compatibility, upgrade, and rollback](docs/INSTALLATION.md), or import the stable [Kujo library API 1.0](docs/LIBRARY_API.md). The [example gallery](examples/gallery/README.md) covers six common decision types.
+The tagged 1.0.2 source passed [Kujo 1.8.0 verification](docs/compatibility/kujo-1.8.0-2026-10-07.json) on macOS Intel. The original three-platform release checks used Kujo 1.5.0. To reproduce those receipts, use the exact runtime revision in the [integration matrix](docs/INTEGRATION_MATRIX.md).
 
-Supported release platforms are exactly those with v1 candidate receipts in [platform support](docs/PLATFORM_SUPPORT.md). Windows is not supported. For startup failures, run `./bin/tribunal doctor --json`, confirm `KUJO_BIN` is executable, confirm adjacent integrations match the pinned matrix when using them, and verify storage is writable, non-symlinked, and outside external output paths. See [operations](docs/OPERATIONS.md) and [operator recipes](docs/RECIPES.md) for recovery and common workflows.
+Tribunal is a validated [Kennel package](kennel.toml) and provides a stable [Kujo library API](docs/LIBRARY_API.md). See [installation and rollback](docs/INSTALLATION.md) for setup options and the [example gallery](examples/gallery/README.md) for six common decision types.
+
+Platform support requires passing release receipts; see [platform support](docs/PLATFORM_SUPPORT.md). Windows is not supported.
+
+If startup fails:
+
+1. Run `./bin/tribunal doctor --json` and confirm that `KUJO_BIN` is executable.
+2. Check that any adjacent integrations match the pinned integration matrix.
+3. Check that storage is writable, has no symlinks, and is separate from external output paths.
+
+See [operations](docs/OPERATIONS.md) and [operator recipes](docs/RECIPES.md) for recovery steps.
 
 ## Version and compatibility boundaries
 
 - Product version and CLI version are `1.0.2`; `tribunal version` is authoritative for the running checkout.
 - The Kujo library API is independently versioned `1.0.0`. Compatible additions may occur within API 1.x; removing or repurposing public functions or envelope fields requires API 2.0.
-- Evidence, event, signature, bundle, encryption, provenance, configuration, and other schema versions are independent contracts. Product 1.0.0 does not mechanically rename them.
+- Evidence, event, signature, bundle, encryption, provenance, configuration, and other schema versions are independent contracts. Product releases do not change these versions just to match the product number.
 - The supported v1 CLI commands, options, exit meanings, compatibility guarantees, and breaking-change policy are defined in [the v1 compatibility contract](docs/V1_COMPATIBILITY.md). Generated command details live in [the command reference](docs/COMMAND_REFERENCE.md).
 
 ## Command surface
@@ -120,7 +127,7 @@ Exit codes are stable: `0` success, `1` runtime failure, `2` usage/configuration
 
 Every completed hearing records nine stages: docket opening, scope validation, context construction, blind first pass, cross-examination, Executioner kill pass, Judge ruling, decision packet, and durable persistence.
 
-Blind prompts contain only the immutable docket/context and current seat contract. Peer testimony is introduced only after all blind responses are captured.
+Each specialist first sees only the fixed proposal, context, and their seat contract. Tribunal records all blind responses before sharing peer testimony.
 
 Runs are stored under `tribunal-runs/<run-id>/` by default:
 
@@ -135,11 +142,11 @@ record.json               receipt.json
 artifact-manifest.json    signature.json (signed runs only)
 ```
 
-`record.json` is the complete machine-readable hearing; the Markdown artifacts are human/agent-readable; `events.jsonl` is append-oriented evidence. Replay rejects missing, changed, unexpected, oversized, unsafe, or symlinked artifacts.
+`record.json` contains the complete machine-readable hearing. Markdown files provide readable accounts, and `events.jsonl` records events as the hearing proceeds. Replay rejects missing, changed, unexpected, oversized, unsafe, or symlinked artifacts.
 
 ## Live Kujo AI SDK
 
-Tribunal owns the hearing. The adjacent Kujo AI SDK owns provider resolution, network calls, retries, and normalized metadata. Tribunal contains no direct provider endpoint or SDK code.
+Tribunal runs the hearing. The adjacent Kujo AI SDK selects providers, makes network calls, handles retries, and normalizes metadata. Tribunal has no direct provider endpoint or SDK code.
 
 ```bash
 export OPENAI_API_KEY="..."
@@ -149,11 +156,11 @@ export OPENAI_API_KEY="..."
   --kujo-bin ../kujo/target/release/kujo
 ```
 
-Only the selected provider credential and a small operational environment allowlist reach the SDK subprocess. Credentials are never accepted in Tribunal config or persisted contracts. `--offline-fixture` exercises the real SDK bridge without network.
+The SDK subprocess receives only the selected provider credential and a small allowlist of operational environment variables. Tribunal rejects credentials in configuration and saved contracts. Use `--offline-fixture` to test the real SDK bridge without network access.
 
 ## Integrity and trusted handoff
 
-Every completed or stopped run receives a byte-accurate SHA-256 manifest. Optional signatures bind the manifest digest, run ID, algorithm, key fingerprint, and signing time in a versioned RSA-PKCS#1 v1.5 SHA-256 envelope.
+Tribunal creates a SHA-256 manifest of the exact artifact bytes for every completed or stopped run. Optional signatures bind the manifest digest, run ID, algorithm, key fingerprint, and signing time in a versioned RSA-PKCS#1 v1.5 SHA-256 envelope.
 
 ```bash
 ./bin/tribunal keys --bits 4096 \
@@ -169,13 +176,17 @@ Every completed or stopped run receives a byte-accurate SHA-256 manifest. Option
   --require-signature
 ```
 
-Never commit private keys. For managed custody, `seal-provider` invokes an external Kujo HSM/KMS adapter with an opaque key reference and federated workload identity. The included Vault Transit adapter authenticates with AWS, Azure, GitHub Actions, or a generic workload-token file, and returns audit/key-version evidence without private key material entering Tribunal. The live conformance harness must pass before declaring a deployment certified. Versioned trust policies separately enforce key status, validity, rotation, revocation, and target permissions.
+Never commit private keys. For managed signing, `seal-provider` calls an external Kujo HSM/KMS adapter with an opaque key reference and federated workload identity. Private key material stays outside Tribunal.
 
-Portable evidence can use framed, streaming AES-256-GCM envelope encryption with independent primary and recovery RSA-OAEP recipients. Every frame authenticates its order and length, an authenticated final frame detects truncation, and output is atomically published. Signed manifest integrity remains verifiable without decrypting evidence and rekeying does not rewrite ciphertext. Remote artifacts stream as binary request and response files with digest-bound receipts and no base64 expansion. Live run storage should use an organization-approved encrypted volume or managed encrypted filesystem.
+The included Vault Transit adapter authenticates with AWS, Azure, GitHub Actions, or a generic workload-token file. It returns audit and key-version evidence. Its live conformance harness must pass before a deployment is certified. Separate, versioned trust policies enforce key status, validity, rotation, revocation, and target permissions.
+
+Portable evidence supports streaming AES-256-GCM encryption with separate primary and recovery RSA-OAEP recipients. Each frame authenticates its order and length; an authenticated final frame detects truncation. Tribunal publishes the output atomically. You can verify signed manifest integrity without decrypting the evidence, and rotate recipient keys without rewriting the ciphertext.
+
+Remote artifacts stream through binary request and response files. Receipts bind them to their digests, without base64 expansion. Use an organization-approved encrypted volume or managed encrypted filesystem for live run storage.
 
 Signed runs can be ingested idempotently into Kujo RunLedger or CaseFile. The source run remains immutable; downstream receipts are kept outside its sealed evidence directory.
 
-For the normal production verification boundary, use the combined audit command:
+Use the combined audit command to verify production evidence:
 
 ```bash
 ./bin/tribunal audit <run-id> \
@@ -185,7 +196,7 @@ For the normal production verification boundary, use the combined audit command:
   --json
 ```
 
-It fails closed unless artifact integrity, executable evidence contracts, current trust policy, and the required signature all pass.
+The command succeeds only when artifact integrity, evidence contracts, the current trust policy, and the required signature all pass.
 
 Optional PackWrite context enrichment is deterministic and redacted:
 
@@ -196,32 +207,37 @@ Optional PackWrite context enrichment is deterministic and redacted:
 
 ## Enterprise controls
 
-Tribunal 1.0.2 includes:
+Tribunal includes controls for access, storage, recovery, and audit. Each deployment still needs the certification described above.
 
-- default-deny service/user identity and role authorization;
-- external HSM/KMS signing-provider contracts and v1.2 signer provenance;
-- trusted-key lifecycle and allowed-target policies;
-- signed bundle export/import and conditional versioned local/HTTP artifact stores;
-- atomic per-run locks, stale-writer recovery, and interrupted-seal rollback journals;
-- immutable retention metadata, external post-seal legal holds, whole-run deletion, and tombstones;
-- external JSONL/HTTP metrics and audit export;
-- executable Kujo JSON Schema validation for every emitted contract;
-- provider output type/range/enum validation and deterministic property corpora;
-- cursor pagination, large-hearing/inventory budgets, and tag release publication;
-- an authorized offline read-only HTML dashboard without introducing a network API;
-- a combined audit report, exclusive run creation, non-stealing lock acquisition, bounded imports, pre-deletion tombstones, and secure external-output boundaries;
-- HTTPS-by-default remote endpoints, with plain HTTP permitted only for loopback adapter development.
-- a Vault Transit JWT workload-identity adapter plus live denial/retry/rotation/audit certification harness;
-- tenant- and region-bound authenticated HTTP-store requests, bounded retry, staging cleanup, and a live failure/backup certification harness;
-- signed sequence chains with external rollback anchors for policies, governance, tombstones, and store indexes;
-- AES-256-GCM encrypted decision packets with RSA-OAEP primary/recovery key wrapping and ciphertext-preserving rotation;
-- a fail-closed algorithm registry defining RSA-PSS and Ed25519 migration targets while preserving legacy RSA verification.
-- an atomic 100-entry sharded run index with verify/repair/rebuild and cursor-bounded analytics, telemetry, dashboard, and bulk verification;
-- runtime-gated blind concurrency evidence, stable idempotency keys, explicit checkpoints, resumable stopped hearings, immutable lineage, and compare/re-review;
-- signed custom panel catalogs, safe prompt templates, provider-neutral signed context connectors, portable packet templates, and explicit signed organization-policy checks;
-- canonical filesystem inspection, entropy and organization secret patterns, malicious remote-peer fixtures, and a regression-bound independent-review register;
-- a stable Kujo library API, Kennel package, generated shell completions/man page/command reference, six-example gallery, and accessibility gate;
-- reproducible archives, SPDX SBOM, in-toto/SLSA-style provenance, pinned runtime/platform CI, ecosystem certification matrix, and privacy-preserving opt-in adoption contracts.
+### Identity and trust
+
+- Default-deny service and user authorization, with identity and role permissions.
+- External HSM/KMS signing contracts, v1.2 signer provenance, and a Vault Transit workload-identity adapter. A live harness checks denial, retries, rotation, and audit behavior.
+- Trust policies for key lifecycle and allowed targets. The algorithm registry rejects unsupported algorithms and defines RSA-PSS and Ed25519 migration targets while preserving legacy RSA verification.
+- Signed sequence chains and external rollback anchors for policies, governance, tombstones, and store indexes.
+
+### Storage and recovery
+
+- Signed bundle import/export and versioned local or HTTP stores with conditional publication. HTTP requests bind tenant and region, limit retries, and clean up staging files; a live harness checks failures and backup recovery.
+- AES-256-GCM packet encryption with RSA-OAEP primary and recovery keys. Key rotation preserves ciphertext.
+- Exclusive run creation, atomic per-run locks, explicit stale-writer recovery, and journals that roll back interrupted sealing. Normal lock acquisition never steals an existing lock.
+- Immutable retention metadata, external legal holds, and whole-run deletion with a tombstone written before deletion begins.
+- An atomic run index with 100-entry shards, verification, repair, and rebuild. Cursor-based limits bound analytics, telemetry, dashboards, and bulk verification.
+- Bounded imports and large-hearing inventories, protected external-output paths, and HTTPS remote endpoints. Plain HTTP is limited to loopback adapter development.
+
+### Hearings and audit
+
+- Stable idempotency keys, explicit checkpoints, resumable stopped hearings, immutable lineage, and compare/re-review commands. Blind concurrency requires runtime evidence.
+- Signed custom panel catalogs, prompt templates with safety checks, signed context connectors that work across providers, portable packet templates, and explicit signed organization-policy checks.
+- JSON Schema checks for every emitted contract, provider output validation, and deterministic property tests.
+- Filesystem inspection that resolves canonical paths, entropy-based and organization-defined secret checks, malicious remote-peer fixtures, and regression requirements for accepted independent-review findings.
+- External JSONL/HTTP metrics and audit export, a combined audit command, and an authorized, read-only offline HTML dashboard with an accessibility gate.
+
+### Development and releases
+
+- A stable Kujo library API, Kennel package, generated shell completions, man page, command reference, and six-example gallery.
+- Reproducible archives, SPDX SBOM, in-toto/SLSA-style provenance, pinned runtime/platform CI, tag publication, and an integration certification matrix.
+- Opt-in adoption contracts that preserve privacy.
 
 See [Security](SECURITY.md), [Operations](docs/OPERATIONS.md), and [Enterprise readiness](docs/ENTERPRISE_READINESS.md) before production adoption. Machine-readable contracts live in [`schemas/`](schemas/).
 
@@ -259,11 +275,22 @@ done
 
 Check new, untracked Kujo files explicitly before staging them. The tracked inventory avoids recursively checking generated evidence and unpacked release copies.
 
-The offline gates cover every tracked Kujo source, four main test suites plus focused hardening regressions, 35+ executable schemas, signing/tamper/recovery, authorization, governance, encrypted and streamed bundles, provenance rollback, bounded authenticated stores, index repair, resumed lineage, custom catalogs/connectors, policy checks, adversarial peers, accessibility, telemetry/dashboard isolation, PackWrite, RunLedger, CaseFile, the AI SDK fixture, Spec, Concord, Eval, Kennel, gallery, and performance/scale/chaos budgets. See [Contributing](CONTRIBUTING.md).
+The offline gates check source files, tests, schemas, security and recovery boundaries, integrations, accessibility, and performance budgets. They cover signing and tampering, authorization, governance, encrypted bundles, provenance rollback, stores, indexes, resumed hearings, custom panels and connectors, policy checks, and telemetry isolation. See [Contributing](CONTRIBUTING.md) for the full workflow.
 
 ## Repository layout
 
-Application logic lives under [`src/`](src/). The only root Kujo files are the thin runtime entrypoint [`tribunal.kujo`](tribunal.kujo) and the Spec contract [`tribunal.spec.yml`](tribunal.spec.yml). `kujo.toml`, `VERSION`, the license, security policy, contribution guide, changelog, and README remain at the root because they are conventional project/release metadata. Runtime bridges are under `src/bridges/`, executable gates under `scripts/`, schemas under `schemas/`, fixtures under `tests/`, and user examples under `examples/`.
+| Path | Contents |
+| --- | --- |
+| [`tribunal.kujo`](tribunal.kujo) | Runtime entrypoint |
+| [`tribunal.spec.yml`](tribunal.spec.yml) | Spec contract |
+| [`src/`](src/) | Application code, including runtime bridges in `src/bridges/` |
+| [`scripts/`](scripts/) | Verification gates and release helpers |
+| [`schemas/`](schemas/) | Machine-readable contracts |
+| [`tests/`](tests/) | Tests and fixtures |
+| [`examples/`](examples/) | Example decisions and workflows |
+| [`docs/`](docs/) | Architecture, operations, and reference documentation |
+
+Build configuration, version, license, and project guides live at the root.
 
 ## Project map
 
@@ -273,7 +300,6 @@ Application logic lives under [`src/`](src/). The only root Kujo files are the t
 - [Enterprise readiness](docs/ENTERPRISE_READINESS.md)
 - [Threat model](docs/THREAT_MODEL.md)
 - [Authorization](docs/AUTHORIZATION.md)
-- [Artifact stores and bundles](docs/ARTIFACT_STORES.md)
 - [Vault Transit certification](docs/VAULT_TRANSIT.md)
 - [HTTP store certification](docs/HTTP_STORE_CERTIFICATION.md)
 - [Artifact stores and encrypted evidence](docs/ARTIFACT_STORES.md)
@@ -297,4 +323,6 @@ Application logic lives under [`src/`](src/). The only root Kujo files are the t
 
 ## Boundaries
 
-JSON is currently the only config format. Replay verifies recorded evidence and intentionally does not rerun models. Tribunal publishes provider contracts for HSM/KMS and HTTP immutable stores; each deployment must supply and certify its authenticated adapter. The dashboard is an offline projection by design. No network API or hosted UI is exposed until transport authentication, tenant isolation, rate limiting, and deployment authorization are selected and threat-modeled.
+Configuration uses JSON. Replay verifies recorded evidence without rerunning models. Each deployment must supply and certify authenticated adapters for its HSM/KMS and HTTP immutable stores.
+
+The dashboard is an offline view of recorded evidence. Tribunal exposes no network API or hosted UI. Adding either requires transport authentication, tenant isolation, rate limits, deployment authorization, and a threat model for those controls.
