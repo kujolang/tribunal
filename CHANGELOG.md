@@ -4,6 +4,8 @@ Current Tribunal candidate: **1.0.2 (unreleased)**. The latest published release
 
 ## 1.0.2 — Unreleased
 
+- Package only clean, committed release inputs; exclude generated Python caches and reject mismatched source revisions.
+
 ### September 26 hardening
 
 - Verify compatibility with checksum-pinned official runtime archives; retain the release workflow source build and every Tribunal gate.

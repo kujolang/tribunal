@@ -5,10 +5,11 @@ from src.version import VERSION
 home := path_absolute(env_or("TRIBUNAL_HOME", ".")); output := env_or("TRIBUNAL_RELEASE_ARCHIVE_OUTPUT", join_path(env_or("TMPDIR", "/tmp"), "tribunal-release-archive"))
 epoch := env_or("SOURCE_DATE_EPOCH", ""); revision := env_or("TRIBUNAL_SOURCE_REVISION", "")
 if epoch == "" || revision == "" || path_is_dir(output) || file_exists(output) { print("SOURCE_DATE_EPOCH, TRIBUNAL_SOURCE_REVISION, and a new output path are required."); exit(2) }
+python := env_or("PYTHON_BIN", "python3")
+inventory := spawn_process([python, join_path(home, "scripts/release_inventory.py"), "--repository", home, "--revision", revision], {"inherit_env": true, "timeout_ms": 120000, "max_output_bytes": 1048576})
+if inventory.success != true { print("Release inventory failed: " + inventory.stderr); exit(1) }
+files := parse_json(inventory.stdout)
 ensure_dir(output); stage := join_path(output, "tribunal-v" + VERSION); ensure_dir(stage)
-roots := ["bin", "src", "schemas", "scripts", "tests", "examples", "docs", "completions", "man", ".github"]
-files := ["tribunal.kujo", "tribunal.spec.yml", "kujo.toml", "kennel.toml", "VERSION", "README.md", "CHANGELOG.md", "CONTRIBUTING.md", "SECURITY.md", "LICENSE", ".gitignore"]
-for root in roots { for name in relative_files(join_path(home, root), "") { if path_is_symlink(join_path(join_path(home, root), name)) == false { files = push(files, root + "/" + name) } } }
 files = sort(files); mut sbom_files := []
 for name in files {
     if safe_relative_path(name) == false { remove_tree(output); print("Unsafe release path: " + name); exit(1) }
@@ -27,7 +28,7 @@ mut sums := ""
 for name in relative_files(stage, "") { sums = sums + sha256_file(join_path(stage, name)) + "  " + name + "\n" }
 write_text(join_path(stage, "SHA256SUMS"), sums)
 archive_one := join_path(output, "tribunal-v" + VERSION + ".zip"); archive_two := join_path(output, "tribunal-v" + VERSION + ".rebuild.zip")
-python := env_or("PYTHON_BIN", "python3"); zipper := join_path(home, "scripts/deterministic_zip.py")
+zipper := join_path(home, "scripts/deterministic_zip.py")
 zip_options := {"inherit_env": true, "timeout_ms": 120000, "max_output_bytes": 1048576}
 first := spawn_process([python, zipper, "--source", stage, "--output", archive_one, "--epoch", epoch], zip_options)
 second := spawn_process([python, zipper, "--source", stage, "--output", archive_two, "--epoch", epoch], zip_options)

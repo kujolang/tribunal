@@ -19,3 +19,5 @@ Local Workcell proof is blocked: neither the default Colima Docker socket nor th
 ## Unreleased 1.0.2 preparation
 
 The current checkout prepares 1.0.2 without a release or tag. Use [Kujo 1.5 Workcell verification](WORKCELL_REVIEW.md) for current container evidence. Historical receipts above are not current-candidate certification. The release workflow supports verification-only dispatch with `publish_release=false`; its publish job must remain skipped until release-owner approval.
+
+Release archive creation requires a clean Git checkout at `TRIBUNAL_SOURCE_REVISION`. Only committed regular files from the release roots are selected. Ignored caches and untracked inputs are excluded; changed tracked inputs, mismatched source revisions and committed symlinks fail before output creation. This keeps local test caches out of the archive and binds its contents to reviewed source. Repackaging an extracted ZIP is not a substitute for the source checkout.
