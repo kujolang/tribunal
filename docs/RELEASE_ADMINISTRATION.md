@@ -72,7 +72,7 @@ Verify with `gh api repos/kujolang/tribunal/environments/release` and an intenti
 
 ## Runner and credentials
 
-The tag-triggered release workflow uses self-hosted runner `tribunal-robertdevore-mac` with labels `self-hosted` and `kujo`. `KUJO_BIN` resolves to the pinned Kujo 1.0.0 binary, and the workflow's adjacent integration worktrees are provisioned at the exact matrix revisions.
+The tag-triggered release workflow uses isolated hosted Ubuntu. `KUJO_BIN` resolves to the pinned Kujo 1.5.0 build, and adjacent integration checkouts use the exact matrix revisions.
 
 `KUJO_ECOSYSTEM_TOKEN` is optional while every pinned integration repository remains public and readable by the scoped `github.token`. Exact-candidate hosted run `31341698867` proved that fallback. Configure the secret only if a pinned repository becomes inaccessible to the workflow token, and grant read-only access to the minimum repository set.
 

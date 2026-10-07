@@ -12,8 +12,10 @@ mut names := {}
 for integration in matrix["integrations"] {
     if has_key(names, integration["name"]) == 1 { failures = push(failures, "duplicate:" + integration["name"]) }
     names[integration["name"]] := true
+    expected_version := "1.0.0"
+    if integration["name"] == "Kujo Runtime" { expected_version = "1.5.0" }
     resolved := join_path(home, integration["path"])
-    if path_is_dir(resolved) == false || len(integration["revision"]) != 40 || integration["version"] != "1.0.0" || trim(integration["gate"]) == "" || trim(integration["scope"]) == "" {
+    if path_is_dir(resolved) == false || len(integration["revision"]) != 40 || integration["version"] != expected_version || trim(integration["gate"]) == "" || trim(integration["scope"]) == "" {
         failures = push(failures, "invalid:" + integration["name"])
         continue
     }

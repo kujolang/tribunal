@@ -1,0 +1,158 @@
+{
+  "sourceRevision": "f7ac1dc07c78a3bfe7b2f89dcac279d04c9023eb",
+  "runtimeVersion": "1.5.0",
+  "runtimeRevision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+  "runtimeSha256": "3e1e475ea165c8b4a714495596fe8661ad970b27119ad44f1db4d9779f7f05d4",
+  "performance": [
+    {
+      "command": [
+        "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/audit-20260925/kujo-v1.5.0/kujo",
+        "run",
+        "scripts/scale_perf_gate.kujo",
+        "--interpreter"
+      ],
+      "exit": 0,
+      "seconds": 19.396,
+      "log": ".tribunal/followup-20260926/scale_perf_gate.log",
+      "result": {
+        "artifactBytes": 7800198,
+        "configuredWorkingSetInputBudgetBytes": 18874368,
+        "contextBytes": 512220,
+        "docketBytes": 256082,
+        "hearingLatencyBudgetMs": 45000,
+        "hearingMs": 8038,
+        "inventoryRuns": 250,
+        "memoryMeasurement": "Budget is a release limit; Kujo currently exposes no in-process peak RSS metric. Input and artifact bytes are measured directly.",
+        "ok": true,
+        "pageSize": 100,
+        "paginationLatencyBudgetMs": 6000,
+        "panel": "strategic-five",
+        "peakResidentMemoryBudgetBytes": 268435456,
+        "schemaVersion": "1.0.0",
+        "targetDocketBytes": 262144,
+        "twoPageLatencyMs": 1937
+      }
+    },
+    {
+      "command": [
+        "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/audit-20260925/kujo-v1.5.0/kujo",
+        "run",
+        "scripts/index_perf_gate.kujo",
+        "--interpreter"
+      ],
+      "exit": 0,
+      "seconds": 8.186,
+      "log": ".tribunal/followup-20260926/index_perf_gate.log",
+      "result": {
+        "corpusRuns": 250,
+        "indexBytes": 163084,
+        "indexPageSize": 100,
+        "indexPages": 3,
+        "memoryContract": "Normal listing, stats folds, telemetry, dashboard, and bulk verification load at most one 100-run index shard plus one bounded result page; full scans are restricted to explicit rebuild/verify/repair operations.",
+        "ok": true,
+        "projectionPageLimit": 100,
+        "rebuildBudgetMs": 15000,
+        "rebuildMs": 1296,
+        "schemaVersion": "1.0.0",
+        "statsBudgetMs": 15000,
+        "statsMs": 2651,
+        "twoPageBudgetMs": 3000,
+        "twoPageMs": 645
+      }
+    },
+    {
+      "command": [
+        "/Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/audit-20260925/kujo-v1.5.0/kujo",
+        "run",
+        "scripts/load_chaos_gate.kujo",
+        "--interpreter"
+      ],
+      "exit": 0,
+      "seconds": 31.033,
+      "log": ".tribunal/followup-20260926/load_chaos_gate.log",
+      "result": {
+        "acquired": 500,
+        "chaos": "stale-owner-after-termination",
+        "contentions": 500,
+        "cycles": 500,
+        "elapsedMs": 30972,
+        "maxContentionWaitMs": 31,
+        "ok": true,
+        "operationsPerSecond": 16,
+        "recoveryMs": 2,
+        "recoveryTimeObjectiveMs": 5000,
+        "schemaVersion": "1.0.0",
+        "throughputFloor": 15
+      }
+    }
+  ],
+  "receiveBoundary": {
+    "passed": 3,
+    "receiveLimitBytes": 8388608,
+    "cases": [
+      {
+        "bytes": 8388608,
+        "error": "",
+        "ok": true,
+        "path": "/exact"
+      },
+      {
+        "bytes": 0,
+        "error": "HTTP request failed: response body exceeds maximum network body size (8388609 bytes > 8388608 bytes)",
+        "ok": false,
+        "path": "/announced-overflow"
+      },
+      {
+        "bytes": 0,
+        "error": "HTTP request failed: response body exceeds maximum network body size (8388609 bytes > 8388608 bytes)",
+        "ok": false,
+        "path": "/unannounced-overflow"
+      }
+    ]
+  },
+  "workcell": {
+    "status": "blocked",
+    "reason": "Stopped new VM creation when disk availability fell to 1.8 GiB; only newly created incomplete Lima instance removed, availability recovered to 4.4 GiB. Docker context unchanged.",
+    "startCommand": "colima start kujo-workcell --activate=false",
+    "cleanupCommand": "LIMA_HOME=\"$HOME/.colima/_lima\" limactl delete --force colima-kujo-workcell",
+    "closestProof": "Three-platform official Kujo 1.5 CI and offline correctness/archive proof from prior hosted receipt; no containment certification."
+  },
+  "logs": [
+    {
+      "path": ".tribunal/followup-20260926/colima-cleanup.log",
+      "sha256": "cd27d8961ed2cf6425cba2affd74f23c40ce21808d44ab2047fd623d8c0df1fe"
+    },
+    {
+      "path": ".tribunal/followup-20260926/colima-start.log",
+      "sha256": "daf7f04a2259ce9d14b8a097e0ed1352fbf0ffed43c4ad6ca50c963310fd70dc"
+    },
+    {
+      "path": ".tribunal/followup-20260926/colima-stop.log",
+      "sha256": "64084f85909dd58c73f5d17397d42bccb7ce96a794dc375150c439f28945fed3"
+    },
+    {
+      "path": ".tribunal/followup-20260926/http-receive-final.log",
+      "sha256": "ca603dd846c04f866dfe6b2da0f05b8687b0db02efb0739f1b136bb541027ace"
+    },
+    {
+      "path": ".tribunal/followup-20260926/http-receive-second.log",
+      "sha256": "8c9f048565bf93a2ae47cf70de99ad825c10f5f68d25770b1dd4d891bae3b6ca"
+    },
+    {
+      "path": ".tribunal/followup-20260926/http-receive.log",
+      "sha256": "8c9f048565bf93a2ae47cf70de99ad825c10f5f68d25770b1dd4d891bae3b6ca"
+    },
+    {
+      "path": ".tribunal/followup-20260926/index_perf_gate.log",
+      "sha256": "e93b3011222033294a1a92a007edea553c578e579ffd5db2f49e55086c75c630"
+    },
+    {
+      "path": ".tribunal/followup-20260926/load_chaos_gate.log",
+      "sha256": "f8d7aca407a64e3825aa02e707629f8e232408933c0eca1ba7225653d495ed14"
+    },
+    {
+      "path": ".tribunal/followup-20260926/scale_perf_gate.log",
+      "sha256": "8fb1d9e11d7c5fa81519261aadd630369ac15b94696fe90a758fe0c78bb07063"
+    }
+  ]
+}
