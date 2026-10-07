@@ -25,3 +25,7 @@ See [Kujo 1.5 Workcell verification](WORKCELL_REVIEW.md) for the container recip
 Release archive creation requires a clean Git checkout at `TRIBUNAL_SOURCE_REVISION`. Only committed regular files from the release roots are selected. Ignored caches and untracked inputs are excluded; changed tracked inputs, mismatched source revisions and committed symlinks fail before output creation. This keeps local test caches out of the archive and binds its contents to reviewed source. Repackaging an extracted ZIP is not a substitute for the source checkout.
 
 The preserved pre-release checklist and candidate evidence are in [the 1.0.2 review record](RELEASE_REVIEW_1.0.2.md). Final candidate checks and package receipts are recorded on PR #8.
+
+## Supplemental Kujo 1.8.0 verification
+
+On 2026-10-07, the unchanged `v1.0.2` source (`567518a2d9d39ff77da52b5fb1fca4546984c197`) passed 104 verification commands and the tagged archive smoke test using the checksum-verified official Kujo 1.8.0 macOS Intel binary. The [receipt](compatibility/kujo-1.8.0-2026-10-07.json) records commands, exits, log digests and runtime identity. No tests, assertions or budgets were changed. This adds current-runtime evidence for the measured host; it does not relabel the historical integration source pins or imply unmeasured 1.8 platform certification.
