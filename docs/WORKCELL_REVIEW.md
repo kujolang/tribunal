@@ -22,6 +22,31 @@ docker build --platform linux/amd64 \
 
 The recipe pins the Ubuntu amd64 manifest and reuses the checksum-pinned official Kujo installer, including version validation. It installs required launcher/runtime utilities and defaults to an unprivileged image identity. Workcell additionally chooses the host-matching unprivileged identity, drops all capabilities, forbids privilege escalation, disables networking, mounts a read-only root, and applies the definition's resource limits. Package repository contents are not snapshot-pinned: preserve the final image ID and package inventory; this is an identified proof image, not a claim of reproducible OS package resolution. Remove only your temporary build context after preserving required logs.
 
+## Pinned Workcell host endpoint
+
+Workcell 1.0.0 strips host Docker environment variables from its execution subprocess. Supplying only `DOCKER_HOST` therefore makes preflight and execution select different daemons. Keep its environment restrictions intact and pass the trusted host endpoint as Docker CLI options via a task-local wrapper:
+
+```bash
+review="$PWD/.tribunal/workcell-review"
+mkdir -p "$review/docker-cli" "$review/docker-config" "$review/workspaces"
+export DOCKER_HOST="unix://$HOME/.colima/kujo-workcell/docker.sock"
+export DOCKER_CONFIG="$review/docker-config"
+python3 - "$review/docker-cli/docker" "$DOCKER_HOST" "$DOCKER_CONFIG" <<'PYTHON'
+import pathlib, shlex, shutil, sys
+real_docker = shutil.which("docker")
+assert real_docker
+wrapper = pathlib.Path(sys.argv[1])
+command = shlex.join([real_docker, "--host", sys.argv[2], "--config", sys.argv[3]])
+wrapper.write_text('#!/bin/sh\nif [ "$1" = run ]; then\n  shift\n  exec ' + command
+                   + ' run --pull=never "$@"\nfi\nexec ' + command + ' "$@"\n')
+wrapper.chmod(0o755)
+PYTHON
+export PATH="$review/docker-cli:$PATH"
+export TMPDIR="$review/workspaces"
+```
+
+Create this wrapper before adding its directory to PATH; do not resolve a previous wrapper as `real_docker`. It supplies host-control arguments only to the Docker client and enforces `run --pull=never` for these local-image proofs. It does not pass host credentials or Docker socket access into the workload, change the active context, relax the environment denylist, or increase the workload timeout. Preserve its bytes/digest with the receipt. A first attempt without this wrapper timed out before container creation; that failed receipt remains in the October review record.
+
 ## Success and failure evidence
 
 Set `WORKCELL_BIN` to the pinned Workcell launcher and `KUJO` to the verified host runtime. On macOS, set `TMPDIR` to a writable directory under the repository's ignored `.tribunal/` directory so Docker can mount the disposable workspace. Preserve each run ID and verify both manifests:
