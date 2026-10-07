@@ -22,6 +22,8 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-24.04
+    outputs:
+      source_revision: ${{ steps.source.outputs.revision }}
     permissions:
       contents: read
       id-token: write
@@ -36,6 +38,19 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           path: tribunal
+          fetch-depth: 0
+      - name: Resolve approved release source
+        id: source
+        env:
+          PUBLISH_RELEASE: ${{ inputs.publish_release || false }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          python3 -m unittest discover -s tests -p 'test_release_source.py'
+          bash scripts/release_source.sh >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          path: tribunal
+          ref: ${{ steps.source.outputs.revision }}
           fetch-depth: 0
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -110,6 +125,7 @@ jobs:
 
       - name: Verify release inputs and tag safety
         env:
+          SOURCE_REVISION: ${{ steps.source.outputs.revision }}
           PUBLISH_RELEASE: ${{ inputs.publish_release || false }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
@@ -119,6 +135,7 @@ jobs:
           if [[ -n "$TRIBUNAL_SIGNING_PROVIDER_CONFIG" ]]; then
             test -f "$TRIBUNAL_SIGNING_PROVIDER_CONFIG"
           fi
+          test "$(git rev-parse HEAD)" = "$SOURCE_REVISION"
           expected_tag="v$(tr -d '\r\n' < VERSION)"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             test "$GITHUB_REF_NAME" = "$expected_tag"
@@ -126,7 +143,7 @@ jobs:
           fi
           if [[ "$PUBLISH_RELEASE" == "true" ]]; then
             test "$RELEASE_TAG" = "$expected_tag"
-            test "$(git rev-parse "$RELEASE_TAG^{commit}")" = "$GITHUB_SHA"
+            test "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" = "$SOURCE_REVISION"
           fi
 
       - name: Run Kujo release gates
@@ -163,7 +180,7 @@ jobs:
         if: ${{ env.TRIBUNAL_SIGNING_PROVIDER_CONFIG != '' }}
         env:
           TRIBUNAL_RELEASE_OUTPUT: ${{ runner.temp }}/tribunal-release-evidence-${{ github.run_id }}
-          TRIBUNAL_SOURCE_REVISION: ${{ github.sha }}
+          TRIBUNAL_SOURCE_REVISION: ${{ steps.source.outputs.revision }}
         run: |
           test ! -e "$TRIBUNAL_RELEASE_OUTPUT"
           "$KUJO_BIN" run scripts/release_evidence.kujo --interpreter
@@ -173,10 +190,10 @@ jobs:
       - name: Create and smoke-test reproducible source archive
         env:
           TRIBUNAL_RELEASE_ARCHIVE_OUTPUT: ${{ runner.temp }}/tribunal-release-archive-${{ github.run_id }}
-          TRIBUNAL_SOURCE_REVISION: ${{ github.sha }}
+          TRIBUNAL_SOURCE_REVISION: ${{ steps.source.outputs.revision }}
         run: |
           test ! -e "$TRIBUNAL_RELEASE_ARCHIVE_OUTPUT"
-          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$GITHUB_SHA")"
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
           "$KUJO_BIN" run scripts/release_archive.kujo --interpreter
           "$KUJO_BIN" run scripts/archive_smoke.kujo --interpreter "$TRIBUNAL_RELEASE_ARCHIVE_OUTPUT/tribunal-v$(cat VERSION).zip"
           test -f "$TRIBUNAL_RELEASE_ARCHIVE_OUTPUT/release-archive-receipt.json"
@@ -211,6 +228,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
+          ref: ${{ needs.verify.outputs.source_revision }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           pattern: tribunal-v${{ github.run_id }}-*
@@ -219,11 +237,13 @@ jobs:
       - name: Publish verified existing tag
         env:
           GH_TOKEN: ${{ github.token }}
+          SOURCE_REVISION: ${{ needs.verify.outputs.source_revision }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_REVISION"
           expected_tag="v$(tr -d '\r\n' < VERSION)"
           test "$RELEASE_TAG" = "$expected_tag"
-          test "$(git rev-parse "$RELEASE_TAG^{commit}")" = "$GITHUB_SHA"
+          test "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" = "$SOURCE_REVISION"
           gh release view "$RELEASE_TAG" >/dev/null 2>&1 || gh release create "$RELEASE_TAG" --verify-tag --title "Tribunal $RELEASE_TAG" --generate-notes
           assets=(
             "$RUNNER_TEMP/tribunal-release/tribunal-$RELEASE_TAG.zip"

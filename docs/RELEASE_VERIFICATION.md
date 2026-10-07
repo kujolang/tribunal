@@ -29,3 +29,7 @@ The preserved pre-release checklist and candidate evidence are in [the 1.0.2 rev
 ## Supplemental Kujo 1.8.0 verification
 
 On 2026-10-07, the unchanged `v1.0.2` source (`567518a2d9d39ff77da52b5fb1fca4546984c197`) passed 104 verification commands and the tagged archive smoke test using the checksum-verified official Kujo 1.8.0 macOS Intel binary. The [receipt](compatibility/kujo-1.8.0-2026-10-07.json) records commands, exits, log digests and runtime identity. No tests, assertions or budgets were changed. This adds current-runtime evidence for the measured host; it does not relabel the historical integration source pins or imply unmeasured 1.8 platform certification.
+
+## Protected-main publication
+
+Dispatch `release.yml` from `main` with `publish_release=true` and the existing `release_tag`. The workflow validates that the exact tag matches VERSION and is an ancestor of the dispatch commit, then checks out that immutable source for every gate and archive operation. The publish job checks out the verified source output and checks the tag again. Workflow identity and archive source identity are separate. The protected `release` environment and reviewer approval remain required; tag-triggered runs verify only. No tag movement or environment-policy change is needed when documentation advances main after tagging.
