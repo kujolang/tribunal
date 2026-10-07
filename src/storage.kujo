@@ -62,9 +62,11 @@ func with_index_lock(storage_dir, recovery, operation) {
             # separate existence/type probes without creating an invalid lock.
             non_directory := false
             unsafe := false
+            # Consume native error values as conditions before changing flags;
+            # assigning an error can retain it even after the catch executes.
             try {
-                unsafe = path_is_symlink(lock) == true
-                if unsafe == false { metadata := io_file_metadata(lock); non_directory = metadata["is_dir"] == false }
+                if path_is_symlink(lock) { unsafe = true }
+                if unsafe == false { metadata := io_file_metadata(lock); if metadata["is_dir"] == false { non_directory = true } }
                 probe_error = ""
             } except err { probe_error = to_string(err) }
             if unsafe { throw("Run-index lock is unsafe.") }
