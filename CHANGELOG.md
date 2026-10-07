@@ -1,8 +1,8 @@
 # Changelog
 
-Current Tribunal candidate: **1.0.2 (unreleased)**. The latest published release remains 1.0.1. API and evidence format versions are unchanged.
+Current Tribunal version: **1.0.2**. API and evidence format versions are unchanged.
 
-## 1.0.2 — Unreleased
+## 1.0.2 — 2026-10-07
 
 - Package only clean, committed release inputs; exclude generated Python caches and reject mismatched source revisions.
 

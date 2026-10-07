@@ -15,7 +15,7 @@ Tribunal is also a practical showcase for [Kujo](https://github.com/kujolang/kuj
 
 ## Production-readiness statement
 
-This checkout prepares unreleased Tribunal 1.0.2. Its supported profile is stable for local or operator-controlled decision evidence. The v1 guarantee covers the documented CLI, Kujo library API, configuration, local evidence, inspection, and portable bundle contracts on platforms with passing release receipts.
+Tribunal 1.0.2 is a patch release. Its supported profile is stable for local or operator-controlled decision evidence. The v1 guarantee covers the documented CLI, Kujo library API, configuration, local evidence, inspection, and portable bundle contracts on platforms with passing release receipts.
 
 This is not automatic certification for every enterprise, hosted, regulated, shared-filesystem, identity-provider, custody, or remote-storage environment. Managed identity and signing, policy/trust custody, target storage and filesystem semantics, live-provider behavior, backup/recovery, network controls, and organizational approval must be certified for the actual deployment. The independent security review is commissioned, not completed. See the [release checklist](docs/launch-checklist.md).
 
@@ -40,7 +40,7 @@ Use Tribunal when a decision deserves more than one model response:
 
 Three panels cover focused through strategic review: `executioner-only`, `fast-two-model`, and `strategic-five`. The five seats—Judge, Executioner, Builder, Operator, and Market Lens—have distinct authority, non-goals, output contracts, and provider-neutral model preferences.
 
-The latest published release remains 1.0.1; this candidate has not been tagged or published.
+See [Tribunal v1.0.2](https://github.com/kujolang/tribunal/releases/tag/v1.0.2) for the source archive and its exact-commit verification receipt.
 
 ## Quick start
 

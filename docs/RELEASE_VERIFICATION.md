@@ -16,10 +16,12 @@ The patch preserves the frozen v1.0.0 API and evidence fixtures while reporting 
 
 Local Workcell proof is blocked: neither the default Colima Docker socket nor the historical kujo-workcell profile socket was available during release preparation on 2026-09-05. Hosted Linux offline tests, invalid-input tests, integrity tests, and archive smoke checks are the closest equivalent proof; they do not establish Workcell containment. Historical v1.0.0 container receipts remain historical and are not relabeled as patch-release evidence.
 
-## Unreleased 1.0.2 preparation
+## v1.0.2 release verification
 
-The current checkout prepares 1.0.2 without a release or tag. Use [Kujo 1.5 Workcell verification](WORKCELL_REVIEW.md) for current container evidence. Historical receipts above are not current-candidate certification. The release workflow supports verification-only dispatch with `publish_release=false`; its publish job must remain skipped until release-owner approval.
+Release-owner approval was given on 2026-10-07 and PR #8 was merged. The release targets Kujo 1.5.0 at the pinned source revision. Publication requires the existing tag to match the workflow commit and all release gates to pass. The published archive and `release-archive-receipt.json` are available from [v1.0.2](https://github.com/kujolang/tribunal/releases/tag/v1.0.2). Use the receipt to verify the exact source and runtime provenance; prior candidate receipts are historical evidence, not substitutes for tagged-commit verification.
+
+See [Kujo 1.5 Workcell verification](WORKCELL_REVIEW.md) for the container recipe and pre-release evidence. No managed signing or deployment certification is implied.
 
 Release archive creation requires a clean Git checkout at `TRIBUNAL_SOURCE_REVISION`. Only committed regular files from the release roots are selected. Ignored caches and untracked inputs are excluded; changed tracked inputs, mismatched source revisions and committed symlinks fail before output creation. This keeps local test caches out of the archive and binds its contents to reviewed source. Repackaging an extracted ZIP is not a substitute for the source checkout.
 
-The current review checklist and preserved candidate evidence are in [the unreleased 1.0.2 review](RELEASE_REVIEW_1.0.2.md). Final review-head checks and package receipts are recorded on PR #8; review them before any release authorization.
+The preserved pre-release checklist and candidate evidence are in [the 1.0.2 review record](RELEASE_REVIEW_1.0.2.md). Final candidate checks and package receipts are recorded on PR #8.

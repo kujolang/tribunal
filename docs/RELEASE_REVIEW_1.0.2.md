@@ -1,6 +1,8 @@
-# Tribunal 1.0.2 release review — not published
+# Tribunal 1.0.2 pre-release review record
 
-The candidate is prepared for human review in [PR #8](https://github.com/kujolang/tribunal/pull/8). No release, tag, package publication, live-provider request, signing or notarization was performed. The latest published release remains 1.0.1. Review and merge approval are still required; this document does not authorize publication.
+PR #8 was merged on 2026-10-07 after release-owner approval. See [release verification](RELEASE_VERIFICATION.md) for publication verification. The candidate evidence below remains tied to its original commit.
+
+This historical record captures the candidate prepared for human review in [PR #8](https://github.com/kujolang/tribunal/pull/8). No release, tag, package publication, live-provider request, signing or notarization was performed. The latest published release remains 1.0.1. Review and merge approval are still required; this document does not authorize publication.
 
 ## Candidate and compatibility
 
