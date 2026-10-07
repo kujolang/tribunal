@@ -54,13 +54,20 @@ func with_index_lock(storage_dir, recovery, operation) {
     mut acquired := false
     mut probe_error := ""
     while acquired == false {
-        if index_symlink(lock) { throw("Run-index lock is unsafe.") }
+        # Exclusive mkdir refuses existing files and symlinks without following
+        # them. Only the winner may enter the index operation.
         acquired = claim_directory(lock)
         if acquired == false {
             # One snapshot: a cooperating owner can remove its directory between
             # separate existence/type probes without creating an invalid lock.
             non_directory := false
-            try { metadata := io_file_metadata(lock); non_directory = metadata["is_dir"] == false; probe_error = "" } except err { probe_error = to_string(err) }
+            unsafe := false
+            try {
+                unsafe = path_is_symlink(lock) == true
+                if unsafe == false { metadata := io_file_metadata(lock); non_directory = metadata["is_dir"] == false }
+                probe_error = ""
+            } except err { probe_error = to_string(err) }
+            if unsafe { throw("Run-index lock is unsafe.") }
             if non_directory { throw("Run-index lock is not a directory.") }
             if current_timestamp() - started >= 30000 { throw("Run-index lock timed out. Stop all storage users before recovering an abandoned .index.lock directory. Last metadata probe: " + probe_error) }
             sleep(10)

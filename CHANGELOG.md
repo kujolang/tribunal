@@ -6,6 +6,8 @@ Current Tribunal candidate: **1.0.2 (unreleased)**. The latest published release
 
 - Package only clean, committed release inputs; exclude generated Python caches and reject mismatched source revisions.
 
+- Keep transient index-lock symlink-probe failures inside bounded contention handling; retain immediate refusal of live and dangling symlinks.
+
 ### September 26 hardening
 
 - Verify compatibility with checksum-pinned official runtime archives; retain the release workflow source build and every Tribunal gate.
