@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "name": "tribunal-launch-gate",
+  "name": "tribunal-intentional-failure",
   "runtime": {
     "backend": "docker",
     "image": "kujolang/workcell-kujo:tribunal-kujo-1.5.0-cc2d7db",
@@ -13,7 +13,7 @@
   "command": [
     "sh",
     "-lc",
-    "set -eu; test \"$(kujo --version)\" = \"kujo 1.5.0\"; kujo --version > tribunal-workcell-proof.txt; ./bin/tribunal version >> tribunal-workcell-proof.txt; ./bin/tribunal doctor --json >> tribunal-workcell-proof.txt; ./bin/tribunal validate examples/product-decision.md --json >> tribunal-workcell-proof.txt; if ./bin/tribunal validate /tmp/tribunal-missing-docket.md --json >/tmp/invalid.out 2>&1; then exit 1; fi; printf 'failure-path-exit: nonzero\\n' >> tribunal-workcell-proof.txt; ./bin/tribunal review examples/product-decision.md --panel executioner-only --mock --storage-dir /tmp/tribunal-runs >> tribunal-workcell-proof.txt; test -f /tmp/tribunal-runs/*/record.json; printf 'happy-path: pass\\n' >> tribunal-workcell-proof.txt"
+    "printf \"intentional-workload-failure\\n\" > tribunal-workcell-proof.txt; exit 17"
   ],
   "environment": {
     "allow": [],

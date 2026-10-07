@@ -1,8 +1,18 @@
-ARG KUJO_BASE_IMAGE=kujolang/workcell-kujo:tribunal-v1-9b77dce
-FROM ${KUJO_BASE_IMAGE}
+# Build only from the small context documented in WORKCELL_REVIEW.md.
+# Pin the Ubuntu amd64 manifest; the installer separately pins official Kujo bytes.
+FROM ubuntu:24.04@sha256:f610ab94648195aa356059f5b41d6085c9d4d903c072430cdd1af7bdb646106b AS runtime-download
+RUN apt-get update && apt-get install -y --no-install-recommends python3 ca-certificates libssl3t64 \
+    && rm -rf /var/lib/apt/lists/*
+COPY scripts/install_ci_runtime.py /build/scripts/install_ci_runtime.py
+COPY docs/INTEGRATION_MATRIX.json /build/docs/INTEGRATION_MATRIX.json
+RUN python3 /build/scripts/install_ci_runtime.py --platform linux-x86_64 --destination /out/kujo
 
-# The supported packaged launcher uses /usr/bin/env bash. Keep the shell
-# dependency explicit in the proof image rather than bypassing the launcher.
-USER root
-RUN apk add --no-cache bash=5.2.37-r0
+FROM ubuntu:24.04@sha256:f610ab94648195aa356059f5b41d6085c9d4d903c072430cdd1af7bdb646106b
+RUN apt-get update && apt-get install -y --no-install-recommends bash ca-certificates openssl unzip \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=runtime-download /out/kujo /usr/local/bin/kujo
+RUN test "$(kujo --version)" = "kujo 1.5.0"
+LABEL org.opencontainers.image.revision="cc2d7dbb59a8dc05f00d629e100932f56f4062f6" \
+      org.opencontainers.image.version="1.5.0" \
+      org.opencontainers.image.source="https://github.com/kujolang/kujo"
 USER 65532:65532

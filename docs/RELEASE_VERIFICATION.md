@@ -15,3 +15,7 @@ Release verification now checks out and builds the same immutable Kujo and integ
 The patch preserves the frozen v1.0.0 API and evidence fixtures while reporting product and CLI version 1.0.1. Platform CI must pass for the release candidate on Linux x86_64, macOS Intel, and macOS arm64. The release workflow then creates and smoke-tests a reproducible source archive for the exact tagged commit. Its receipt is published alongside the ZIP. No managed signing configuration is enabled for this release; unsigned provenance is not signer-backed certification.
 
 Local Workcell proof is blocked: neither the default Colima Docker socket nor the historical kujo-workcell profile socket was available during release preparation on 2026-09-05. Hosted Linux offline tests, invalid-input tests, integrity tests, and archive smoke checks are the closest equivalent proof; they do not establish Workcell containment. Historical v1.0.0 container receipts remain historical and are not relabeled as patch-release evidence.
+
+## Unreleased 1.0.2 preparation
+
+The current checkout prepares 1.0.2 without a release or tag. Use [Kujo 1.5 Workcell verification](WORKCELL_REVIEW.md) for current container evidence. Historical receipts above are not current-candidate certification. The release workflow supports verification-only dispatch with `publish_release=false`; its publish job must remain skipped until release-owner approval.

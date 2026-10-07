@@ -67,7 +67,9 @@ Until this is complete, Tribunal may be released only with the documented local/
 
 No release-preparation task may create the tag, sign, notarize, publish, or use live provider credentials.
 
-## Workcell command template
+## Historical v1.0.0 Workcell command template
+
+For current Kujo 1.5 candidate preparation, use [Workcell verification](WORKCELL_REVIEW.md). The commands below reproduce the historical image only.
 
 ```bash
 export DOCKER_HOST=unix:///Users/robertdevore/.colima/kujo-workcell/docker.sock
