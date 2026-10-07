@@ -54,7 +54,7 @@ export KUJO_BIN=../kujo/target/release/kujo
 ./bin/tribunal list --status completed --limit 5
 ```
 
-Install Kujo 1.5.0 first, then place `kujo` on `PATH` or set `KUJO_BIN`/`KUJO` to its executable. Use the exact runtime revision in the [integration matrix](docs/INTEGRATION_MATRIX.md) for release reproduction. Mock mode is deterministic, offline, credential-free, and the default. The launcher resolves this repository and executes `kujo run tribunal.kujo`.
+Use the current Kujo 1.8.0 runtime, then place `kujo` on `PATH` or set `KUJO_BIN`/`KUJO` to its executable. The tagged 1.0.2 source also passed [supplemental Kujo 1.8.0 verification](docs/compatibility/kujo-1.8.0-2026-10-07.json) on macOS Intel. The original three-platform release reproduction matrix retains its Kujo 1.5.0 pin; use the exact runtime revision in the [integration matrix](docs/INTEGRATION_MATRIX.md) to reproduce those receipts. Mock mode is deterministic, offline, credential-free, and the default. The launcher resolves this repository and executes `kujo run tribunal.kujo`.
 
 Tribunal is also a validated [Kennel package](kennel.toml). See [installation, archive installation, compatibility, upgrade, and rollback](docs/INSTALLATION.md), or import the stable [Kujo library API 1.0](docs/LIBRARY_API.md). The [example gallery](examples/gallery/README.md) covers six common decision types.
 

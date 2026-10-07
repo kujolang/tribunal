@@ -2,14 +2,14 @@
 
 ## Requirements
 
-Tribunal 1.0.0 requires Kujo 1.5.0 and Bash for the packaged `bin/tribunal` launcher. Release reproduction pins Kujo commit `cc2d7dbb59a8dc05f00d629e100932f56f4062f6`; use the runtime digest in the candidate platform or archive receipt. Put `kujo` on `PATH` or set `KUJO_BIN`/`KUJO` to the absolute executable path. Rebuilding and smoke-testing the release ZIP also requires Python 3 and `unzip`. Supported platforms are limited to the v1 receipts in [PLATFORM_SUPPORT.md](PLATFORM_SUPPORT.md).
+Tribunal 1.0.2 supports the verified Kujo 1.5.0 release profile and supplemental Kujo 1.8.0 execution on macOS Intel, and requires Bash for the packaged `bin/tribunal` launcher. Release reproduction pins Kujo commit `cc2d7dbb59a8dc05f00d629e100932f56f4062f6`; use the runtime digest in the candidate platform or archive receipt. Put `kujo` on `PATH` or set `KUJO_BIN`/`KUJO` to the absolute executable path. Rebuilding and smoke-testing the release ZIP also requires Python 3 and `unzip`. Supported platforms are limited to the v1 receipts in [PLATFORM_SUPPORT.md](PLATFORM_SUPPORT.md).
 
 ## Source checkout
 
 After the release owner creates the verified tag:
 
 ```bash
-git clone https://github.com/kujolang/tribunal.git
+git clone --branch v1.0.2 --depth 1 https://github.com/kujolang/tribunal.git
 cd tribunal
 git checkout v1.0.0
 export KUJO_BIN=/absolute/path/to/kujo
@@ -21,7 +21,7 @@ Before the tag exists, release preparation uses the exact candidate commit recor
 
 ## Generated archive
 
-Obtain `tribunal-v1.0.0.zip`, `release-archive-receipt.json`, and the published checksum from the approved release channel. Follow [RELEASE_VERIFICATION.md](RELEASE_VERIFICATION.md), extract into a new directory, then run:
+Obtain `tribunal-v1.0.2.zip`, `release-archive-receipt.json`, and the published checksum from the approved release channel. Follow [RELEASE_VERIFICATION.md](RELEASE_VERIFICATION.md), extract into a new directory, then run:
 
 ```bash
 export KUJO_BIN=/absolute/path/to/kujo
@@ -37,7 +37,7 @@ The archive contains `SHA256SUMS`, `SBOM.spdx.json`, and `provenance.intoto.json
 With Kennel 1.0.0 and Kujo available:
 
 ```bash
-kujo run /path/to/kennel/kennel.kujo --interpreter -- add github:kujolang/tribunal@v1.0.0 --alias tribunal
+kujo run /path/to/kennel/kennel.kujo --interpreter -- add github:kujolang/tribunal@v1.0.2 --alias tribunal
 kujo run /path/to/kennel/kennel.kujo --interpreter -- install
 kujo run /path/to/kennel/kennel.kujo --interpreter -- validate
 ```
