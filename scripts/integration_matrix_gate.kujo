@@ -27,7 +27,7 @@ for excluded in dict_get(matrix, "excluded", []) {
     if has_key(names, excluded["name"]) == 1 { failures = push(failures, "duplicate:" + excluded["name"]) }
     names[excluded["name"]] := true
     resolved := join_path(home, excluded["path"])
-    if path_is_dir(resolved) == false || len(excluded["revision"]) != 40 || excluded["version"] != "1.0.0" || trim(excluded["reason"]) == "" {
+    if path_is_dir(resolved) == false || len(excluded["revision"]) != 40 || excluded["version"] != "1.2.1" || trim(excluded["reason"]) == "" {
         failures = push(failures, "invalid-exclusion:" + excluded["name"])
         continue
     }

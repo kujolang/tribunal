@@ -15,6 +15,6 @@
     { "name": "Workcell", "version": "1.0.0", "revision": "91b9f066ad32b6fffb8f456d8613c0379ac48b04", "path": "../workcell", "gate": "docs/workcell-launch-gate.json", "scope": "offline Linux container proof with source commit, image digest, logs, failure path, and receipt verification" }
   ],
   "excluded": [
-    { "name": "Watchdog", "version": "1.0.0", "revision": "7c46cd0bf1680d037c24506be4ed0a2405a9841f", "path": "../watchdog", "reason": "Tribunal v1 exports generic JSONL or HTTP telemetry and does not depend on a Watchdog-specific proxy, API, dashboard, or storage contract." }
+    { "name": "Watchdog", "version": "1.2.1", "revision": "9e82e8f5b05edca948f6a432ae517031388296e6", "path": "../watchdog", "reason": "Tribunal v1 exports generic JSONL or HTTP telemetry and does not depend on a Watchdog-specific proxy, API, dashboard, or storage contract." }
   ]
 }

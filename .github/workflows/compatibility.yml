@@ -90,7 +90,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: kujolang/watchdog
-          ref: 7c46cd0bf1680d037c24506be4ed0a2405a9841f
+          ref: 9e82e8f5b05edca948f6a432ae517031388296e6
           path: watchdog
           token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - name: Validate runtime installer boundaries
