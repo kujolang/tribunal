@@ -37,9 +37,9 @@ The archive contains `SHA256SUMS`, `SBOM.spdx.json`, and `provenance.intoto.json
 With Kennel 1.0.0 and Kujo available:
 
 ```bash
-kujo run /path/to/kennel/kennel.kujo --interpreter -- add github:kujolang/tribunal@v1.0.2 --alias tribunal
-kujo run /path/to/kennel/kennel.kujo --interpreter -- install
-kujo run /path/to/kennel/kennel.kujo --interpreter -- validate
+kujo run /path/to/kennel/kennel.kujo -- add github:kujolang/tribunal@v1.0.2 --alias tribunal
+kujo run /path/to/kennel/kennel.kujo -- install
+kujo run /path/to/kennel/kennel.kujo -- validate
 ```
 
 The package exports `tribunal` (`src/lib.kujo`), `config`, `contracts`, `panels`, and `compare`. Pin the immutable tag or exact commit and commit `kennel.lock`; configure registry checksum/signature policy through the consuming organization. Package publication is not part of repository release preparation.

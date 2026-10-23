@@ -34,10 +34,10 @@ artifacts = []
 [dev-dependencies]
 
 [scripts]
-first-run = '"$KUJO_BIN" run tribunal.kujo --interpreter -- review examples/product-decision.md --panel executioner-only --mock'
-test = '"$KUJO_BIN" run tests/tribunal_tests.kujo --interpreter'
-verify = '"$KUJO_BIN" run scripts/schema_gate.kujo --interpreter'
-doctor = '"$KUJO_BIN" run tribunal.kujo --interpreter -- doctor --json'
+first-run = '"$KUJO_BIN" run tribunal.kujo -- review examples/product-decision.md --panel executioner-only --mock'
+test = '"$KUJO_BIN" run tests/tribunal_tests.kujo'
+verify = '"$KUJO_BIN" run scripts/schema_gate.kujo'
+doctor = '"$KUJO_BIN" run tribunal.kujo -- doctor --json'
 
 [package.exports]
 tribunal = "src/lib.kujo"

@@ -21,9 +21,9 @@ Set `KUJO_BIN` to the intended runtime.
 ./bin/tribunal version
 ./bin/tribunal doctor --json
 "$KUJO_BIN" check tribunal.kujo
-"$KUJO_BIN" run tests/tribunal_tests.kujo --interpreter
-"$KUJO_BIN" run tests/cli_integration.kujo --interpreter
-"$KUJO_BIN" run scripts/schema_gate.kujo --interpreter
+"$KUJO_BIN" run tests/tribunal_tests.kujo
+"$KUJO_BIN" run tests/cli_integration.kujo
+"$KUJO_BIN" run scripts/schema_gate.kujo
 git diff --check
 ```
 
