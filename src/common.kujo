@@ -101,25 +101,14 @@ export func safe_existing_file(path, max_bytes, label) {
 
 export func safe_run_id(id) {
     if type(id) != "string" || id == "" || len(id) > 128 || starts_with(id, ".") { return false }
-    allowed := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
-    mut i := 0
-    while i < len(id) {
-        if truthy(contains(allowed, substring(id, i, i + 1))) == false { return false }
-        i = i + 1
-    }
-    return true
+    return regex_match(id, "\\A[A-Za-z0-9._-]+\\z")
 }
 
 export func safe_relative_path(path) {
-    if type(path) != "string" || path == "" || len(path) > 1024 || starts_with(path, "/") || truthy(contains(path, "\\")) { return false }
-    allowed := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-"
+    if type(path) != "string" || path == "" || len(path) > 1024 { return false }
     for part in split(path, "/") {
         if part == "" || part == "." || part == ".." || len(part) > 128 { return false }
-        mut i := 0
-        while i < len(part) {
-            if truthy(contains(allowed, substring(part, i, i + 1))) == false { return false }
-            i = i + 1
-        }
+        if regex_match(part, "\\A[A-Za-z0-9._-]+\\z") == false { return false }
     }
     return true
 }
@@ -218,12 +207,7 @@ export func safe_join_existing(root, relative) {
 
 export func lower_hex(value, expected_length) {
     if type(value) != "string" || len(value) != expected_length { return false }
-    mut i := 0
-    while i < len(value) {
-        if truthy(contains("0123456789abcdef", substring(value, i, i + 1))) == false { return false }
-        i = i + 1
-    }
-    return true
+    return regex_match(value, "\\A[0-9a-f]*\\z")
 }
 
 export func parse_args(tokens, bool_flags) {
@@ -333,7 +317,7 @@ export func contains_secret(text) {
         "sk-[A-Za-z0-9_-]{20,}"
     ]
     for pattern in patterns {
-        if len(regex_find_all(value, pattern)) > 0 { return true }
+        if regex_match(value, pattern) { return true }
     }
     return false
 }
@@ -393,7 +377,7 @@ export func safe_process_env(extra) {
 }
 
 export func utf8_byte_length(text) {
-    return len(decode_base64(encode_base64(to_string(text))))
+    return byte_length(to_string(text))
 }
 
 export func read_file_digest(path, max_bytes) {

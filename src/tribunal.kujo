@@ -36,35 +36,32 @@ func persist_checkpoint(storage_dir, state, stage) {
     return checkpoint
 }
 
-func section(content, heading) {
-    lines := split(content, "\n")
-    mut active := false
-    mut values := []
+func section_lines(lines, heading) {
+    expected := to_lower(heading)
+    mut start := -1
+    mut end := 0
     for line in lines {
         trimmed := trim(line)
         if starts_with(trimmed, "## ") {
-            if active { break }
-            active = to_lower(trim(substring(trimmed, 3, len(trimmed)))) == to_lower(heading)
-        } else if active && trimmed != "" {
-            values = push(values, trimmed)
+            if start >= 0 { break }
+            if to_lower(trim(substring(trimmed, 3, len(trimmed)))) == expected { start = end + 1 }
         }
+        end = end + 1
     }
-    return join(values, "\n")
+    if start < 0 { return [] }
+    values := map(slice(lines, start, end), func(line) { return trim(line) })
+    return filter(values, func(line) { return line != "" })
 }
 
-func list_section(content, heading) {
-    raw := section(content, heading)
-    mut out := []
-    for line in split(raw, "\n") {
-        value := trim(line)
-        if starts_with(value, "- ") { value = trim(substring(value, 2, len(value))) }
-        if value != "" { out = push(out, value) }
-    }
-    return out
+func list_section(lines, heading) {
+    return map(section_lines(lines, heading), func(line) {
+        if starts_with(line, "- ") { return trim(substring(line, 2, len(line))) }
+        return line
+    })
 }
 
-func docket_title(content, source) {
-    for line in split(content, "\n") {
+func docket_title(lines, source) {
+    for line in lines {
         trimmed := trim(line)
         if starts_with(trimmed, "# ") { return trim(substring(trimmed, 2, len(trimmed))) }
     }
@@ -83,12 +80,13 @@ func open_docket(config, path) {
     scan := secret_scan(content, config["security"]["organization_secret_patterns_path"])
     if scan["ok"] != true { return {"ok": false, "error": scan["error"]} }
     if scan["detected"] { return {"ok": false, "error": "Unsafe secret exposure detected in docket."} }
-    title := docket_title(content, path)
-    scope := section(content, "Scope")
+    lines := split(content, "\n")
+    title := docket_title(lines, path)
+    scope := join(section_lines(lines, "Scope"), "\n")
     if scope == "" { scope = "Review the submitted docket without expanding its stated proposal." }
     opened := now_utc()
     hash := sha256(content)
-    return {"ok": true, "docket": {"id": substring(hash, 0, 16), "title": title, "sourcePath": path_absolute(path), "content": content, "scope": scope, "nonGoals": list_section(content, "Non-goals"), "openedAt": opened, "contentSha256": hash}}
+    return {"ok": true, "docket": {"id": substring(hash, 0, 16), "title": title, "sourcePath": path_absolute(path), "content": content, "scope": scope, "nonGoals": list_section(lines, "Non-goals"), "openedAt": opened, "contentSha256": hash}}
 }
 
 export func validate_docket(config, path) {

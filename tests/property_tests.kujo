@@ -1,6 +1,6 @@
 # Tribunal deterministic property/fuzz corpus for untrusted boundaries.
 
-from src.common import ensure_dir, parse_args, path_within, remove_tree, safe_relative_path, safe_run_id, utf8_byte_length
+from src.common import ensure_dir, lower_hex, parse_args, path_within, remove_tree, safe_relative_path, safe_run_id, utf8_byte_length
 from src.config import default_config, validate_config
 from src.tribunal import review, validate_model_output
 from src.integrity import generate_keys, seal, verify
@@ -26,7 +26,7 @@ while i < 500 {
 }
 check(parser_safe, "500 generated CLI token sets preserve parse invariants")
 
-unsafe_paths := ["../x", "a/../x", "/absolute", "a//b", "./a", "a/.", "a\\b", "a?query", "a#fragment", "a%2fescape", "space name", "", "..", "."]
+unsafe_paths := ["../x", "a/../x", "/absolute", "a//b", "a/", "./a", "a/.", "a\\b", "a?query", "a#fragment", "a%2fescape", "space name", "file\n", "a/é", repeat("a", 129), "", "..", "."]
 mut paths_safe := true
 for value in unsafe_paths { if safe_relative_path(value) { paths_safe = false } }
 i = 0
@@ -37,6 +37,8 @@ while i < 500 {
 }
 check(paths_safe, "path corpus rejects traversal and accepts 500 normalized artifacts")
 check(safe_run_id("2026-07-11-valid-run_1.0") && safe_run_id(".locks") == false && safe_run_id("run?query") == false && safe_run_id("run/child") == false, "run IDs exclude hidden operational roots and URL/path metacharacters")
+check(safe_run_id("run\n") == false && safe_run_id("run-é") == false && safe_run_id(repeat("a", 128)) && safe_run_id(repeat("a", 129)) == false, "run IDs preserve ASCII and length boundaries")
+check(lower_hex("", 0) && lower_hex("ab01", 4) && lower_hex("Ab01", 4) == false && lower_hex("ab0\n", 4) == false, "digest format requires lowercase hexadecimal across the entire value")
 check(path_within("./runs", "./runs/example/record.json") && path_within("./runs", "./outside/report.json") == false, "path containment distinguishes run storage from external outputs")
 
 check(utf8_byte_length("é") == 2 && utf8_byte_length("犬") == 3 && utf8_byte_length("😀") == 4, "Unicode limits count UTF-8 bytes")

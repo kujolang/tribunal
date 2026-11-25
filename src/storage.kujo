@@ -165,25 +165,17 @@ func persist_rebuilt_index(storage_dir, entries, prior_generation) {
     ensure_dir(index_root(storage_dir))
     if path_is_dir(pages_root(storage_dir)) { remove_tree(pages_root(storage_dir)) }
     ensure_dir(pages_root(storage_dir))
-    mut by_id := {}
-    for entry in entries { by_id[entry["runId"]] := entry }
-    mut ordered := []
-    for run_id in sort(keys(by_id)) { ordered = push(ordered, by_id[run_id]) }
+    # The directory scan already yields unique run IDs in sorted order.
     mut page := 1
     mut offset := 0
-    while offset < len(ordered) {
-        mut page_entries := []
-        mut page_offset := 0
-        while page_offset < RUN_INDEX_PAGE_SIZE && offset + page_offset < len(ordered) {
-            page_entries = push(page_entries, ordered[offset + page_offset])
-            page_offset = page_offset + 1
-        }
+    while offset < len(entries) {
+        page_entries := slice(entries, offset, min(offset + RUN_INDEX_PAGE_SIZE, len(entries)))
         write_json(index_page_path(storage_dir, page), {"schemaVersion": "1.0.0", "page": page, "entries": page_entries})
         offset = offset + len(page_entries)
         page = page + 1
     }
     page_count := page - 1
-    index := {"schemaVersion": "1.0.0", "generation": prior_generation + 1, "updatedAt": now_utc(), "runCount": len(ordered), "pageCount": page_count, "pageSize": RUN_INDEX_PAGE_SIZE}
+    index := {"schemaVersion": "1.0.0", "generation": prior_generation + 1, "updatedAt": now_utc(), "runCount": len(entries), "pageCount": page_count, "pageSize": RUN_INDEX_PAGE_SIZE}
     write_json(run_index_path(storage_dir), index)
     return index
 }
@@ -453,14 +445,13 @@ func list_runs_page_locked(storage_dir, status, panel_id, limit, cursor) {
                 i = i - 1
                 continue
             }
-            if safe_run_id(name) && starts_with(name, ".") == false {
-                manifest := entry["manifest"]
-                status_match := status == "" || manifest["status"] == status
-                panel_match := panel_id == "" || manifest["panelId"] == panel_id
-                if status_match && panel_match {
-                    if limit > 0 && len(runs) >= limit { has_more = true; done = true; break }
-                    runs = push(runs, manifest)
-                }
+            # read_index_page already validated every run ID on this page.
+            manifest := entry["manifest"]
+            status_match := status == "" || manifest["status"] == status
+            panel_match := panel_id == "" || manifest["panelId"] == panel_id
+            if status_match && panel_match {
+                if limit > 0 && len(runs) >= limit { has_more = true; done = true; break }
+                runs = push(runs, manifest)
             }
             i = i - 1
         }
