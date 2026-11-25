@@ -1,8 +1,14 @@
 # Performance and scale contracts
 
+## Docket parsing and validation
+
+Tribunal splits the docket into lines once and uses Kujo's bulk array operations to normalize section contents. This avoids copying a growing array for every line in a large section. UTF-8 byte limits use Kujo's native byte count. Run IDs, artifact path components, and digest strings use anchored ASCII patterns with their existing length and traversal checks.
+
 ## Persistent index and bounded projections
 
-Run manifests are indexed under `<storage>/.index/` as atomic metadata plus 100-entry pages. Normal list, stats, telemetry, dashboard, and bulk verification paths load one index shard and one bounded result page at a time. Full inventory scans are reserved for explicit `index-rebuild`, `index-check`, and `index-repair`; repair removes abandoned atomic-write fragments and proves manifest digests.
+Run manifests are indexed under `<storage>/.index/` as atomic metadata plus 100-entry pages. Normal list, stats, telemetry, dashboard, and bulk verification paths load one index shard and one bounded result page at a time. A missing index triggers a full manifest scan on first use. The explicit `index-rebuild`, `index-check`, and `index-repair` commands also scan the inventory. Repair removes abandoned atomic-write fragments and verifies manifest digests.
+
+Rebuilds slice the sorted manifest scan directly into shards. Page reads validate all entries before returning them, so listing can reuse that validation while applying filters and cursors.
 
 `scripts/index_perf_gate.kujo` creates 250 four-artifact runs and requires a 15-second rebuild, 3-second two-page lookup, 15-second aggregate fold, exactly three index pages, and a 100-run projection ceiling. The separate scale gate exercises the same cursor contract with a large hearing. Application memory is bounded independently of total run count; Kujo does not yet expose portable peak RSS, so byte/page limits are directly measured and OS RSS remains a platform receipt concern.
 

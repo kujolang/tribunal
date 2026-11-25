@@ -1,0 +1,1269 @@
+{
+  "baselineRevision": "fa4ffd2c9bb6ee5d8285dfb5c161b844e6e75b7c",
+  "applicationRevision": "9cd7b6bbd28659020bde2d12d5ff6eb81740ea08",
+  "branch": "codex/tribunal-performance",
+  "runtime": {
+    "version": "1.5.0",
+    "revision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+    "sha256": "3e1e475ea165c8b4a714495596fe8661ad970b27119ad44f1db4d9779f7f05d4",
+    "architecture": "x86_64",
+    "os": "macOS 26.6.2"
+  },
+  "baseline": [
+    {
+      "command": "./bin/tribunal version",
+      "exitCode": 0,
+      "log": {
+        "path": ".tribunal/performance-2026-11-25/baseline/baseline-1.log",
+        "sha256": "c60df80dbcaaecc680f9b34b1a113214acf2eeb36acdd6efac3fe8556534b836"
+      }
+    },
+    {
+      "command": "./bin/tribunal doctor --json",
+      "exitCode": 0,
+      "log": {
+        "path": ".tribunal/performance-2026-11-25/baseline/baseline-2.log",
+        "sha256": "7052b25637a60128a3f8cd60b394a8d2c22788731fde663d9e90c43e8663670e"
+      }
+    },
+    {
+      "command": "$KUJO_BIN check tribunal.kujo",
+      "exitCode": 0,
+      "log": {
+        "path": ".tribunal/performance-2026-11-25/baseline/baseline-3.log",
+        "sha256": "856f157a66b9efd698c0aa847ac9ff9b796ea8fb812c7e637a9190bcefca7247"
+      }
+    },
+    {
+      "command": "$KUJO_BIN run tests/tribunal_tests.kujo",
+      "exitCode": 0,
+      "log": {
+        "path": ".tribunal/performance-2026-11-25/baseline/baseline-4.log",
+        "sha256": "41bf1135b41aaec835c6e999bc3c669e405fa663f7f603eeb8596af6879f315d"
+      }
+    },
+    {
+      "command": "$KUJO_BIN run tests/cli_integration.kujo",
+      "exitCode": 0,
+      "log": {
+        "path": ".tribunal/performance-2026-11-25/baseline/baseline-5.log",
+        "sha256": "c58b6ad26fb5fa65014b1c1787791e443eed16816e65d84b0c08dae1c5e054ce"
+      }
+    },
+    {
+      "command": "$KUJO_BIN run scripts/schema_gate.kujo",
+      "exitCode": 0,
+      "log": {
+        "path": ".tribunal/performance-2026-11-25/baseline/baseline-6.log",
+        "sha256": "7d5f6b1636f719a9113da438f482c298b01dada3e82406cd41143500a7e14b6d"
+      }
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "log": {
+        "path": ".tribunal/performance-2026-11-25/baseline/baseline-7.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "command": "$KUJO_BIN run scripts/perf_gate.kujo --interpreter",
+      "exitCode": 0,
+      "log": {
+        "path": ".tribunal/performance-2026-11-25/baseline/base-perf.log",
+        "sha256": "dac2086c848ef401477c6b1af93535189f3ed80086d2c0555666e95274815c33"
+      }
+    },
+    {
+      "command": "$KUJO_BIN run scripts/scale_perf_gate.kujo --interpreter",
+      "exitCode": 1,
+      "log": {
+        "path": ".tribunal/performance-2026-11-25/baseline/base-scale_perf.log",
+        "sha256": "4dc0a196ae2b26625cced0b079f76f7d732531fdabbb6435d68d406207932c98"
+      }
+    },
+    {
+      "command": "$KUJO_BIN run scripts/index_perf_gate.kujo --interpreter",
+      "exitCode": 1,
+      "log": {
+        "path": ".tribunal/performance-2026-11-25/baseline/base-index_perf.log",
+        "sha256": "cb5457dd0eb1997fe813532f72e960ff9f57221f44d5d38c5591b9743727146a"
+      }
+    },
+    {
+      "command": "$KUJO_BIN run scripts/load_chaos_gate.kujo --interpreter",
+      "exitCode": 1,
+      "log": {
+        "path": ".tribunal/performance-2026-11-25/baseline/base-load_chaos.log",
+        "sha256": "2a346b456330520f79ab21b73db85d9279be96f76fdfd90b9c079a209f68c97f"
+      }
+    }
+  ],
+  "candidate": {
+    "functional": [
+      {
+        "command": "./bin/tribunal version",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/functional/version.log",
+          "sha256": "c60df80dbcaaecc680f9b34b1a113214acf2eeb36acdd6efac3fe8556534b836"
+        }
+      },
+      {
+        "command": "./bin/tribunal doctor --json",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/functional/doctor.log",
+          "sha256": "7052b25637a60128a3f8cd60b394a8d2c22788731fde663d9e90c43e8663670e"
+        }
+      },
+      {
+        "command": "$KUJO_BIN check tribunal.kujo",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/functional/check.log",
+          "sha256": "856f157a66b9efd698c0aa847ac9ff9b796ea8fb812c7e637a9190bcefca7247"
+        }
+      },
+      {
+        "command": "bash -o pipefail -c git\\ ls-files\\ -z\\ \\\"\\*.kujo\\\"\\ \\|\\ xargs\\ -0\\ -n\\ 1\\ \\\"\\$KUJO_BIN\\\"\\ check",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/functional/source-checks.log",
+          "sha256": "3125a2185bab5e36d874160733a63227b6a9ce69830855d5f05701aa4396fd47"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run tests/tribunal_tests.kujo",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/functional/tribunal_tests-vm.log",
+          "sha256": "8f3775fdfe71bb55e9ce6eea31048573f9affbc035c16d79e6ccdaa0849a526f"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run tests/cli_integration.kujo",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/functional/cli_integration-vm.log",
+          "sha256": "c58b6ad26fb5fa65014b1c1787791e443eed16816e65d84b0c08dae1c5e054ce"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run scripts/schema_gate.kujo",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/functional/schema_gate-vm.log",
+          "sha256": "7d5f6b1636f719a9113da438f482c298b01dada3e82406cd41143500a7e14b6d"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run tests/tribunal_tests.kujo --interpreter",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/functional/tribunal_tests.log",
+          "sha256": "759d6b38f18c5497f248535a7e672e445d4456df4fe8c9f1aa05edc147143fc1"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run tests/cli_integration.kujo --interpreter",
+        "exitCode": 1,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/functional/cli_integration.log",
+          "sha256": "45fd845f272a7fcc4f2efa9631edd25d4a98fb178e517300e1ab1990face81c0"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run tests/enterprise_tests.kujo --interpreter",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/functional/enterprise_tests.log",
+          "sha256": "72fb5ebfaf91ab4ca15bff63ca409f23d8789b231bbdb888fcb154a255e8b3bf"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run tests/property_tests.kujo --interpreter",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/functional/property_tests.log",
+          "sha256": "0e9522459069dbdcbcfe99befc3c2014f2eae0c612eb9e7a1730b8c521e514fe"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run tests/hardening_tests.kujo --interpreter",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/functional/hardening_tests.log",
+          "sha256": "f37b702a7e136bff9af919b27be71bb7190caae89cb1be21047caccb60195d13"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run tests/audit_regressions.kujo --interpreter",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/functional/audit_regressions.log",
+          "sha256": "1d105d00797de91e268fc0c4306c52431a8f424da78337b8ce161c4183445e1e"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run tests/projection_regressions.kujo --interpreter",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/functional/projection_regressions.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    ],
+    "extended": [
+      {
+        "command": "python3 tests/fixtures/http_receive_bounds.py",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/extended/http-receive-bounds.log",
+          "sha256": "ca603dd846c04f866dfe6b2da0f05b8687b0db02efb0739f1b136bb541027ace"
+        }
+      },
+      {
+        "command": "env PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_\\*.py",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/extended/python-tests.log",
+          "sha256": "a619df96df7d6b5f71919af822b1dd0fc737574f587b4a238bb354067055fd34"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run scripts/schema_gate.kujo --interpreter",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/extended/schema_gate.log",
+          "sha256": "bcc52b54c751ef08c35ed65bfddc6a7c5d21c96a72f2a6ab6bb1b26eddc970cc"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run scripts/drift_gate.kujo --interpreter",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/extended/drift_gate.log",
+          "sha256": "8727339024d1c242953fec8d1dbcd5ad5b602f1fe9ca1d59b34f444b833c38c2"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run scripts/spec_gate.kujo --interpreter",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/extended/spec_gate.log",
+          "sha256": "f31bcfde1da8cf89bdad9de1b8a18ed0caaef3444d255a421bff17d21d9f37c9"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run scripts/perf_gate.kujo --interpreter",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/extended/perf_gate.log",
+          "sha256": "60556df79624075e51852a8f282eb4a47834624a2d2084b6dc1795b6e89575cf"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run scripts/scale_perf_gate.kujo --interpreter",
+        "exitCode": 1,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/extended/scale_perf_gate.log",
+          "sha256": "4241657313ff6a3854d8c0c0016f23ae900c999ead960e186de7f00d6f8caf39"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run scripts/index_perf_gate.kujo --interpreter",
+        "exitCode": 1,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/extended/index_perf_gate.log",
+          "sha256": "e5a04c1c9bd11cc7c7690deec31c0cb274460e3634cfb45c748a1844ad51fba0"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run scripts/load_chaos_gate.kujo --interpreter",
+        "exitCode": 1,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/extended/load_chaos_gate.log",
+          "sha256": "f008f2d592da067b2234182ad274796c2c016db6b17bc6e978dbeec6d964e284"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run scripts/adversarial_gate.kujo --interpreter",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/extended/adversarial_gate.log",
+          "sha256": "820fbcdad9845593034eaa858839f7da0006a171790a27f25f86b450bca1129d"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run scripts/dashboard_accessibility_gate.kujo --interpreter",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/extended/dashboard_accessibility_gate.log",
+          "sha256": "a0161e1615771b02cdfc438be35d97d485a60ea08d31d57eeb6fb7c59f42d2ef"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run scripts/security_review_gate.kujo --interpreter",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/extended/security_review_gate.log",
+          "sha256": "56dea8fa5c1828dd1cabb5096fce3a20d478236c670333f455092d7df6c28814"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run scripts/integration_matrix_gate.kujo --interpreter",
+        "exitCode": 1,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/extended/integration_matrix_gate.log",
+          "sha256": "e863a1f2d46ec80e50570650daf77b55f2d8885779300c59c50b8b750e1aa224"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run scripts/gallery_gate.kujo --interpreter",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/extended/gallery_gate.log",
+          "sha256": "85724a4fd1aaf65eb59b45866cb58cc9745cc4d99a30c412b8111d627351a49f"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run scripts/v1_compatibility_gate.kujo --interpreter",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/extended/v1_compatibility_gate.log",
+          "sha256": "3086ee1042f5c4bba572b57439dde57184ea88c682e836d56a79c75a3b22a35a"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run scripts/docs_link_gate.kujo --interpreter",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/extended/docs_link_gate.log",
+          "sha256": "a9bbf3fd4848c6f4303e6258f15bbd033d4fb1418df1aebffa23b877d46e9b89"
+        }
+      }
+    ],
+    "release": [
+      {
+        "command": "bash -c cd\\ ../eval\\ \\&\\&\\ \\\"\\$KUJO_BIN\\\"\\ run\\ main.kujo\\ run\\ \\\"\\$TRIBUNAL_HOME/tests/tribunal_eval.json\\\"",
+        "exitCode": 1,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/release/eval.log",
+          "sha256": "49a0f410b933867aca3b64800ed3cee8a8031ee005af99879f1ec4e1abe9f4af"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run ../kennel/kennel.kujo --interpreter -- validate --project-dir $REPO",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/release/kennel.log",
+          "sha256": "b580f787ae33b3673c7adbb61315dcc224a55bb5f0987fe2f5d3dec40128fba0"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run scripts/release_archive.kujo --interpreter",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/release/release-archive.log",
+          "sha256": "3679cef8cffe479c9155cd8cc2a20b639d8d527b4c7a36b24a4b4c4da84e3cdb"
+        }
+      },
+      {
+        "command": "$KUJO_BIN run scripts/archive_smoke.kujo --interpreter $REPO/.tribunal/performance-2026-11-25/9cd7b6b/release/archive/tribunal-v1.0.2.zip",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/release/archive-smoke.log",
+          "sha256": "a77a554d180c0c74012b03ed7dcc8031007372d9b4700573d7d1ac4edc0e60db"
+        }
+      },
+      {
+        "command": "git diff --check",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/release/diff-check.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    ]
+  },
+  "pairedBenchmark": {
+    "command": "$KUJO_BIN run measure.kujo --interpreter \"$FIXTURE\"",
+    "method": "Copy the same benchmark source to repository roots at each revision and use the same 8000-line docket. The harness times validation, 1000 run-ID/path/digest checks, and 100 byte counts.",
+    "harness": {
+      "path": ".tribunal/performance-2026-11-25/paired/paired-benchmark.kujo",
+      "sha256": "8fbd1b38d5e663cf44f1093df9e58d2690906f7d945101cbfd0e412468673bc4"
+    },
+    "fixture": {
+      "path": ".tribunal/performance-2026-11-25/paired/docket.md",
+      "sha256": "be2e24c5708097112a91539df6b96afd7c9033d61132d9c3d148966ae7b485f8"
+    },
+    "samples": [
+      {
+        "pair": 1,
+        "revision": "fa4ffd2c9bb6ee5d8285dfb5c161b844e6e75b7c",
+        "metrics": {
+          "byteLengthMs": 968,
+          "byte_total": 25608200,
+          "docketMs": 111151,
+          "docketSha256": "be2e24c5708097112a91539df6b96afd7c9033d61132d9c3d148966ae7b485f8",
+          "scopeSha256": "8af9038161883931ab1d0051e683beff35205c014910ae132a1fb8c850e4310c",
+          "validationMs": 30756
+        },
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/paired/repeat-1-base.log",
+          "sha256": "b883bcccbcd8a13b345bdf23590eb87fcf6654a13923762074f9b59926c00a19"
+        }
+      },
+      {
+        "pair": 1,
+        "revision": "9cd7b6bbd28659020bde2d12d5ff6eb81740ea08",
+        "metrics": {
+          "byteLengthMs": 545,
+          "byte_total": 25608200,
+          "docketMs": 81095,
+          "docketSha256": "be2e24c5708097112a91539df6b96afd7c9033d61132d9c3d148966ae7b485f8",
+          "scopeSha256": "8af9038161883931ab1d0051e683beff35205c014910ae132a1fb8c850e4310c",
+          "validationMs": 13783
+        },
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/paired/repeat-1-candidate.log",
+          "sha256": "890b1e81452ae6436a503897383a5b6d17c466eeaf5a06a70556409fc35b22ff"
+        }
+      },
+      {
+        "pair": 2,
+        "revision": "fa4ffd2c9bb6ee5d8285dfb5c161b844e6e75b7c",
+        "metrics": {
+          "byteLengthMs": 371,
+          "byte_total": 25608200,
+          "docketMs": 95533,
+          "docketSha256": "be2e24c5708097112a91539df6b96afd7c9033d61132d9c3d148966ae7b485f8",
+          "scopeSha256": "8af9038161883931ab1d0051e683beff35205c014910ae132a1fb8c850e4310c",
+          "validationMs": 12395
+        },
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/paired/repeat-2-base.log",
+          "sha256": "298b92de234b143197f495c6503f237ce29771d83ac77f6df13e46b8d89ebd87"
+        }
+      },
+      {
+        "pair": 2,
+        "revision": "9cd7b6bbd28659020bde2d12d5ff6eb81740ea08",
+        "metrics": {
+          "byteLengthMs": 494,
+          "byte_total": 25608200,
+          "docketMs": 44840,
+          "docketSha256": "be2e24c5708097112a91539df6b96afd7c9033d61132d9c3d148966ae7b485f8",
+          "scopeSha256": "8af9038161883931ab1d0051e683beff35205c014910ae132a1fb8c850e4310c",
+          "validationMs": 11217
+        },
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/paired/repeat-2-candidate.log",
+          "sha256": "06b25bfd39935cc7a1cb0647adbc66e4af06bdbe9e038bc8d992171cf00f861e"
+        }
+      }
+    ]
+  },
+  "localBudgetObservations": {
+    "baseline": {
+      "perf": {
+        "budgetMs": 15000,
+        "durationMs": 2723,
+        "modelInvocations": 13,
+        "ok": true,
+        "panel": "strategic-five"
+      },
+      "scale_perf": {
+        "artifactBytes": 7800200,
+        "configuredWorkingSetInputBudgetBytes": 18874368,
+        "contextBytes": 512220,
+        "docketBytes": 256082,
+        "hearingLatencyBudgetMs": 45000,
+        "hearingMs": 140544,
+        "inventoryRuns": 250,
+        "memoryMeasurement": "Budget is a release limit; Kujo currently exposes no in-process peak RSS metric. Input and artifact bytes are measured directly.",
+        "ok": false,
+        "pageSize": 100,
+        "paginationLatencyBudgetMs": 6000,
+        "panel": "strategic-five",
+        "peakResidentMemoryBudgetBytes": 268435456,
+        "schemaVersion": "1.0.0",
+        "targetDocketBytes": 262144,
+        "twoPageLatencyMs": 18905
+      },
+      "index_perf": {
+        "corpusRuns": 250,
+        "indexBytes": 163084,
+        "indexPageSize": 100,
+        "indexPages": 3,
+        "memoryContract": "Normal listing, stats folds, telemetry, dashboard, and bulk verification load at most one 100-run index shard plus one bounded result page; full scans are restricted to explicit rebuild/verify/repair operations.",
+        "ok": false,
+        "projectionPageLimit": 100,
+        "rebuildBudgetMs": 15000,
+        "rebuildMs": 6477,
+        "schemaVersion": "1.0.0",
+        "statsBudgetMs": 15000,
+        "statsMs": 29542,
+        "twoPageBudgetMs": 3000,
+        "twoPageMs": 4190
+      },
+      "load_chaos": {
+        "acquired": 500,
+        "chaos": "stale-owner-after-termination",
+        "contentions": 500,
+        "cycles": 500,
+        "elapsedMs": 48433,
+        "maxContentionWaitMs": 179,
+        "ok": false,
+        "operationsPerSecond": 10,
+        "recoveryMs": 4,
+        "recoveryTimeObjectiveMs": 5000,
+        "schemaVersion": "1.0.0",
+        "throughputFloor": 15
+      }
+    },
+    "candidate": {
+      "perf": {
+        "budgetMs": 15000,
+        "durationMs": 3323,
+        "modelInvocations": 13,
+        "ok": true,
+        "panel": "strategic-five"
+      },
+      "scale_perf": {
+        "artifactBytes": 7800199,
+        "configuredWorkingSetInputBudgetBytes": 18874368,
+        "contextBytes": 512220,
+        "docketBytes": 256082,
+        "hearingLatencyBudgetMs": 45000,
+        "hearingMs": 49431,
+        "inventoryRuns": 250,
+        "memoryMeasurement": "Budget is a release limit; Kujo currently exposes no in-process peak RSS metric. Input and artifact bytes are measured directly.",
+        "ok": false,
+        "pageSize": 100,
+        "paginationLatencyBudgetMs": 6000,
+        "panel": "strategic-five",
+        "peakResidentMemoryBudgetBytes": 268435456,
+        "schemaVersion": "1.0.0",
+        "targetDocketBytes": 262144,
+        "twoPageLatencyMs": 11328
+      },
+      "index_perf": {
+        "corpusRuns": 250,
+        "indexBytes": 163084,
+        "indexPageSize": 100,
+        "indexPages": 3,
+        "memoryContract": "Normal listing, stats folds, telemetry, dashboard, and bulk verification load at most one 100-run index shard plus one bounded result page; full scans are restricted to explicit rebuild/verify/repair operations.",
+        "ok": false,
+        "projectionPageLimit": 100,
+        "rebuildBudgetMs": 15000,
+        "rebuildMs": 9924,
+        "schemaVersion": "1.0.0",
+        "statsBudgetMs": 15000,
+        "statsMs": 18844,
+        "twoPageBudgetMs": 3000,
+        "twoPageMs": 4347
+      },
+      "load_chaos": {
+        "acquired": 500,
+        "chaos": "stale-owner-after-termination",
+        "contentions": 500,
+        "cycles": 500,
+        "elapsedMs": 50703,
+        "maxContentionWaitMs": 133,
+        "ok": false,
+        "operationsPerSecond": 9,
+        "recoveryMs": 7,
+        "recoveryTimeObjectiveMs": 5000,
+        "schemaVersion": "1.0.0",
+        "throughputFloor": 15
+      }
+    },
+    "earlierCandidate": {
+      "scale_perf": {
+        "artifactBytes": 7800200,
+        "configuredWorkingSetInputBudgetBytes": 18874368,
+        "contextBytes": 512220,
+        "docketBytes": 256082,
+        "hearingLatencyBudgetMs": 45000,
+        "hearingMs": 115626,
+        "inventoryRuns": 250,
+        "memoryMeasurement": "Budget is a release limit; Kujo currently exposes no in-process peak RSS metric. Input and artifact bytes are measured directly.",
+        "ok": false,
+        "pageSize": 100,
+        "paginationLatencyBudgetMs": 6000,
+        "panel": "strategic-five",
+        "peakResidentMemoryBudgetBytes": 268435456,
+        "schemaVersion": "1.0.0",
+        "targetDocketBytes": 262144,
+        "twoPageLatencyMs": 11893
+      },
+      "index_perf": {
+        "corpusRuns": 250,
+        "indexBytes": 163084,
+        "indexPageSize": 100,
+        "indexPages": 3,
+        "memoryContract": "Normal listing, stats folds, telemetry, dashboard, and bulk verification load at most one 100-run index shard plus one bounded result page; full scans are restricted to explicit rebuild/verify/repair operations.",
+        "ok": false,
+        "projectionPageLimit": 100,
+        "rebuildBudgetMs": 15000,
+        "rebuildMs": 5664,
+        "schemaVersion": "1.0.0",
+        "statsBudgetMs": 15000,
+        "statsMs": 21001,
+        "twoPageBudgetMs": 3000,
+        "twoPageMs": 3186
+      }
+    }
+  },
+  "hosted": {
+    "runs": {
+      "39893231225": {
+        "conclusion": "success",
+        "head_sha": "fa4ffd2c9bb6ee5d8285dfb5c161b844e6e75b7c",
+        "html_url": "https://github.com/kujolang/tribunal/actions/runs/39893231225",
+        "id": 39893231225,
+        "status": "completed"
+      },
+      "45715703896": {
+        "conclusion": "success",
+        "head_sha": "9cd7b6bbd28659020bde2d12d5ff6eb81740ea08",
+        "html_url": "https://github.com/kujolang/tribunal/actions/runs/45715703896",
+        "id": 45715703896,
+        "status": "completed"
+      }
+    },
+    "jobs": {
+      "baseline_linux": {
+        "jobId": 120217594271,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/hosted/baseline_linux.log",
+          "sha256": "2f5792d417bb728bf7bdeb0fb992aaa70944a26d970a4dbd21a3f5c46efa22c5"
+        },
+        "metrics": {
+          "perf": {
+            "budgetMs": 15000,
+            "durationMs": 235,
+            "modelInvocations": 13,
+            "ok": true,
+            "panel": "strategic-five"
+          },
+          "scale_perf": {
+            "artifactBytes": 7800102,
+            "configuredWorkingSetInputBudgetBytes": 18874368,
+            "contextBytes": 512220,
+            "docketBytes": 256082,
+            "hearingLatencyBudgetMs": 45000,
+            "hearingMs": 2350,
+            "inventoryRuns": 250,
+            "memoryMeasurement": "Budget is a release limit; Kujo currently exposes no in-process peak RSS metric. Input and artifact bytes are measured directly.",
+            "ok": true,
+            "pageSize": 100,
+            "paginationLatencyBudgetMs": 6000,
+            "panel": "strategic-five",
+            "peakResidentMemoryBudgetBytes": 268435456,
+            "schemaVersion": "1.0.0",
+            "targetDocketBytes": 262144,
+            "twoPageLatencyMs": 386
+          },
+          "index_perf": {
+            "corpusRuns": 250,
+            "indexBytes": 163084,
+            "indexPageSize": 100,
+            "indexPages": 3,
+            "memoryContract": "Normal listing, stats folds, telemetry, dashboard, and bulk verification load at most one 100-run index shard plus one bounded result page; full scans are restricted to explicit rebuild/verify/repair operations.",
+            "ok": true,
+            "projectionPageLimit": 100,
+            "rebuildBudgetMs": 15000,
+            "rebuildMs": 198,
+            "schemaVersion": "1.0.0",
+            "statsBudgetMs": 15000,
+            "statsMs": 828,
+            "twoPageBudgetMs": 3000,
+            "twoPageMs": 203
+          },
+          "load_chaos": {
+            "acquired": 500,
+            "chaos": "stale-owner-after-termination",
+            "contentions": 500,
+            "cycles": 500,
+            "elapsedMs": 6943,
+            "maxContentionWaitMs": 1,
+            "ok": true,
+            "operationsPerSecond": 72,
+            "recoveryMs": 0,
+            "recoveryTimeObjectiveMs": 5000,
+            "schemaVersion": "1.0.0",
+            "throughputFloor": 15
+          }
+        }
+      },
+      "baseline_intel": {
+        "jobId": 120217594048,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/hosted/baseline_intel.log",
+          "sha256": "d7d24e514d0304e826f5254da64f88ad763f073e762a6019d07364fc6e7bcd3b"
+        },
+        "metrics": {
+          "perf": {
+            "budgetMs": 15000,
+            "durationMs": 545,
+            "modelInvocations": 13,
+            "ok": true,
+            "panel": "strategic-five"
+          },
+          "scale_perf": {
+            "artifactBytes": 7800199,
+            "configuredWorkingSetInputBudgetBytes": 18874368,
+            "contextBytes": 512220,
+            "docketBytes": 256082,
+            "hearingLatencyBudgetMs": 45000,
+            "hearingMs": 12847,
+            "inventoryRuns": 250,
+            "memoryMeasurement": "Budget is a release limit; Kujo currently exposes no in-process peak RSS metric. Input and artifact bytes are measured directly.",
+            "ok": true,
+            "pageSize": 100,
+            "paginationLatencyBudgetMs": 6000,
+            "panel": "strategic-five",
+            "peakResidentMemoryBudgetBytes": 268435456,
+            "schemaVersion": "1.0.0",
+            "targetDocketBytes": 262144,
+            "twoPageLatencyMs": 639
+          },
+          "index_perf": {
+            "corpusRuns": 250,
+            "indexBytes": 163084,
+            "indexPageSize": 100,
+            "indexPages": 3,
+            "memoryContract": "Normal listing, stats folds, telemetry, dashboard, and bulk verification load at most one 100-run index shard plus one bounded result page; full scans are restricted to explicit rebuild/verify/repair operations.",
+            "ok": true,
+            "projectionPageLimit": 100,
+            "rebuildBudgetMs": 15000,
+            "rebuildMs": 354,
+            "schemaVersion": "1.0.0",
+            "statsBudgetMs": 15000,
+            "statsMs": 1216,
+            "twoPageBudgetMs": 3000,
+            "twoPageMs": 426
+          },
+          "load_chaos": {
+            "acquired": 500,
+            "chaos": "stale-owner-after-termination",
+            "contentions": 500,
+            "cycles": 500,
+            "elapsedMs": 27426,
+            "maxContentionWaitMs": 2,
+            "ok": true,
+            "operationsPerSecond": 18,
+            "recoveryMs": 1,
+            "recoveryTimeObjectiveMs": 5000,
+            "schemaVersion": "1.0.0",
+            "throughputFloor": 15
+          }
+        }
+      },
+      "baseline_arm": {
+        "jobId": 120217594294,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/hosted/baseline_arm.log",
+          "sha256": "fce9e94eee96ae13908fb8e4cbf77f3298eed30d4d3fda1409d69895d1fde04e"
+        },
+        "metrics": {
+          "perf": {
+            "budgetMs": 15000,
+            "durationMs": 333,
+            "modelInvocations": 13,
+            "ok": true,
+            "panel": "strategic-five"
+          },
+          "scale_perf": {
+            "artifactBytes": 7800198,
+            "configuredWorkingSetInputBudgetBytes": 18874368,
+            "contextBytes": 512220,
+            "docketBytes": 256082,
+            "hearingLatencyBudgetMs": 45000,
+            "hearingMs": 1960,
+            "inventoryRuns": 250,
+            "memoryMeasurement": "Budget is a release limit; Kujo currently exposes no in-process peak RSS metric. Input and artifact bytes are measured directly.",
+            "ok": true,
+            "pageSize": 100,
+            "paginationLatencyBudgetMs": 6000,
+            "panel": "strategic-five",
+            "peakResidentMemoryBudgetBytes": 268435456,
+            "schemaVersion": "1.0.0",
+            "targetDocketBytes": 262144,
+            "twoPageLatencyMs": 415
+          },
+          "index_perf": {
+            "corpusRuns": 250,
+            "indexBytes": 163084,
+            "indexPageSize": 100,
+            "indexPages": 3,
+            "memoryContract": "Normal listing, stats folds, telemetry, dashboard, and bulk verification load at most one 100-run index shard plus one bounded result page; full scans are restricted to explicit rebuild/verify/repair operations.",
+            "ok": true,
+            "projectionPageLimit": 100,
+            "rebuildBudgetMs": 15000,
+            "rebuildMs": 230,
+            "schemaVersion": "1.0.0",
+            "statsBudgetMs": 15000,
+            "statsMs": 723,
+            "twoPageBudgetMs": 3000,
+            "twoPageMs": 212
+          },
+          "load_chaos": {
+            "acquired": 500,
+            "chaos": "stale-owner-after-termination",
+            "contentions": 500,
+            "cycles": 500,
+            "elapsedMs": 28054,
+            "maxContentionWaitMs": 21,
+            "ok": true,
+            "operationsPerSecond": 17,
+            "recoveryMs": 2,
+            "recoveryTimeObjectiveMs": 5000,
+            "schemaVersion": "1.0.0",
+            "throughputFloor": 15
+          }
+        }
+      },
+      "candidate_linux": {
+        "jobId": 139561080437,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/hosted/candidate_linux.log",
+          "sha256": "acde53bfecc8c6df53772da8608361a920e99d8234657065dd8984dd5ac6137d"
+        },
+        "metrics": {
+          "perf": {
+            "budgetMs": 15000,
+            "durationMs": 170,
+            "modelInvocations": 13,
+            "ok": true,
+            "panel": "strategic-five"
+          },
+          "scale_perf": {
+            "artifactBytes": 7800102,
+            "configuredWorkingSetInputBudgetBytes": 18874368,
+            "contextBytes": 512220,
+            "docketBytes": 256082,
+            "hearingLatencyBudgetMs": 45000,
+            "hearingMs": 1286,
+            "inventoryRuns": 250,
+            "memoryMeasurement": "Budget is a release limit; Kujo currently exposes no in-process peak RSS metric. Input and artifact bytes are measured directly.",
+            "ok": true,
+            "pageSize": 100,
+            "paginationLatencyBudgetMs": 6000,
+            "panel": "strategic-five",
+            "peakResidentMemoryBudgetBytes": 268435456,
+            "schemaVersion": "1.0.0",
+            "targetDocketBytes": 262144,
+            "twoPageLatencyMs": 195
+          },
+          "index_perf": {
+            "corpusRuns": 250,
+            "indexBytes": 163084,
+            "indexPageSize": 100,
+            "indexPages": 3,
+            "memoryContract": "Normal listing, stats folds, telemetry, dashboard, and bulk verification load at most one 100-run index shard plus one bounded result page; full scans are restricted to explicit rebuild/verify/repair operations.",
+            "ok": true,
+            "projectionPageLimit": 100,
+            "rebuildBudgetMs": 15000,
+            "rebuildMs": 102,
+            "schemaVersion": "1.0.0",
+            "statsBudgetMs": 15000,
+            "statsMs": 501,
+            "twoPageBudgetMs": 3000,
+            "twoPageMs": 103
+          },
+          "load_chaos": {
+            "acquired": 500,
+            "chaos": "stale-owner-after-termination",
+            "contentions": 500,
+            "cycles": 500,
+            "elapsedMs": 6384,
+            "maxContentionWaitMs": 1,
+            "ok": true,
+            "operationsPerSecond": 78,
+            "recoveryMs": 0,
+            "recoveryTimeObjectiveMs": 5000,
+            "schemaVersion": "1.0.0",
+            "throughputFloor": 15
+          }
+        },
+        "receipt": {
+          "claimBoundary": "This receipt covers only the named revision, pinned runtime commit and digest, measured environment, architecture, and completed gates.",
+          "environment": {
+            "kernel": "Linux 7.0.0-1014-aws",
+            "osRelease": "Ubuntu 24.04.5 LTS",
+            "runnerImage": "github-hosted:ubuntu-24.04"
+          },
+          "gates": [
+            "kujo-check-all",
+            "tribunal-tests",
+            "cli-integration",
+            "enterprise-tests",
+            "property-tests",
+            "hardening-tests",
+            "audit-regressions",
+            "schema",
+            "concord-drift",
+            "strict-spec",
+            "eval",
+            "performance",
+            "scale-performance",
+            "index-performance",
+            "load-chaos",
+            "adversarial",
+            "dashboard-accessibility",
+            "security-review-register",
+            "integration-matrix",
+            "kennel-package",
+            "gallery",
+            "reproducible-release-archive",
+            "doctor"
+          ],
+          "kujoRevision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+          "kujoSha256": "93d5b2e5591a20fe56ec9a5312c045d53c5dc3e4abe3b3a6765cc1ecd2b71381",
+          "kujoVersion": "1.5.0",
+          "measuredAt": "2026-11-25T22:45:15Z",
+          "platform": "linux-x86_64",
+          "result": "pass",
+          "schemaVersion": "1.1.0",
+          "sourceRevision": "9cd7b6bbd28659020bde2d12d5ff6eb81740ea08",
+          "tribunalVersion": "1.0.2"
+        },
+        "receiptLog": {
+          "path": ".tribunal/performance-2026-11-25/hosted/receipt-linux.json",
+          "sha256": "3afd787634408e2ddc642fd94b06f7f2307a6e8f1e566ef4dc787e6fbebea4ae"
+        }
+      },
+      "candidate_intel": {
+        "jobId": 139561079837,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/hosted/candidate_intel.log",
+          "sha256": "d5657ba63e4a84b5788ddc977c6cceeca501a5a25ee716615d486ce2ad13725e"
+        },
+        "metrics": {
+          "perf": {
+            "budgetMs": 15000,
+            "durationMs": 540,
+            "modelInvocations": 13,
+            "ok": true,
+            "panel": "strategic-five"
+          },
+          "scale_perf": {
+            "artifactBytes": 7800198,
+            "configuredWorkingSetInputBudgetBytes": 18874368,
+            "contextBytes": 512220,
+            "docketBytes": 256082,
+            "hearingLatencyBudgetMs": 45000,
+            "hearingMs": 3566,
+            "inventoryRuns": 250,
+            "memoryMeasurement": "Budget is a release limit; Kujo currently exposes no in-process peak RSS metric. Input and artifact bytes are measured directly.",
+            "ok": true,
+            "pageSize": 100,
+            "paginationLatencyBudgetMs": 6000,
+            "panel": "strategic-five",
+            "peakResidentMemoryBudgetBytes": 268435456,
+            "schemaVersion": "1.0.0",
+            "targetDocketBytes": 262144,
+            "twoPageLatencyMs": 504
+          },
+          "index_perf": {
+            "corpusRuns": 250,
+            "indexBytes": 163084,
+            "indexPageSize": 100,
+            "indexPages": 3,
+            "memoryContract": "Normal listing, stats folds, telemetry, dashboard, and bulk verification load at most one 100-run index shard plus one bounded result page; full scans are restricted to explicit rebuild/verify/repair operations.",
+            "ok": true,
+            "projectionPageLimit": 100,
+            "rebuildBudgetMs": 15000,
+            "rebuildMs": 268,
+            "schemaVersion": "1.0.0",
+            "statsBudgetMs": 15000,
+            "statsMs": 1185,
+            "twoPageBudgetMs": 3000,
+            "twoPageMs": 336
+          },
+          "load_chaos": {
+            "acquired": 500,
+            "chaos": "stale-owner-after-termination",
+            "contentions": 500,
+            "cycles": 500,
+            "elapsedMs": 28012,
+            "maxContentionWaitMs": 2,
+            "ok": true,
+            "operationsPerSecond": 17,
+            "recoveryMs": 1,
+            "recoveryTimeObjectiveMs": 5000,
+            "schemaVersion": "1.0.0",
+            "throughputFloor": 15
+          }
+        },
+        "receipt": {
+          "claimBoundary": "This receipt covers only the named revision, pinned runtime commit and digest, measured environment, architecture, and completed gates.",
+          "environment": {
+            "kernel": "Darwin 24.6.0",
+            "osRelease": "macOS 15.7.9",
+            "runnerImage": "github-hosted:macos-15-intel"
+          },
+          "gates": [
+            "kujo-check-all",
+            "tribunal-tests",
+            "cli-integration",
+            "enterprise-tests",
+            "property-tests",
+            "hardening-tests",
+            "audit-regressions",
+            "schema",
+            "concord-drift",
+            "strict-spec",
+            "eval",
+            "performance",
+            "scale-performance",
+            "index-performance",
+            "load-chaos",
+            "adversarial",
+            "dashboard-accessibility",
+            "security-review-register",
+            "integration-matrix",
+            "kennel-package",
+            "gallery",
+            "reproducible-release-archive",
+            "doctor"
+          ],
+          "kujoRevision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+          "kujoSha256": "3e1e475ea165c8b4a714495596fe8661ad970b27119ad44f1db4d9779f7f05d4",
+          "kujoVersion": "1.5.0",
+          "measuredAt": "2026-11-25T22:48:12Z",
+          "platform": "macos-x86_64",
+          "result": "pass",
+          "schemaVersion": "1.1.0",
+          "sourceRevision": "9cd7b6bbd28659020bde2d12d5ff6eb81740ea08",
+          "tribunalVersion": "1.0.2"
+        },
+        "receiptLog": {
+          "path": ".tribunal/performance-2026-11-25/hosted/receipt-intel.json",
+          "sha256": "97ce01dedcff34f95c79859c4e83c8eedee6fcace58040ff7b574bd3f8c76b38"
+        }
+      },
+      "candidate_arm": {
+        "jobId": 139561080295,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/hosted/candidate_arm.log",
+          "sha256": "b1c0b7724727abeaa9bdcef040d5ddbe411b01bbb2f8187f812a46ec577d66f1"
+        },
+        "metrics": {
+          "perf": {
+            "budgetMs": 15000,
+            "durationMs": 363,
+            "modelInvocations": 13,
+            "ok": true,
+            "panel": "strategic-five"
+          },
+          "scale_perf": {
+            "artifactBytes": 7800198,
+            "configuredWorkingSetInputBudgetBytes": 18874368,
+            "contextBytes": 512220,
+            "docketBytes": 256082,
+            "hearingLatencyBudgetMs": 45000,
+            "hearingMs": 1550,
+            "inventoryRuns": 250,
+            "memoryMeasurement": "Budget is a release limit; Kujo currently exposes no in-process peak RSS metric. Input and artifact bytes are measured directly.",
+            "ok": true,
+            "pageSize": 100,
+            "paginationLatencyBudgetMs": 6000,
+            "panel": "strategic-five",
+            "peakResidentMemoryBudgetBytes": 268435456,
+            "schemaVersion": "1.0.0",
+            "targetDocketBytes": 262144,
+            "twoPageLatencyMs": 252
+          },
+          "index_perf": {
+            "corpusRuns": 250,
+            "indexBytes": 163084,
+            "indexPageSize": 100,
+            "indexPages": 3,
+            "memoryContract": "Normal listing, stats folds, telemetry, dashboard, and bulk verification load at most one 100-run index shard plus one bounded result page; full scans are restricted to explicit rebuild/verify/repair operations.",
+            "ok": true,
+            "projectionPageLimit": 100,
+            "rebuildBudgetMs": 15000,
+            "rebuildMs": 114,
+            "schemaVersion": "1.0.0",
+            "statsBudgetMs": 15000,
+            "statsMs": 533,
+            "twoPageBudgetMs": 3000,
+            "twoPageMs": 164
+          },
+          "load_chaos": {
+            "acquired": 500,
+            "chaos": "stale-owner-after-termination",
+            "contentions": 500,
+            "cycles": 500,
+            "elapsedMs": 22214,
+            "maxContentionWaitMs": 20,
+            "ok": true,
+            "operationsPerSecond": 22,
+            "recoveryMs": 1,
+            "recoveryTimeObjectiveMs": 5000,
+            "schemaVersion": "1.0.0",
+            "throughputFloor": 15
+          }
+        },
+        "receipt": {
+          "claimBoundary": "This receipt covers only the named revision, pinned runtime commit and digest, measured environment, architecture, and completed gates.",
+          "environment": {
+            "kernel": "Darwin 24.6.0",
+            "osRelease": "macOS 15.8.2",
+            "runnerImage": "github-hosted:macos-15"
+          },
+          "gates": [
+            "kujo-check-all",
+            "tribunal-tests",
+            "cli-integration",
+            "enterprise-tests",
+            "property-tests",
+            "hardening-tests",
+            "audit-regressions",
+            "schema",
+            "concord-drift",
+            "strict-spec",
+            "eval",
+            "performance",
+            "scale-performance",
+            "index-performance",
+            "load-chaos",
+            "adversarial",
+            "dashboard-accessibility",
+            "security-review-register",
+            "integration-matrix",
+            "kennel-package",
+            "gallery",
+            "reproducible-release-archive",
+            "doctor"
+          ],
+          "kujoRevision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+          "kujoSha256": "327b59a1f584581963a9ed3dcb853783ed431c8fe4c36953278520c3e432e98b",
+          "kujoVersion": "1.5.0",
+          "measuredAt": "2026-11-25T22:46:24Z",
+          "platform": "macos-arm64",
+          "result": "pass",
+          "schemaVersion": "1.1.0",
+          "sourceRevision": "9cd7b6bbd28659020bde2d12d5ff6eb81740ea08",
+          "tribunalVersion": "1.0.2"
+        },
+        "receiptLog": {
+          "path": ".tribunal/performance-2026-11-25/hosted/receipt-arm.json",
+          "sha256": "de1e66982bdf6ef2f68dcc34715ffc04cc3afa8da4b977bd59b8222144304857"
+        }
+      }
+    }
+  },
+  "pinnedIntegration": {
+    "matrix": {
+      "command": "$KUJO_BIN run scripts/integration_matrix_gate.kujo --interpreter",
+      "exitCode": 0,
+      "log": {
+        "path": ".tribunal/performance-2026-11-25/9cd7b6b/pinned/matrix.log",
+        "sha256": "6cd9c0827fc03908a76e9d0e4e7e919d338efa1ad6afed3518e65f7323b46322"
+      }
+    },
+    "evalCommand": "cd \"$PINNED/eval\" && \"$KUJO_BIN\" run main.kujo run \"$TRIBUNAL_HOME/tests/tribunal_eval.json\"",
+    "evalLog": {
+      "path": ".tribunal/performance-2026-11-25/9cd7b6b/pinned/eval.log",
+      "sha256": "979ed81343383deeb687d0a2e1cce98f2be0f21bebb4cb1f62b58ef527e79068"
+    },
+    "evaluatedPasses": 10,
+    "evaluatedFailures": 1
+  },
+  "archive": {
+    "archive": "tribunal-v1.0.2.zip",
+    "archiveBuilder": "scripts/deterministic_zip.py",
+    "archiveBytes": 479667,
+    "archiveSha256": "5d170b76e49cb6439fb09313aa786572ba194b79b7172b6ab1d18b69d8a46df7",
+    "files": 220,
+    "provenanceSha256": "fb8eb9a999512bdc1bff3b436e39507b5b13da1f5808caba9da49f2196834373",
+    "rebuildSha256": "5d170b76e49cb6439fb09313aa786572ba194b79b7172b6ab1d18b69d8a46df7",
+    "reproducible": true,
+    "runtimeRevision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+    "runtimeSha256": "3e1e475ea165c8b4a714495596fe8661ad970b27119ad44f1db4d9779f7f05d4",
+    "sbomSha256": "64a38dddfb87ba034305b1b7632803b56868f260ac466430354d946ff2f1acf6",
+    "schemaVersion": "1.0.0",
+    "sourceDateEpoch": "1795646474",
+    "sourceRevision": "9cd7b6bbd28659020bde2d12d5ff6eb81740ea08",
+    "version": "1.0.2"
+  },
+  "workcell": {
+    "state": "blocked before container launch",
+    "workcellRunIds": [],
+    "hostCommands": [
+      "docker --context desktop-linux info --format {{.ServerVersion}}",
+      "docker --host \"$WORKCELL_DOCKER_ENDPOINT\" info --format {{.ServerVersion}}",
+      "colima start kujo-workcell --activate=false",
+      "colima stop kujo-workcell"
+    ],
+    "blockerLogs": [
+      {
+        "path": ".tribunal/performance-2026-11-25/9cd7b6b/workcell-fallback/docker-blocker.log",
+        "sha256": "02752124b141d9e51464921e34107fd8cbcca6c8bdbb541d659e81b3469a0b9f"
+      },
+      {
+        "path": ".tribunal/performance-2026-11-25/9cd7b6b/workcell-fallback/colima.log",
+        "sha256": "e9ea794fd9e202583298d2bfcc25c2eb84b2486bf3c0d88bcadba7ec2a048a94"
+      },
+      {
+        "path": ".tribunal/performance-2026-11-25/9cd7b6b/workcell-fallback/colima-readiness.log",
+        "sha256": "2ed98d8bbfdf7b07bb5476afbd4682c7fc0d2b5e162ae15c0c73b2071dd4f694"
+      },
+      {
+        "path": ".tribunal/performance-2026-11-25/9cd7b6b/workcell-fallback/colima-stop.log",
+        "sha256": "66651fa8c93a33107e5ad291acbbd9b5b29043c16b60876c70be6eda066efec9"
+      }
+    ],
+    "fallback": [
+      {
+        "command": "./bin/tribunal validate examples/product-decision.md --json",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/workcell-fallback/validate.json",
+          "sha256": "23c19b809cf93795f21ac6cf1a38e6bdc66cc7edddea80e8cbc64de72fba23be"
+        }
+      },
+      {
+        "command": "./bin/tribunal validate \"$EVIDENCE/does-not-exist.md\" --json",
+        "exitCode": 1,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/workcell-fallback/invalid.json",
+          "sha256": "1a854c51c9bf40f5fbf3952ecddbf654c6d234de74f81f8ec1e185ff58dfcf39"
+        }
+      },
+      {
+        "command": "./bin/tribunal review examples/product-decision.md --panel executioner-only --mock --storage-dir \"$EVIDENCE/runs\"",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/workcell-fallback/review.log",
+          "sha256": "9a3bbecc4ca02ed15b07d8df665558cc738dcab7782e8dd664347e672d747ddc"
+        }
+      },
+      {
+        "command": "./bin/tribunal verify 2026-11-25-product-decision-md-9457 --storage-dir \"$EVIDENCE/runs\"",
+        "exitCode": 0,
+        "log": {
+          "path": ".tribunal/performance-2026-11-25/9cd7b6b/workcell-fallback/verify.log",
+          "sha256": "3f88485a3807d4b45c3c70287bbee7cf9637b933c1f96d97cbbb8c90b69993df"
+        }
+      }
+    ],
+    "verification": {
+      "artifactsChecked": 16,
+      "errors": [],
+      "manifestSha256": "2c0bd7dd3e80497f4ad1366dff02e49d58502f67a528b8108e1e02298b195370",
+      "mismatched": [],
+      "missing": [],
+      "ok": true,
+      "runId": "2026-11-25-product-decision-md-9457",
+      "signature": "absent",
+      "unexpected": []
+    }
+  }
+}
