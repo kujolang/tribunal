@@ -140,9 +140,10 @@ func test_catalog_and_config() {
     parsed_docket := validate_docket(default_config(), headings_path)
     check(parsed_docket["ok"] && parsed_docket["docket"]["title"] == "Décision" && parsed_docket["docket"]["scope"] == "First line\n### Detail\nSecond line", "docket parsing preserves first section, nested headings, and CRLF trimming")
     check(parsed_docket["docket"]["nonGoals"] == ["First item", "Plain item"] && parsed_docket["docket"]["content"] == headings && parsed_docket["docket"]["contentSha256"] == sha256(headings), "docket list content and source digest are preserved")
-    write_file(headings_path, "## Non-goals\n- Final item")
-    parsed_docket = validate_docket(default_config(), headings_path)
-    check(parsed_docket["ok"] && parsed_docket["docket"]["title"] == "headings.md" && parsed_docket["docket"]["scope"] == "Review the submitted docket without expanding its stated proposal." && parsed_docket["docket"]["nonGoals"] == ["Final item"], "docket defaults and final section without a newline are preserved")
+    untitled_path := join_path(ROOT, "untitled.md")
+    write_file(untitled_path, "## Non-goals\n- Final item")
+    parsed_docket = validate_docket(default_config(), untitled_path)
+    check(parsed_docket["ok"] && parsed_docket["docket"]["title"] == "untitled.md" && parsed_docket["docket"]["scope"] == "Review the submitted docket without expanding its stated proposal." && parsed_docket["docket"]["nonGoals"] == ["Final item"], "docket defaults and final section without a newline are preserved")
 }
 
 func test_full_mock_review() {
