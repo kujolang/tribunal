@@ -86,11 +86,18 @@ export func read_json(path) {
     return parse_json(read_file(path))
 }
 
+export func symlink_entry(path) {
+    try { return path_is_symlink(path) } except err {
+        if file_exists(path) || path_is_dir(path) { throw(err) }
+        return false
+    }
+}
+
 export func safe_existing_file(path, max_bytes, label) {
     if type(path) != "string" || trim(path) == "" || file_exists(path) == false {
         return {"ok": false, "error": label + " is missing."}
     }
-    if path_is_symlink(path) || path_is_dir(path) {
+    if path_is_symlink(path) || path_is_file(path) == false {
         return {"ok": false, "error": label + " is unsafe."}
     }
     if file_size(path) > max_bytes {
@@ -151,18 +158,40 @@ export func path_within(root, candidate) {
     return resolved_root == "/" || resolved_candidate == resolved_root || starts_with(resolved_candidate, resolved_root + "/")
 }
 
-export func external_path_outside(root, candidate) {
-    if type(root) != "string" || trim(root) == "" || type(candidate) != "string" || trim(candidate) == "" || path_within(root, candidate) { return false }
-    if file_exists(root) == false && path_is_dir(root) == false { return true }
-    mut existing := candidate
+# Canonicalize the existing ancestor, then apply the missing suffix. The
+# canonical ancestor may be on a platform alias such as macOS /tmp.
+func projected_absolute(path) {
+    mut existing := regex_replace(path, "([^/])/+$", "$1")
+    mut suffix := []
     while file_exists(existing) == false && path_is_dir(existing) == false {
+        if symlink_entry(existing) { return "" }
+        parts := split(existing, "/")
+        component := parts[len(parts) - 1]
         parent := parent_dir(existing)
-        if parent == existing { return false }
+        if parent == existing || component == "" { return "" }
+        suffix = push(suffix, component)
         existing = parent
     }
-    canonical_root := path_absolute(root)
-    canonical_existing := path_absolute(existing)
-    return path_within(canonical_root, canonical_existing) == false
+    if len(suffix) > 0 && path_is_dir(existing) == false { return "" }
+    resolved := path_absolute(existing)
+    mut index := len(suffix) - 1
+    while index >= 0 {
+        resolved = join_path(resolved, suffix[index])
+        index = index - 1
+    }
+    return normalized_absolute(resolved)
+}
+
+export func external_path_outside(root, candidate) {
+    if type(root) != "string" || trim(root) == "" || type(candidate) != "string" || trim(candidate) == "" || path_within(root, candidate) { return false }
+    resolved_root := ""
+    resolved_candidate := ""
+    try {
+        if symlink_entry(regex_replace(candidate, "([^/])/+$", "$1")) { return false }
+        resolved_root = projected_absolute(root)
+        resolved_candidate = projected_absolute(candidate)
+    } except err { return false }
+    return resolved_root != "" && resolved_candidate != "" && path_within(resolved_root, resolved_candidate) == false
 }
 
 export func safe_http_url(value) {
@@ -393,21 +422,18 @@ export func safe_process_env(extra) {
 }
 
 export func utf8_byte_length(text) {
-    return len(decode_base64(encode_base64(to_string(text))))
+    return byte_length(to_string(text))
 }
 
 export func read_file_digest(path, max_bytes) {
-    if file_exists(path) == false { return {"ok": false, "error": "File does not exist: " + path} }
-    if path_is_symlink(path) { return {"ok": false, "error": "Symbolic links are not allowed in sealed artifacts: " + path} }
-    size := file_size(path)
-    if size < 0 { return {"ok": false, "error": "Unable to determine file size: " + path} }
-    if size > max_bytes { return {"ok": false, "error": "Artifact exceeds the " + to_string(max_bytes) + " byte safety limit: " + path} }
+    checked := safe_existing_file(path, max_bytes, "Artifact")
+    if checked["ok"] != true { return {"ok": false, "error": checked["error"] + " " + path} }
     digest := null
-    try { digest = sha256_file(path) } except err { digest = null }
-    if lower_hex(digest, 64) == false || file_size(path) != size {
-        return {"ok": false, "error": "Artifact could not be hashed completely or changed size: " + path}
+    try { digest = regular_file_digest(path, max_bytes) } except err { digest = null }
+    if type(digest) != "dict" || lower_hex(dict_get(digest, "sha256", null), 64) == false {
+        return {"ok": false, "error": "Artifact could not be hashed completely: " + path}
     }
-    return {"ok": true, "bytes": size, "sha256": digest}
+    return {"ok": true, "bytes": digest["bytes"], "sha256": digest["sha256"]}
 }
 
 export func relative_files(root, relative) {

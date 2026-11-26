@@ -18,7 +18,7 @@ public_api = true
 notes = "The declared CLI and Kujo library API are public v1 contracts for local/operator-controlled use; hosted, shared, regulated, and target-enterprise deployments require separate certification."
 
 [kujo]
-minimum_version = "1.0.0"
+minimum_version = "1.5.0"
 entry = "tribunal.kujo"
 sources = ["src", "."]
 includes = ["README.md", "LICENSE", "SECURITY.md", "VERSION", "bin", "completions", "docs", "examples", "man", "schemas", "scripts", "tests"]
