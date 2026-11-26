@@ -2,6 +2,14 @@
 
 Current Tribunal version: **1.0.2**. API and evidence format versions are unchanged.
 
+## Unreleased
+
+- Verify imported bundles in a staging directory outside the run ID namespace before publishing them into run storage.
+- Require a valid shape for present signature envelopes. Preserve v1.0, v1.1, and v1.2 signature verification.
+- Use bounded regular-file reads for dockets, keys, indexes, events, and integrity data. Apply output and artifact path checks before accessing files.
+- Bound HTTP metadata responses and disable redirects for telemetry, store metadata, and Vault requests.
+- Declare Kujo 1.5.0 as the minimum package runtime, matching the pinned compatibility matrix.
+
 ## 1.0.2 — 2026-10-07
 
 - Package only clean, committed release inputs; exclude generated Python caches and reject mismatched source revisions.

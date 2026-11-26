@@ -4,7 +4,7 @@
 # short-lived workload JWT for a Vault token, reads the active RSA public key,
 # and asks Transit to sign Tribunal's canonical v1.2 payload.
 
-from src.common import dict_get, redact, safe_relative_path, safe_run_id
+from src.common import dict_get, redact, safe_http_url, safe_relative_path, safe_run_id
 from src.integrity import signature_payload_for
 
 func response_status(value) { return dict_get(value, "_status", dict_get(value, "status", 0)) }
@@ -13,7 +13,7 @@ func response_body(value) { return dict_get(value, "_body", dict_get(value, "bod
 func http_call(url, method, headers, body, timeout_seconds) {
     result := null
     try {
-        result = http_request(url, {"method": method, "_headers": headers, "_body": body, "timeout": timeout_seconds})
+        result = http_request(url, {"method": method, "_headers": headers, "_body": body, "timeout": timeout_seconds, "redirects": "none", "max_response_bytes": 2097152})
     } except err { return {"ok": false, "status": 0, "body": "", "error": redact(err)} }
     match result {
         case Ok(response): {
@@ -43,9 +43,9 @@ func request_with_retry(url, method, headers, body, max_attempts, base_delay_ms,
 }
 
 func read_token_file(path) {
-    if trim(path) == "" || file_exists(path) == false || path_is_symlink(path) || file_size(path) > 1048576 { return {"ok": false, "error": "Workload identity token file is missing or unsafe."} }
-    token := trim(read_file(path))
-    if token == "" || len(token) > 1048576 { return {"ok": false, "error": "Workload identity token is empty or oversized."} }
+    token := ""
+    try { token = trim(text_file_read(path, 1048576)) } except err { return {"ok": false, "error": "Workload identity token file is missing or unsafe."} }
+    if token == "" || regex_match(token, "[\\x00-\\x20\\x7f]") { return {"ok": false, "error": "Workload identity token is empty or oversized."} }
     return {"ok": true, "token": token, "source": "file"}
 }
 
@@ -98,7 +98,7 @@ max_attempts := dict_get(request, "maxAttempts", 3)
 base_delay_ms := dict_get(request, "baseDelayMs", 250)
 timeout_seconds := 30
 if endpoint == "" || role == "" || auth_path == "" || transit_path == "" || audience == "" || key_name == "" { fail("Vault Transit signing request is incomplete.", 0) }
-if (starts_with(endpoint, "https://") == false && starts_with(endpoint, "http://127.0.0.1") == false && starts_with(endpoint, "http://localhost") == false && starts_with(endpoint, "http://[::1]") == false) || contains(endpoint, "@") || contains(endpoint, "?") || contains(endpoint, "#") { fail("Vault Transit endpoint is unsafe.", 0) }
+if safe_http_url(endpoint) == false { fail("Vault Transit endpoint is unsafe.", 0) }
 if safe_relative_path(auth_path) == false || safe_relative_path(transit_path) == false || safe_run_id(key_name) == false || contains(role, "\n") || contains(role, "\r") || contains(namespace, "\n") || contains(namespace, "\r") || contains(audience, "&") || contains(audience, "#") { fail("Vault Transit identity or path fields are unsafe.", 0) }
 if type(max_attempts) != "int" || max_attempts < 1 || max_attempts > 5 || type(base_delay_ms) != "int" || base_delay_ms < 10 || base_delay_ms > 5000 { fail("Vault Transit retry policy is unsafe.", 0) }
 
