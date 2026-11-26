@@ -5,11 +5,15 @@
   "scripts": {
     "check": "hyperframes check --no-browser-gpu",
     "preview": "hyperframes preview",
-    "render": "hyperframes render --no-browser-gpu --experimental-fast-capture=false --output assets/tribunal.mp4"
+    "render": "hyperframes render --no-browser-gpu --experimental-fast-capture=false --output assets/tribunal.mp4",
+    "watch": "http-server . -a 127.0.0.1 -p 8080 -c-1"
   },
   "dependencies": {
     "gsap": "3.15.1",
     "hyperframes": "0.9.100",
     "motion": "14.14.0"
+  },
+  "devDependencies": {
+    "http-server": "14.1.1"
   }
 }

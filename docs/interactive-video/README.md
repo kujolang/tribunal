@@ -1,6 +1,6 @@
 # Tribunal interactive walkthrough
 
-Run `python3 -m http.server 8080` from this directory and open [the interactive player](http://localhost:8080/watch.html). Select a chapter to jump to that part of the film. The player also has English captions and an expandable transcript. The standalone 1080p film is at `assets/tribunal.mp4`.
+Run `npm ci` and `npm run watch` from this directory and open [the interactive player](http://localhost:8080/watch.html). Select a chapter to jump to that part of the film. The player also has English captions and an expandable transcript. The standalone 1080p film is at `assets/tribunal.mp4`.
 
 ## Edit and render
 
