@@ -2,7 +2,7 @@
 
 Bundles contain `bundle.json` plus the exact run artifacts. Export requires `signature.json`; import requires a trusted-key policy and performs full signature/artifact verification before accepting the run.
 
-The local immutable store is the reference provider. Versions are the 64-character manifest SHA-256. Publication requires the caller's expected current version. Existing object versions cannot be replaced.
+The local immutable store is the reference provider. Versions are the 64-character manifest SHA-256. A pull checks the bundle run ID and manifest digest against the selected object before creating a run. Publication requires the caller's expected current version. Existing object versions cannot be replaced.
 
 The HTTP contract uses:
 
@@ -21,7 +21,7 @@ Artifacts use the v1.1 binary file-transfer contract at `/artifacts/<path>`. Upl
 
 Tribunal's pull path reconstructs a temporary bundle, verifies it under the target trust policy, then atomically admits the run to empty local storage.
 
-Encrypted imports preflight envelope count, unique inventory, metadata/descriptor agreement, and the 1 GiB plaintext aggregate before reading a recipient key or staging plaintext. Integrity-only checks also enforce the existing 65 MiB ciphertext ceiling before hashing. Descriptor-free legacy bundles remain supported. The reference HTTP adapter rejects unsafe run IDs and non-hexadecimal versions on reads, writes, and staging cleanup.
+Encrypted exports and imports stage plaintext in an exclusively created, owner-only (0700) directory under the operator-controlled temporary root. Tribunal removes that directory when the operation returns. After a killed process, check the temporary root for orphaned staging directories before clearing them. Encrypted imports preflight envelope count, unique inventory, metadata/descriptor agreement, and the 1 GiB plaintext aggregate before reading a recipient key or staging plaintext. Integrity-only checks also enforce the existing 65 MiB ciphertext ceiling before hashing. Descriptor-free legacy bundles remain supported. The reference HTTP adapter rejects unsafe run IDs and non-hexadecimal versions on reads, writes, and staging cleanup.
 
 Local publication holds an exclusive `<store-root>/.locks/<run-id>.lock` from the expected-version check through object export and atomic index publication. A contending writer fails explicitly; retry only after reading the current version and deciding whether that update is still intended. Different run IDs use separate locks. Do not run older writers against the same store concurrently: they bypass this coordination. This is a cooperating-process local-filesystem contract, not shared-filesystem certification.
 

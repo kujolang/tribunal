@@ -1,6 +1,6 @@
 # Tribunal enterprise trust, storage, governance, telemetry, and contract suite.
 
-from src.common import dict_get, ensure_dir, last_json_line, remove_tree, write_json
+from src.common import claim_private_directory, dict_get, ensure_dir, last_json_line, remove_tree, write_json
 from src.config import default_config, validate_config
 from src.tribunal import review
 from src.integrity import begin_seal_transaction, generate_keys, recover_seal_transactions, verify, verify_runs_page
@@ -59,6 +59,9 @@ func make_signed(storage, key_root) {
 }
 
 ensure_dir(ROOT)
+private_stage := join_path(ROOT, "private-stage")
+check(claim_private_directory(private_stage) && io_file_metadata(private_stage)["mode"] == 448, "staging directory is created with owner-only mode 0700")
+check(claim_private_directory(private_stage) == false, "staging directory claims refuse an existing directory")
 write_file(DOCKET, "# Enterprise fixture\n\n## Scope\n\nExercise trust and durable operations.\n")
 release_workflow := read_file(join_path(HOME, ".github/workflows/release.yml"))
 check(contains(release_workflow, "scripts/release_evidence.kujo") == 1 && contains(release_workflow, "env.TRIBUNAL_SIGNING_PROVIDER_CONFIG != ''") == 1 && contains(release_workflow, "signed_evidence") == 1 && contains(release_workflow, "actions/upload-artifact") == 1, "CI release makes externally signed evidence optional without weakening reproducible package publication")
@@ -281,6 +284,14 @@ if signed["ok"] == true {
     pulled_storage := join_path(ROOT, "pulled-runs")
     pulled := pull_local(store_root, run_id, published["version"], pulled_storage, trust, "store-pull")
     check(pulled["ok"] == true, "versioned immutable store restores trusted evidence")
+    wrong_version := repeat("0", 64)
+    objects := join_path(store_root, "objects")
+    wrong_version_object := join_path(join_path(objects, run_id), wrong_version)
+    wrong_run_object := join_path(join_path(objects, "different-run"), published["version"])
+    refused_storage := join_path(ROOT, "refused-store-runs")
+    check(export_bundle(storage, run_id, wrong_version_object)["ok"] == true && export_bundle(storage, run_id, wrong_run_object)["ok"] == true, "store binding fixtures contain valid signed bundles")
+    check(pull_local(store_root, run_id, wrong_version, refused_storage, trust, "store-pull")["ok"] == false, "store pull requires the selected manifest digest")
+    check(pull_local(store_root, "different-run", published["version"], refused_storage, trust, "store-pull")["ok"] == false && path_is_dir(refused_storage) == false, "store pull requires the selected run ID before writing evidence")
     index_path := join_path(join_path(store_root, "indexes"), run_id + ".json"); index_original := read_file(index_path); corrupt_index := parse_json(index_original); corrupt_index["currentVersion"] := "../../unsafe"; write_json(index_path, corrupt_index)
     check(pull_local(store_root, run_id, "", join_path(ROOT, "corrupt-index-pull"), trust, "store-pull")["ok"] == false, "local store rejects a corrupt index before resolving object paths")
     write_file(index_path, index_original, true)

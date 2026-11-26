@@ -1,7 +1,7 @@
 # Tribunal :: signed evidence bundle export and import
 
-from src.common import claim_directory, dict_get, ensure_dir, external_path_outside, read_json, relative_files, remove_tree, read_file_digest, safe_existing_file, safe_relative_path, safe_run_id, write_json
-from src.integrity import signature_payload_for, verify
+from src.common import claim_directory, claim_private_directory, dict_get, ensure_dir, external_path_outside, read_json, redact, relative_files, remove_tree, read_file_digest, safe_existing_file, safe_relative_path, safe_run_id, write_json
+from src.integrity import signature_payload_for, valid_signature_envelope, verify
 from src.policy import trusted_key
 from src.storage import artifact_path, index_run_manifest, run_dir
 
@@ -129,6 +129,14 @@ export func export_bundle(storage_dir, run_id, destination) {
 }
 
 export func import_bundle(bundle_path, storage_dir, trust_policy, target) {
+    return import_bundle_with_binding(bundle_path, storage_dir, trust_policy, target, "", "")
+}
+
+export func import_store_bundle(bundle_path, storage_dir, trust_policy, target, run_id, version) {
+    return import_bundle_with_binding(bundle_path, storage_dir, trust_policy, target, run_id, version)
+}
+
+func import_bundle_with_binding(bundle_path, storage_dir, trust_policy, target, expected_run_id, expected_version) {
     if trim(bundle_path) == "" || path_is_dir(bundle_path) == false { return {"ok": false, "error": "Bundle path is missing or unsafe."} }
     if path_is_symlink(bundle_path) { return {"ok": false, "error": "Bundle path is unsafe."} }
     metadata_path := join_path(bundle_path, "bundle.json")
@@ -138,7 +146,10 @@ export func import_bundle(bundle_path, storage_dir, trust_policy, target) {
     try { metadata = read_json(metadata_path) } except err { return {"ok": false, "error": "Bundle metadata is invalid."} }
     checked_metadata := validate_bundle_metadata(metadata)
     if checked_metadata["ok"] != true { return checked_metadata }
-    run_id := dict_get(metadata, "runId", "")
+    run_id := metadata["runId"]
+    if expected_run_id != "" && (run_id != expected_run_id || metadata["manifestSha256"] != expected_version) {
+        return {"ok": false, "error": "Stored bundle does not match the selected run ID and manifest version."}
+    }
     destination := run_dir(storage_dir, run_id)
     if destination == "" || path_is_dir(destination) { return {"ok": false, "error": "Bundle run ID is unsafe or already exists."} }
     trusted := trusted_key(trust_policy, dict_get(metadata, "keyId", ""), target, current_timestamp())
@@ -212,43 +223,59 @@ func recipient_wrap(public_path, purpose, data_key) {
 export func export_encrypted_bundle(storage_dir, run_id, destination, recipient_public_path, recovery_public_path) {
     if trim(destination) == "" || file_exists(destination) || path_is_dir(destination) { return {"ok": false, "error": "Encrypted bundle destination must be new."} }
     if external_path_outside(storage_dir, destination) == false { return {"ok": false, "error": "Encrypted bundle destination must be outside Tribunal run storage without symbolic-link aliases."} }
-    temp := join_path(env_or("TMPDIR", "/tmp"), "tribunal-encrypted-export-" + uuid_v4())
+    stage := join_path(env_or("TMPDIR", "/tmp"), "tribunal-encrypted-export-" + uuid_v4())
+    if external_path_outside(storage_dir, stage) == false || claim_private_directory(stage) == false { return {"ok": false, "error": "Unable to create private encrypted-bundle export staging."} }
+    result := null
+    try { result = export_encrypted_staged(storage_dir, run_id, destination, recipient_public_path, recovery_public_path, join_path(stage, "bundle")) } except err {
+        result = {"ok": false, "error": "Encrypted bundle export failed: " + redact(to_string(err))}
+    }
+    remove_tree(stage)
+    return result
+}
+
+func export_encrypted_staged(storage_dir, run_id, destination, recipient_public_path, recovery_public_path, temp) {
     exported := export_bundle(storage_dir, run_id, temp)
     if exported["ok"] != true { return exported }
     data_key := sha256(uuid_v4() + ":" + uuid_v4() + ":" + to_string(current_timestamp()))
     primary := recipient_wrap(recipient_public_path, "primary", data_key)
-    if primary["ok"] != true { remove_tree(temp); return primary }
+    if primary["ok"] != true { return primary }
     wrapped_keys := [primary["entry"]]
     if trim(recovery_public_path) != "" {
         recovery := recipient_wrap(recovery_public_path, "recovery", data_key)
-        if recovery["ok"] != true { remove_tree(temp); return recovery }
-        if recovery["entry"]["recipientKeyId"] == primary["entry"]["recipientKeyId"] { remove_tree(temp); return {"ok": false, "error": "Recovery recipient must use a distinct key."} }
+        if recovery["ok"] != true { return recovery }
+        if recovery["entry"]["recipientKeyId"] == primary["entry"]["recipientKeyId"] { return {"ok": false, "error": "Recovery recipient must use a distinct key."} }
         wrapped_keys = push(wrapped_keys, recovery["entry"])
     }
-    ensure_dir(join_path(destination, "artifacts"))
-    ensure_dir(join_path(destination, "integrity"))
-    mut entries := []
-    for name in exported["bundle"]["artifacts"] {
-        source := join_path(join_path(temp, "artifacts"), name)
-        target := join_path(join_path(destination, "artifacts"), name + ".enc")
-        ensure_dir(dirname(target))
-        encrypted := aes_encrypt_file_stream(source, target, data_key, 1048576)
-        if type(encrypted) != "dict" || encrypted["ok"] != true { remove_tree(temp); remove_tree(destination); return {"ok": false, "error": "Streaming encryption failed for " + name} }
-        entries = push(entries, {"path": name, "bytes": encrypted["bytes_in"], "plaintextSha256": encrypted["plaintext_sha256"], "ciphertextSha256": sha256_file(target)})
+    ensure_dir(dirname(destination))
+    if claim_directory(destination) == false { return {"ok": false, "error": "Encrypted bundle destination could not be exclusively created."} }
+    try {
+        ensure_dir(join_path(destination, "artifacts"))
+        ensure_dir(join_path(destination, "integrity"))
+        mut entries := []
+        for name in exported["bundle"]["artifacts"] {
+            source := join_path(join_path(temp, "artifacts"), name)
+            target := join_path(join_path(destination, "artifacts"), name + ".enc")
+            ensure_dir(dirname(target))
+            encrypted := aes_encrypt_file_stream(source, target, data_key, 1048576)
+            if type(encrypted) != "dict" || encrypted["ok"] != true { remove_tree(destination); return {"ok": false, "error": "Streaming encryption failed for " + name} }
+            entries = push(entries, {"path": name, "bytes": encrypted["bytes_in"], "plaintextSha256": encrypted["plaintext_sha256"], "ciphertextSha256": sha256_file(target)})
+        }
+        copy_file(join_path(join_path(temp, "artifacts"), "artifact-manifest.json"), join_path(join_path(destination, "integrity"), "artifact-manifest.json"))
+        copy_file(join_path(join_path(temp, "artifacts"), "signature.json"), join_path(join_path(destination, "integrity"), "signature.json"))
+        legal_hold := false
+        record_path := join_path(join_path(temp, "artifacts"), "record.json")
+        if file_exists(record_path) {
+            record := read_json(record_path)
+            legal_hold = dict_get(dict_get(record, "governance", {}), "legalHold", false)
+        }
+        envelope := {"schemaVersion": "1.1.0", "runId": run_id, "createdAt": now_utc(), "cipher": "AES-256-GCM", "format": "KUJOAEAD1", "keyWrap": "RSA-OAEP", "manifestSha256": exported["bundle"]["manifestSha256"], "signingKeyId": exported["bundle"]["keyId"], "wrappedKeys": wrapped_keys, "artifactCount": len(entries), "artifacts": entries, "legalHold": legal_hold}
+        write_json(join_path(destination, "bundle.json"), exported["bundle"])
+        write_json(join_path(destination, "envelope.json"), envelope)
+        return {"ok": true, "path": path_absolute(destination), "envelope": envelope}
+    } except err {
+        remove_tree(destination)
+        return {"ok": false, "error": "Unable to write encrypted bundle: " + redact(to_string(err))}
     }
-    copy_file(join_path(join_path(temp, "artifacts"), "artifact-manifest.json"), join_path(join_path(destination, "integrity"), "artifact-manifest.json"))
-    copy_file(join_path(join_path(temp, "artifacts"), "signature.json"), join_path(join_path(destination, "integrity"), "signature.json"))
-    legal_hold := false
-    record_path := join_path(join_path(temp, "artifacts"), "record.json")
-    if file_exists(record_path) {
-        record := read_json(record_path)
-        legal_hold = dict_get(dict_get(record, "governance", {}), "legalHold", false)
-    }
-    envelope := {"schemaVersion": "1.1.0", "runId": run_id, "createdAt": now_utc(), "cipher": "AES-256-GCM", "format": "KUJOAEAD1", "keyWrap": "RSA-OAEP", "manifestSha256": exported["bundle"]["manifestSha256"], "signingKeyId": exported["bundle"]["keyId"], "wrappedKeys": wrapped_keys, "artifactCount": len(entries), "artifacts": entries, "legalHold": legal_hold}
-    write_json(join_path(destination, "bundle.json"), exported["bundle"])
-    write_json(join_path(destination, "envelope.json"), envelope)
-    remove_tree(temp)
-    return {"ok": true, "path": path_absolute(destination), "envelope": envelope}
 }
 
 export func verify_encrypted_bundle_integrity(bundle_path, signing_public_path) {
@@ -268,13 +295,8 @@ export func verify_encrypted_bundle_integrity(bundle_path, signing_public_path) 
     try { manifest = parse_json(manifest_text) } except err { return {"ok": false, "error": "Encrypted bundle signed manifest is invalid JSON."} }
     signature := null
     try { signature = read_json(signature_path) } except err { return {"ok": false, "error": "Encrypted bundle signature is invalid JSON."} }
-    if type(signature) != "dict" { return {"ok": false, "error": "Encrypted bundle signature failed structural validation."} }
-    for field in ["schemaVersion", "runId", "algorithm", "manifestSha256", "keyId", "signedAt", "signature"] {
-        if type(dict_get(signature, field, null)) != "string" || trim(signature[field]) == "" { return {"ok": false, "error": "Encrypted bundle signature failed structural validation."} }
-    }
+    if valid_signature_envelope(signature) == false || signature["runId"] != envelope["runId"] { return {"ok": false, "error": "Encrypted bundle signature failed structural validation or has a different run ID."} }
     signature_version := signature["schemaVersion"]
-    if signature_version != "1.0.0" && signature_version != "1.1.0" && signature_version != "1.2.0" { return {"ok": false, "error": "Encrypted bundle signature version is unsupported."} }
-    if signature_version != "1.0.0" && (type(dict_get(signature, "payloadSha256", null)) != "string" || len(signature["payloadSha256"]) != 64) { return {"ok": false, "error": "Encrypted bundle signature payload digest is missing."} }
     public_key := read_file(signing_public_path)
     if sha256(manifest_text) != envelope["manifestSha256"] || dict_get(signature, "manifestSha256", "") != envelope["manifestSha256"] || dict_get(signature, "keyId", "") != envelope["signingKeyId"] || substring(sha256(public_key), 0, 32) != envelope["signingKeyId"] { return {"ok": false, "error": "Encrypted bundle signed manifest binding is invalid."} }
     signed_text := manifest_text
@@ -334,26 +356,35 @@ export func import_encrypted_bundle(bundle_path, storage_dir, trust_policy, targ
     unwrapped := unwrap_data_key(envelope["wrappedKeys"], recipient_private_path)
     if unwrapped["ok"] != true { return unwrapped }
     temp := join_path(env_or("TMPDIR", "/tmp"), "tribunal-encrypted-import-" + uuid_v4())
+    if external_path_outside(storage_dir, temp) == false || claim_private_directory(temp) == false { return {"ok": false, "error": "Unable to create private encrypted-bundle import staging."} }
+    result := null
+    try { result = import_encrypted_staged(bundle_path, storage_dir, trust_policy, target, envelope, unwrapped, temp) } except err {
+        result = {"ok": false, "error": "Encrypted bundle import failed: " + redact(to_string(err))}
+    }
+    remove_tree(temp)
+    return result
+}
+
+func import_encrypted_staged(bundle_path, storage_dir, trust_policy, target, envelope, unwrapped, temp) {
     ensure_dir(join_path(temp, "artifacts"))
     copy_file(join_path(bundle_path, "bundle.json"), join_path(temp, "bundle.json"))
     for entry in envelope["artifacts"] {
-        if safe_relative_path(entry["path"]) == false { remove_tree(temp); return {"ok": false, "error": "Encrypted bundle contains an unsafe artifact path."} }
+        if safe_relative_path(entry["path"]) == false { return {"ok": false, "error": "Encrypted bundle contains an unsafe artifact path."} }
         cipher_path := join_path(join_path(bundle_path, "artifacts"), entry["path"] + ".enc")
-        if safe_existing_file(cipher_path, MAX_BUNDLE_ARTIFACT_BYTES + 1048576, "Encrypted artifact")["ok"] != true || sha256_file(cipher_path) != entry["ciphertextSha256"] { remove_tree(temp); return {"ok": false, "error": "Encrypted artifact integrity failed: " + entry["path"]} }
+        if safe_existing_file(cipher_path, MAX_BUNDLE_ARTIFACT_BYTES + 1048576, "Encrypted artifact")["ok"] != true || sha256_file(cipher_path) != entry["ciphertextSha256"] { return {"ok": false, "error": "Encrypted artifact integrity failed: " + entry["path"]} }
         target_path := join_path(join_path(temp, "artifacts"), entry["path"])
         ensure_dir(dirname(target_path))
         if dict_get(envelope, "format", "whole-value") == "KUJOAEAD1" {
             decrypted := aes_decrypt_file_stream(cipher_path, target_path, unwrapped["dataKey"])
-            if type(decrypted) != "dict" || decrypted["ok"] != true || decrypted["plaintext_sha256"] != entry["plaintextSha256"] || decrypted["bytes_out"] != entry["bytes"] { remove_tree(temp); return {"ok": false, "error": "Encrypted artifact authentication failed: " + entry["path"]} }
+            if type(decrypted) != "dict" || decrypted["ok"] != true || decrypted["plaintext_sha256"] != entry["plaintextSha256"] || decrypted["bytes_out"] != entry["bytes"] { return {"ok": false, "error": "Encrypted artifact authentication failed: " + entry["path"]} }
         } else {
             plaintext := null
             try { plaintext = aes_decrypt(read_file(cipher_path), unwrapped["dataKey"]) } except err { plaintext = null }
-            if type(plaintext) != "string" || sha256(plaintext) != entry["plaintextSha256"] || len(decode_base64(encode_base64(plaintext))) != entry["bytes"] { remove_tree(temp); return {"ok": false, "error": "Encrypted artifact authentication failed: " + entry["path"]} }
+            if type(plaintext) != "string" || sha256(plaintext) != entry["plaintextSha256"] || len(decode_base64(encode_base64(plaintext))) != entry["bytes"] { return {"ok": false, "error": "Encrypted artifact authentication failed: " + entry["path"]} }
             write_file(target_path, plaintext)
         }
     }
     imported := import_bundle(temp, storage_dir, trust_policy, target)
-    remove_tree(temp)
     if imported["ok"] == true { imported["encryptionRecipientKeyId"] := unwrapped["recipientKeyId"]; imported["recoveryPurpose"] := unwrapped["purpose"] }
     return imported
 }

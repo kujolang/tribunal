@@ -1,6 +1,6 @@
 # Tribunal :: immutable artifact-store providers with conditional writes and versions
 
-from src.bundles import export_bundle, import_bundle, validate_bundle_metadata
+from src.bundles import export_bundle, import_store_bundle, validate_bundle_metadata
 from src.common import dict_get, ensure_dir, external_path_outside, lower_hex, read_json, redact, remove_tree, safe_run_id, safe_http_url, utf8_byte_length, write_json, write_text
 from src.integrity import verify
 from src.locking import acquire_lock, release_lock
@@ -175,7 +175,7 @@ export func pull_local(root, run_id, version, storage_dir, trust_policy, target)
     if lower_hex(selected, 64) == false { return {"ok": false, "error": "Artifact-store index selected an unsafe version."} }
     source := local_version(root, run_id, selected)
     if path_is_dir(source) == false { return {"ok": false, "error": "Artifact-store version does not exist."} }
-    return import_bundle(source, storage_dir, trust_policy, target)
+    return import_store_bundle(source, storage_dir, trust_policy, target, run_id, selected)
 }
 
 export func publish_http(storage_dir, run_id, store, expected_version) {
@@ -247,7 +247,7 @@ export func pull_http(store, run_id, version, storage_dir, trust_policy, target)
         if type(downloaded) != "dict" || dict_get(downloaded, "status", 0) < 200 || dict_get(downloaded, "status", 0) >= 300 { remove_tree(temp); return {"ok": false, "error": "Remote artifact download failed for " + name + ".", "status": dict_get(downloaded, "status", 0)} }
         if downloaded["bytes"] != descriptor["bytes"] || downloaded["sha256"] != descriptor["sha256"] { remove_tree(temp); return {"ok": false, "error": "Remote streamed artifact digest failed for " + name + "."} }
     }
-    imported := import_bundle(temp, storage_dir, trust_policy, target)
+    imported := import_store_bundle(temp, storage_dir, trust_policy, target, run_id, selected)
     remove_tree(temp)
     return imported
 }

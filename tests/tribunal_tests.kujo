@@ -320,7 +320,16 @@ func test_signing_and_tamper() {
     checked := verify(storage, run_id, public_key)
     check(checked["ok"] == true && checked["signature"] == "verified", "trusted signature verifies")
     signature_path := artifact_path(storage, run_id, "signature.json")
-    signature := parse_json(read_file(signature_path))
+    signature_text := read_file(signature_path)
+    for value in ["[]", "null"] {
+        write_file(signature_path, value, true)
+        for key in ["", public_key] {
+            invalid := verify(storage, run_id, key)
+            check(invalid["ok"] == false && invalid["signature"] == "invalid", "non-object signature is invalid with or without a trusted key")
+        }
+    }
+    write_file(signature_path, signature_text, true)
+    signature := parse_json(signature_text)
     original_signed_at := signature["signedAt"]
     signature["signedAt"] := "2020-01-01T00:00:00Z"
     write_file(signature_path, to_json_pretty(signature) + "\n", true)

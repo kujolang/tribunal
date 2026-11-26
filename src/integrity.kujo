@@ -1,6 +1,6 @@
 # Tribunal :: Kujo-native SHA-256 artifact integrity and RSA signatures
 
-from src.common import dict_get, ensure_dir, path_within, write_json, write_text, read_json, remove_tree, safe_relative_path, safe_run_id, read_file_digest
+from src.common import dict_get, ensure_dir, lower_hex, path_within, write_json, write_text, read_json, remove_tree, safe_relative_path, safe_run_id, read_file_digest
 from src.storage import artifacts, artifact_path, list_runs_page
 
 MANIFEST_NAME := "artifact-manifest.json"
@@ -78,6 +78,18 @@ export func recover_seal_transactions(storage_dir) {
 
 func excluded(name) {
     return name == MANIFEST_NAME || name == SIGNATURE_NAME
+}
+
+export func valid_signature_envelope(envelope) {
+    if type(envelope) != "dict" { return false }
+    for field in ["schemaVersion", "runId", "algorithm", "manifestSha256", "keyId", "signedAt", "signature"] {
+        value := dict_get(envelope, field, null)
+        if type(value) != "string" || trim(value) == "" { return false }
+    }
+    version := envelope["schemaVersion"]
+    if version != "1.0.0" && version != "1.1.0" && version != "1.2.0" { return false }
+    if envelope["algorithm"] != "RSA-PKCS1v15-SHA256" || lower_hex(envelope["manifestSha256"], 64) == false || lower_hex(envelope["keyId"], 32) == false || len(envelope["signature"]) < 40 { return false }
+    return version == "1.0.0" || lower_hex(dict_get(envelope, "payloadSha256", ""), 64)
 }
 
 export func signature_payload_for(schema_version, run_id, manifest_hash, key_id, signed_at) {
@@ -245,15 +257,17 @@ export func verify(storage_dir, run_id, public_path) {
             }
         }
     }
+    mut signature_listed := false
     for name in artifacts(storage_dir, run_id) {
+        if name == SIGNATURE_NAME { signature_listed = true }
         if excluded(name) == false && has_key(expected, name) == 0 { response["unexpected"] := push(response["unexpected"], name) }
     }
     response["manifestSha256"] := sha256(manifest_text)
     signature_path := artifact_path(storage_dir, run_id, SIGNATURE_NAME)
-    if file_exists(signature_path) {
+    if signature_listed || file_exists(signature_path) || path_is_dir(signature_path) {
         response["signature"] := "present-unverified"
         envelope := null
-        if path_is_symlink(signature_path) || file_size(signature_path) > MAX_INTEGRITY_DOCUMENT_BYTES {
+        if file_exists(signature_path) == false || path_is_dir(signature_path) || path_is_symlink(signature_path) || file_size(signature_path) > MAX_INTEGRITY_DOCUMENT_BYTES {
             response["signature"] := "invalid"
             response["errors"] := push(response["errors"], "Signature envelope is unsafe or exceeds the safety limit.")
         } else {
@@ -262,10 +276,14 @@ export func verify(storage_dir, run_id, public_path) {
                 response["errors"] := push(response["errors"], "Signature envelope is invalid JSON.")
             }
         }
-        if type(envelope) == "dict" {
+        if response["signature"] != "invalid" && valid_signature_envelope(envelope) == false {
+            response["signature"] := "invalid"
+            response["errors"] := push(response["errors"], "Signature envelope failed structural validation.")
+        }
+        if response["signature"] != "invalid" {
             response["keyId"] := dict_get(envelope, "keyId", "")
             schema_version := dict_get(envelope, "schemaVersion", "")
-            if (schema_version != "1.0.0" && schema_version != "1.1.0" && schema_version != "1.2.0") || dict_get(envelope, "runId", "") != run_id || dict_get(envelope, "algorithm", "") != "RSA-PKCS1v15-SHA256" || dict_get(envelope, "manifestSha256", "") != sha256(manifest_text) {
+            if envelope["runId"] != run_id || envelope["manifestSha256"] != response["manifestSha256"] {
                 response["signature"] := "invalid"
                 response["errors"] := push(response["errors"], "Signature envelope does not match the manifest.")
             } else if public_path != "" {

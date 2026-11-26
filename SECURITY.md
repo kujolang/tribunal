@@ -12,7 +12,7 @@ Do not open a public issue for a suspected vulnerability. Send a private report 
 
 Tribunal treats dockets, model output, context providers, policies, bundles, store responses, run directories, and downstream tool output as untrusted. It rejects obvious secret material; bounds docket, context, model, process, artifact, manifest, bundle, policy, key, and integrity-document sizes; constrains run IDs and relative artifact paths; rejects symlinked evidence; and isolates subprocess environments.
 
-An unsigned SHA-256 manifest proves internal consistency, not provenance. A signed run establishes provenance only when its public key was obtained through a separate trusted channel. `--require-signature` should be mandatory at enterprise ingestion and replay boundaries.
+Verification rejects malformed or unsafe signature envelopes even when a trusted key was not requested. An unsigned SHA-256 manifest proves internal consistency, not provenance. A signed run establishes provenance only when its public key was obtained through a separate trusted channel. `--require-signature` should be mandatory at enterprise ingestion and replay boundaries.
 
 ## Key handling
 
