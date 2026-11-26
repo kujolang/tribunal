@@ -1,0 +1,1355 @@
+{
+  "repository": "kujolang/tribunal",
+  "branch": "codex/tribunal-performance",
+  "baseline": "d3a28cd5a758d84e50004077c2bb34dacebcdae6",
+  "candidate": "3b3b5909fb16157cebe2c7ce4ca013366ed7a56e",
+  "runtime": {
+    "version": "1.5.0",
+    "revision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+    "sha256": "3e1e475ea165c8b4a714495596fe8661ad970b27119ad44f1db4d9779f7f05d4"
+  },
+  "local": {
+    "baseline": [
+      {
+        "gate": "version",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/version.log",
+        "logSha256": "c60df80dbcaaecc680f9b34b1a113214acf2eeb36acdd6efac3fe8556534b836",
+        "command": "./bin/tribunal version"
+      },
+      {
+        "gate": "doctor",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/doctor.log",
+        "logSha256": "d81abc53b8dd6ca02770d6daedfb4d027da3afe8f9181334193f27e9ee44950d",
+        "command": "./bin/tribunal doctor --json"
+      },
+      {
+        "gate": "check",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/check.log",
+        "logSha256": "856f157a66b9efd698c0aa847ac9ff9b796ea8fb812c7e637a9190bcefca7247",
+        "command": "/Users/robertdevore/.local/bin/kujo check tribunal.kujo"
+      },
+      {
+        "gate": "tribunal_tests",
+        "exitCode": 4,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/tribunal_tests.log",
+        "logSha256": "cb2133b5292b259e91328728d954d22910d6fc1f71c3af8f88dc06fc28bbc1af",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/tribunal_tests.kujo --interpreter"
+      },
+      {
+        "gate": "cli_integration",
+        "exitCode": 1,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/cli_integration.log",
+        "logSha256": "4e648d6dfa71f348c6fbf49e992a6f217d527b59cbec930a1b4fb093d30b0873",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/cli_integration.kujo --interpreter"
+      },
+      {
+        "gate": "enterprise_tests",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/enterprise_tests.log",
+        "logSha256": "72fb5ebfaf91ab4ca15bff63ca409f23d8789b231bbdb888fcb154a255e8b3bf",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/enterprise_tests.kujo --interpreter"
+      },
+      {
+        "gate": "hardening_tests",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/hardening_tests.log",
+        "logSha256": "f37b702a7e136bff9af919b27be71bb7190caae89cb1be21047caccb60195d13",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/hardening_tests.kujo --interpreter"
+      },
+      {
+        "gate": "audit_regressions",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/audit_regressions.log",
+        "logSha256": "1d105d00797de91e268fc0c4306c52431a8f424da78337b8ce161c4183445e1e",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/audit_regressions.kujo --interpreter"
+      },
+      {
+        "gate": "property_tests",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/property_tests.log",
+        "logSha256": "0e9522459069dbdcbcfe99befc3c2014f2eae0c612eb9e7a1730b8c521e514fe",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/property_tests.kujo --interpreter"
+      },
+      {
+        "gate": "projection_regressions",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/projection_regressions.log",
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/projection_regressions.kujo --interpreter"
+      },
+      {
+        "gate": "schema_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/schema_gate.log",
+        "logSha256": "bcc52b54c751ef08c35ed65bfddc6a7c5d21c96a72f2a6ab6bb1b26eddc970cc",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/schema_gate.kujo --interpreter"
+      },
+      {
+        "gate": "drift_gate",
+        "exitCode": 4,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/drift_gate.log",
+        "logSha256": "ab541cce461a69da0d1edc585e5203a0223bb05f467ef50286f4843927db8079",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/drift_gate.kujo --interpreter"
+      },
+      {
+        "gate": "spec_gate",
+        "exitCode": 4,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/spec_gate.log",
+        "logSha256": "846e2c978bfd3b0924f25ba5768670c0ea222957a7cbaf6337623a4c2f7db322",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/spec_gate.kujo --interpreter"
+      },
+      {
+        "gate": "perf_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/perf_gate.log",
+        "logSha256": "946368eb5ca3be7f93459ac5cd576ec09a7ab892cb8452d8c20be3434bc5b669",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/perf_gate.kujo --interpreter"
+      },
+      {
+        "gate": "scale_perf_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/scale_perf_gate.log",
+        "logSha256": "bfde43b688715439df7fc35125170603fb07d76d548a8ebe8eb57c1d6a1585e9",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/scale_perf_gate.kujo --interpreter"
+      },
+      {
+        "gate": "index_perf_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/index_perf_gate.log",
+        "logSha256": "7c4e39c5386b0f513212afeea92be99b35df759676a135843873358ef961ea60",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/index_perf_gate.kujo --interpreter"
+      },
+      {
+        "gate": "load_chaos_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/load_chaos_gate.log",
+        "logSha256": "a832788023ef9197d941c9ed872c2351ac5317e8e65d4881fd7216fdba9410b0",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/load_chaos_gate.kujo --interpreter"
+      },
+      {
+        "gate": "adversarial_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/adversarial_gate.log",
+        "logSha256": "820fbcdad9845593034eaa858839f7da0006a171790a27f25f86b450bca1129d",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/adversarial_gate.kujo --interpreter"
+      },
+      {
+        "gate": "dashboard_accessibility_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/dashboard_accessibility_gate.log",
+        "logSha256": "a0161e1615771b02cdfc438be35d97d485a60ea08d31d57eeb6fb7c59f42d2ef",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/dashboard_accessibility_gate.kujo --interpreter"
+      },
+      {
+        "gate": "security_review_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/security_review_gate.log",
+        "logSha256": "56dea8fa5c1828dd1cabb5096fce3a20d478236c670333f455092d7df6c28814",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/security_review_gate.kujo --interpreter"
+      },
+      {
+        "gate": "integration_matrix_gate",
+        "exitCode": 1,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/integration_matrix_gate.log",
+        "logSha256": "1cf8ad46ea60fc6a354c23ca6f8992307cee7ef67aca88e3dcf6257a3f0618c8",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/integration_matrix_gate.kujo --interpreter"
+      },
+      {
+        "gate": "gallery_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/gallery_gate.log",
+        "logSha256": "85724a4fd1aaf65eb59b45866cb58cc9745cc4d99a30c412b8111d627351a49f",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/gallery_gate.kujo --interpreter"
+      },
+      {
+        "gate": "v1_compatibility_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/v1_compatibility_gate.log",
+        "logSha256": "3086ee1042f5c4bba572b57439dde57184ea88c682e836d56a79c75a3b22a35a",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/v1_compatibility_gate.kujo --interpreter"
+      },
+      {
+        "gate": "docs_link_gate",
+        "exitCode": 1,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/docs_link_gate.log",
+        "logSha256": "a5e620a992c5c6afa42a3ee99ff69a4d58e8701733ee9deb31b28c7676639091",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/docs_link_gate.kujo --interpreter"
+      },
+      {
+        "gate": "python",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/python.log",
+        "logSha256": "43b2215cad9716deaf979d7ed886d6ddb305c184d4b0c162b829fb4b9d74380a",
+        "command": "env PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests"
+      },
+      {
+        "gate": "http_receive_bounds",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/baseline/http_receive_bounds.log",
+        "logSha256": "ca603dd846c04f866dfe6b2da0f05b8687b0db02efb0739f1b136bb541027ace",
+        "command": "python3 tests/fixtures/http_receive_bounds.py"
+      }
+    ],
+    "candidate": [
+      {
+        "gate": "version",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/version.log",
+        "logSha256": "c60df80dbcaaecc680f9b34b1a113214acf2eeb36acdd6efac3fe8556534b836",
+        "command": "./bin/tribunal version"
+      },
+      {
+        "gate": "doctor",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/doctor.log",
+        "logSha256": "7052b25637a60128a3f8cd60b394a8d2c22788731fde663d9e90c43e8663670e",
+        "command": "./bin/tribunal doctor --json"
+      },
+      {
+        "gate": "check",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/check.log",
+        "logSha256": "856f157a66b9efd698c0aa847ac9ff9b796ea8fb812c7e637a9190bcefca7247",
+        "command": "/Users/robertdevore/.local/bin/kujo check tribunal.kujo"
+      },
+      {
+        "gate": "tribunal_tests",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/tribunal_tests.log",
+        "logSha256": "01e2a3245d79bbb563c905d94719717179b6430a251a18c525a72923cbc05d05",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/tribunal_tests.kujo --interpreter"
+      },
+      {
+        "gate": "cli_integration",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/cli_integration.log",
+        "logSha256": "c58b6ad26fb5fa65014b1c1787791e443eed16816e65d84b0c08dae1c5e054ce",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/cli_integration.kujo --interpreter"
+      },
+      {
+        "gate": "enterprise_tests",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/enterprise_tests.log",
+        "logSha256": "c21a1c206cdd8d4fdc6923ac521cad748702ba62048763336a3d4c9ad5d5af27",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/enterprise_tests.kujo --interpreter"
+      },
+      {
+        "gate": "hardening_tests",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/hardening_tests.log",
+        "logSha256": "f37b702a7e136bff9af919b27be71bb7190caae89cb1be21047caccb60195d13",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/hardening_tests.kujo --interpreter"
+      },
+      {
+        "gate": "audit_regressions",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/audit_regressions.log",
+        "logSha256": "1d105d00797de91e268fc0c4306c52431a8f424da78337b8ce161c4183445e1e",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/audit_regressions.kujo --interpreter"
+      },
+      {
+        "gate": "property_tests",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/property_tests.log",
+        "logSha256": "0e9522459069dbdcbcfe99befc3c2014f2eae0c612eb9e7a1730b8c521e514fe",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/property_tests.kujo --interpreter"
+      },
+      {
+        "gate": "projection_regressions",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/projection_regressions.log",
+        "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/projection_regressions.kujo --interpreter"
+      },
+      {
+        "gate": "schema_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/schema_gate.log",
+        "logSha256": "bcc52b54c751ef08c35ed65bfddc6a7c5d21c96a72f2a6ab6bb1b26eddc970cc",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/schema_gate.kujo --interpreter"
+      },
+      {
+        "gate": "drift_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/drift_gate.log",
+        "logSha256": "8727339024d1c242953fec8d1dbcd5ad5b602f1fe9ca1d59b34f444b833c38c2",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/drift_gate.kujo --interpreter"
+      },
+      {
+        "gate": "spec_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/spec_gate.log",
+        "logSha256": "f31bcfde1da8cf89bdad9de1b8a18ed0caaef3444d255a421bff17d21d9f37c9",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/spec_gate.kujo --interpreter"
+      },
+      {
+        "gate": "perf_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/perf_gate.log",
+        "logSha256": "8677703d98fe594c166811bd2ada78e26cb0ace573c66d9cc046f2ee6a5adea7",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/perf_gate.kujo --interpreter"
+      },
+      {
+        "gate": "scale_perf_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/scale_perf_gate.log",
+        "logSha256": "ff904260278d0140f1275caefefa9a7f4e8db0a3da8f74d22c1ee2436af706d0",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/scale_perf_gate.kujo --interpreter"
+      },
+      {
+        "gate": "index_perf_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/index_perf_gate.log",
+        "logSha256": "b620a23ffcd5d2fbb6a2414dac62d0cb5e48d5f5ae6c6893a0a39b2eda28d7db",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/index_perf_gate.kujo --interpreter"
+      },
+      {
+        "gate": "load_chaos_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/load_chaos_gate.log",
+        "logSha256": "6875ff92239615db10cd3036be37b80bdec5178aa658c58214e44e0a3ff4688c",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/load_chaos_gate.kujo --interpreter"
+      },
+      {
+        "gate": "adversarial_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/adversarial_gate.log",
+        "logSha256": "820fbcdad9845593034eaa858839f7da0006a171790a27f25f86b450bca1129d",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/adversarial_gate.kujo --interpreter"
+      },
+      {
+        "gate": "dashboard_accessibility_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/dashboard_accessibility_gate.log",
+        "logSha256": "a0161e1615771b02cdfc438be35d97d485a60ea08d31d57eeb6fb7c59f42d2ef",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/dashboard_accessibility_gate.kujo --interpreter"
+      },
+      {
+        "gate": "security_review_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/security_review_gate.log",
+        "logSha256": "56dea8fa5c1828dd1cabb5096fce3a20d478236c670333f455092d7df6c28814",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/security_review_gate.kujo --interpreter"
+      },
+      {
+        "gate": "integration_matrix_gate",
+        "exitCode": 1,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/integration_matrix_gate.log",
+        "logSha256": "e863a1f2d46ec80e50570650daf77b55f2d8885779300c59c50b8b750e1aa224",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/integration_matrix_gate.kujo --interpreter"
+      },
+      {
+        "gate": "gallery_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/gallery_gate.log",
+        "logSha256": "85724a4fd1aaf65eb59b45866cb58cc9745cc4d99a30c412b8111d627351a49f",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/gallery_gate.kujo --interpreter"
+      },
+      {
+        "gate": "v1_compatibility_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/v1_compatibility_gate.log",
+        "logSha256": "3086ee1042f5c4bba572b57439dde57184ea88c682e836d56a79c75a3b22a35a",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/v1_compatibility_gate.kujo --interpreter"
+      },
+      {
+        "gate": "docs_link_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/docs_link_gate.log",
+        "logSha256": "56b84cb797ed9d47c658a124ba618be7e82aa44058141d49a32dd54974e92b1d",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/docs_link_gate.kujo --interpreter"
+      },
+      {
+        "gate": "python",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/python.log",
+        "logSha256": "891bc6340399952036e3883d1275399f51c5017a2ccf12e1fbb1f0373b1f753f",
+        "command": "env PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests"
+      },
+      {
+        "gate": "http_receive_bounds",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/candidate/http_receive_bounds.log",
+        "logSha256": "ca603dd846c04f866dfe6b2da0f05b8687b0db02efb0739f1b136bb541027ace",
+        "command": "python3 tests/fixtures/http_receive_bounds.py"
+      }
+    ],
+    "pinned-old": [
+      {
+        "gate": "identity",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/pinned-old/identity.log",
+        "logSha256": "a99c18dcde83d9904070130dbed88284ebcd092ad35ef2afc691d2e61c251047",
+        "command": "git rev-parse HEAD"
+      },
+      {
+        "gate": "tribunal_tests",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/pinned-old/tribunal_tests.log",
+        "logSha256": "03367eb85a96735075682f8a633c6376b2cc974be55b689eed642228dd70241c",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/tribunal_tests.kujo --interpreter"
+      },
+      {
+        "gate": "cli_integration",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/pinned-old/cli_integration.log",
+        "logSha256": "c58b6ad26fb5fa65014b1c1787791e443eed16816e65d84b0c08dae1c5e054ce",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/cli_integration.kujo --interpreter"
+      },
+      {
+        "gate": "drift_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/pinned-old/drift_gate.log",
+        "logSha256": "270143dec1aad28960c19ccaaa6090dae313741464173f80f422f4201432f676",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/drift_gate.kujo --interpreter"
+      },
+      {
+        "gate": "spec_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/pinned-old/spec_gate.log",
+        "logSha256": "f31bcfde1da8cf89bdad9de1b8a18ed0caaef3444d255a421bff17d21d9f37c9",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/spec_gate.kujo --interpreter"
+      },
+      {
+        "gate": "integration_matrix_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/pinned-old/integration_matrix_gate.log",
+        "logSha256": "6cd9c0827fc03908a76e9d0e4e7e919d338efa1ad6afed3518e65f7323b46322",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/integration_matrix_gate.kujo --interpreter"
+      }
+    ],
+    "pinned-new": [
+      {
+        "gate": "identity",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/pinned-new/identity.log",
+        "logSha256": "51d22e35cf17973051a91a44dd65819b85b726389245174baa2cfc96fd1b74bb",
+        "command": "git rev-parse HEAD"
+      },
+      {
+        "gate": "tribunal_tests",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/pinned-new/tribunal_tests.log",
+        "logSha256": "b2e8b0b655956ae060002878da8a84b6eb41591363dcfc2be84d86d3fe220fa0",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/tribunal_tests.kujo --interpreter"
+      },
+      {
+        "gate": "cli_integration",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/pinned-new/cli_integration.log",
+        "logSha256": "c58b6ad26fb5fa65014b1c1787791e443eed16816e65d84b0c08dae1c5e054ce",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/cli_integration.kujo --interpreter"
+      },
+      {
+        "gate": "drift_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/pinned-new/drift_gate.log",
+        "logSha256": "270143dec1aad28960c19ccaaa6090dae313741464173f80f422f4201432f676",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/drift_gate.kujo --interpreter"
+      },
+      {
+        "gate": "spec_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/pinned-new/spec_gate.log",
+        "logSha256": "f31bcfde1da8cf89bdad9de1b8a18ed0caaef3444d255a421bff17d21d9f37c9",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/spec_gate.kujo --interpreter"
+      },
+      {
+        "gate": "integration_matrix_gate",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/pinned-new/integration_matrix_gate.log",
+        "logSha256": "6cd9c0827fc03908a76e9d0e4e7e919d338efa1ad6afed3518e65f7323b46322",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/integration_matrix_gate.kujo --interpreter"
+      },
+      {
+        "gate": "eval",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/pinned-new/eval.log",
+        "logSha256": "47e8ce7e44d5388c9d096d56fb5eb72db823636b010ab8b3057b05b9ff8e2244",
+        "command": "bash -c cd\\ ../eval\\ \\&\\&\\ \\\"\\$KUJO_BIN\\\"\\ run\\ main.kujo\\ run\\ \\\"\\$TRIBUNAL_HOME/tests/tribunal_eval.json\\\""
+      },
+      {
+        "gate": "kennel",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/pinned-new/kennel.log",
+        "logSha256": "b580f787ae33b3673c7adbb61315dcc224a55bb5f0987fe2f5d3dec40128fba0",
+        "command": "/Users/robertdevore/.local/bin/kujo run ../kennel/kennel.kujo --interpreter -- validate --project-dir /Volumes/TribunalSecurity261126/pinned/new/tribunal"
+      }
+    ],
+    "exact": [
+      {
+        "gate": "identity",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/exact/identity.log",
+        "logSha256": "51d22e35cf17973051a91a44dd65819b85b726389245174baa2cfc96fd1b74bb",
+        "command": "git rev-parse HEAD"
+      },
+      {
+        "gate": "runtime",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/exact/runtime.log",
+        "logSha256": "7119141f43f6998bfe175bf567f88aa027446ead63f965b16bb17ec78706a52c",
+        "command": "shasum -a 256 /Users/robertdevore/.local/bin/kujo"
+      },
+      {
+        "gate": "docker",
+        "exitCode": 1,
+        "log": ".tribunal/security-hardening-2026-11-26/exact/docker.log",
+        "logSha256": "dcb113b60d93597bc43f31d05f5f09204cce5f7207e1f0bda7f43b1cf170ef3b",
+        "command": "docker info --format \\{\\{.ServerVersion\\}\\}"
+      },
+      {
+        "gate": "docker-colima",
+        "exitCode": 1,
+        "log": ".tribunal/security-hardening-2026-11-26/exact/docker-colima.log",
+        "logSha256": "d7170ddeeef50cd320d2feb7f5a5342527f09d17ce54ac960a266c5c267df77b",
+        "command": "docker --context colima info --format \\{\\{.ServerVersion\\}\\}"
+      },
+      {
+        "gate": "docker-workcell",
+        "exitCode": 1,
+        "log": ".tribunal/security-hardening-2026-11-26/exact/docker-workcell.log",
+        "logSha256": "707d1ba2a76f721341d5ce4e9f330915170f9caa295b907e21ebd1db12607e88",
+        "command": "docker --host unix:///Users/robertdevore/.colima/kujo-workcell/docker.sock info --format \\{\\{.ServerVersion\\}\\}"
+      },
+      {
+        "gate": "workcell-success",
+        "exitCode": 4,
+        "log": ".tribunal/security-hardening-2026-11-26/exact/workcell-success.log",
+        "logSha256": "a714c34c06757b8e345b9e252137474a8c7d4f7632aa3b59bd8e269c736dc50a",
+        "command": "/Volumes/TribunalSecurity261126/workcell/bin/workcell run --file docs/workcell-launch-gate.json --repo . --no-pull"
+      },
+      {
+        "gate": "workcell-failure",
+        "exitCode": 4,
+        "log": ".tribunal/security-hardening-2026-11-26/exact/workcell-failure.log",
+        "logSha256": "ab79bf25764433361046af51234c5da957a604ec825091043cc348a7e4330ccd",
+        "command": "/Volumes/TribunalSecurity261126/workcell/bin/workcell run --file docs/workcell-failure-gate.json --repo . --no-pull"
+      },
+      {
+        "gate": "version",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/exact/version.log",
+        "logSha256": "c60df80dbcaaecc680f9b34b1a113214acf2eeb36acdd6efac3fe8556534b836",
+        "command": "./bin/tribunal version"
+      },
+      {
+        "gate": "doctor",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/exact/doctor.log",
+        "logSha256": "7052b25637a60128a3f8cd60b394a8d2c22788731fde663d9e90c43e8663670e",
+        "command": "./bin/tribunal doctor --json"
+      },
+      {
+        "gate": "valid-docket",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/exact/valid-docket.log",
+        "logSha256": "3c8b3c576541d1e1ecfad32957a1cc9249ad279833c4d941c4a15550108c19b4",
+        "command": "./bin/tribunal validate examples/product-decision.md --json"
+      },
+      {
+        "gate": "missing-docket",
+        "exitCode": 1,
+        "log": ".tribunal/security-hardening-2026-11-26/exact/missing-docket.log",
+        "logSha256": "446208df978c33344673ac17c6215f48a7455a75dd409b0d785cc8be8d81e58b",
+        "command": "./bin/tribunal validate /Volumes/TribunalSecurity261126/absent-docket.md --json"
+      },
+      {
+        "gate": "mock-review",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/exact/mock-review.log",
+        "logSha256": "30d75db22288f44c943906e1608ac1f046dada9ad154083935fd24d4f400537b",
+        "command": "./bin/tribunal review examples/product-decision.md --panel executioner-only --mock --storage-dir /Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/security-hardening-2026-11-26/exact/fallback-runs"
+      },
+      {
+        "gate": "mock-verify",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/exact/mock-verify.log",
+        "logSha256": "2869265aa888d3e5a2f3985e80af56d631459fe4b0997bed73ad14b89ce21459",
+        "command": "./bin/tribunal verify 2026-11-26-product-decision-md-9129 --storage-dir /Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/security-hardening-2026-11-26/exact/fallback-runs"
+      },
+      {
+        "gate": "workcell-success-verify",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/exact/workcell-success-verify.log",
+        "logSha256": "5fcf5055505ec0ed319789a239b07d00ce697f7e7b1b1ccb4c3154f2d7595da8"
+      },
+      {
+        "gate": "workcell-failure-verify",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/exact/workcell-failure-verify.log",
+        "logSha256": "2b425f801979d69827ef6899ba7c655b9e4e2f0f8412af1b8063c953827973b6"
+      }
+    ],
+    "release": [
+      {
+        "gate": "archive",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/release/archive.log",
+        "logSha256": "9bb2d2e8fc7d13690691f1192b27ad62ea75984928484ce4d6b7edac08c7e273",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/release_archive.kujo --interpreter"
+      },
+      {
+        "gate": "archive-smoke",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/release/archive-smoke.log",
+        "logSha256": "a77a554d180c0c74012b03ed7dcc8031007372d9b4700573d7d1ac4edc0e60db",
+        "command": "/Users/robertdevore/.local/bin/kujo run scripts/archive_smoke.kujo --interpreter /Users/robertdevore/2026/Kujolang/kujo-repos/tribunal/.tribunal/security-hardening-2026-11-26/release/archive/tribunal-v1.0.2.zip"
+      },
+      {
+        "gate": "cli",
+        "exitCode": 0,
+        "log": ".tribunal/security-hardening-2026-11-26/release/cli.log",
+        "logSha256": "c58b6ad26fb5fa65014b1c1787791e443eed16816e65d84b0c08dae1c5e054ce",
+        "command": "/Users/robertdevore/.local/bin/kujo run tests/cli_integration.kujo"
+      }
+    ]
+  },
+  "sourceChecks": {
+    "command": "git ls-files -z '*.kujo' | xargs -0 -n 1 \"$KUJO_BIN\" check",
+    "passed": 77,
+    "log": ".tribunal/security-hardening-2026-11-26/source-checks.log",
+    "logSha256": "3125a2185bab5e36d874160733a63227b6a9ce69830855d5f05701aa4396fd47"
+  },
+  "workcell": [
+    {
+      "run_id": "wc-3882f08f8acf411d9c67c58a2f1c7ea3",
+      "source_commit": "3b3b5909fb16157cebe2c7ce4ca013366ed7a56e",
+      "container_image": "kujolang/workcell-kujo:tribunal-kujo-1.5.0-cc2d7db",
+      "final_status": "failed",
+      "exit_code": 4,
+      "errors": [
+        {
+          "message": "inspect Docker security profiles exited with code 1: Cannot connect to the Docker daemon at unix:///Users/robertdevore/.docker/run/docker.sock. Is the docker daemon running?",
+          "stage": "preparing"
+        }
+      ],
+      "manifestSha256": "a6791134ee7164d3fad161c527830e30cced27e84a3c0193557607698f1c6f92",
+      "receiptSha256": "2a5e905b8a43e2b643a23d83f625c01726240dac3317d83cf1b8e2e1bcac3744",
+      "verifyCommand": "WORKCELL_BIN verify --run .workcell/runs/wc-3882f08f8acf411d9c67c58a2f1c7ea3 --json",
+      "verifyResult": {
+        "manifest": {
+          "bytes": 4928,
+          "files": 3,
+          "ok": true,
+          "schema_version": "workcell-manifest/v1"
+        },
+        "ok": true,
+        "run_dir": ".workcell/runs/wc-3882f08f8acf411d9c67c58a2f1c7ea3"
+      }
+    },
+    {
+      "run_id": "wc-0a30ce998d4949c2b611b52a642c5897",
+      "source_commit": "3b3b5909fb16157cebe2c7ce4ca013366ed7a56e",
+      "container_image": "kujolang/workcell-kujo:tribunal-kujo-1.5.0-cc2d7db",
+      "final_status": "failed",
+      "exit_code": 4,
+      "errors": [
+        {
+          "message": "inspect Docker security profiles exited with code 1: Cannot connect to the Docker daemon at unix:///Users/robertdevore/.docker/run/docker.sock. Is the docker daemon running?",
+          "stage": "preparing"
+        }
+      ],
+      "manifestSha256": "8a4e33831f1a95dedce7768b08414a802f14461c27fba460616744cfbe212cc1",
+      "receiptSha256": "e75a541c8a3da403e2dd97265576df39393560db4e0f99fee46bd3221257f5b9",
+      "verifyCommand": "WORKCELL_BIN verify --run .workcell/runs/wc-0a30ce998d4949c2b611b52a642c5897 --json",
+      "verifyResult": {
+        "manifest": {
+          "bytes": 4283,
+          "files": 3,
+          "ok": true,
+          "schema_version": "workcell-manifest/v1"
+        },
+        "ok": true,
+        "run_dir": ".workcell/runs/wc-0a30ce998d4949c2b611b52a642c5897"
+      }
+    }
+  ],
+  "fallbackVerification": {
+    "artifactsChecked": 16,
+    "errors": [],
+    "manifestSha256": "15389c324b8d3b984664a9d05a4f8415fd0511ee3f5bdfa4ba2990cbe2a486f8",
+    "mismatched": [],
+    "missing": [],
+    "ok": true,
+    "runId": "2026-11-26-product-decision-md-9129",
+    "signature": "absent",
+    "unexpected": []
+  },
+  "archive": {
+    "archive": "tribunal-v1.0.2.zip",
+    "archiveBuilder": "scripts/deterministic_zip.py",
+    "archiveBytes": 493507,
+    "archiveSha256": "e2a5c9f83b4c78c0d0181e59e07ba715183ccc039136982ff9ff7b24aaad4ad7",
+    "files": 222,
+    "provenanceSha256": "78135934b28bb69b9db5914b173a79cd18458c1ca9c6a72f5eba65f0c67022ae",
+    "rebuildSha256": "e2a5c9f83b4c78c0d0181e59e07ba715183ccc039136982ff9ff7b24aaad4ad7",
+    "reproducible": true,
+    "runtimeRevision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+    "runtimeSha256": "3e1e475ea165c8b4a714495596fe8661ad970b27119ad44f1db4d9779f7f05d4",
+    "sbomSha256": "10f5f5cd11aa3ff20e1ded537a60f4e51c6f7659be5781608c64a5df9d5fb2ce",
+    "schemaVersion": "1.0.0",
+    "sourceDateEpoch": "1795729631",
+    "sourceRevision": "3b3b5909fb16157cebe2c7ce4ca013366ed7a56e",
+    "version": "1.0.2"
+  },
+  "hostedRun": {
+    "conclusion": "success",
+    "head_sha": "3b3b5909fb16157cebe2c7ce4ca013366ed7a56e",
+    "html_url": "https://github.com/kujolang/tribunal/actions/runs/45900496490",
+    "id": 45900496490,
+    "run_attempt": 1,
+    "status": "completed"
+  },
+  "hostedJobs": [
+    {
+      "conclusion": "success",
+      "html_url": "https://github.com/kujolang/tribunal/actions/runs/45900496490/job/140184799734",
+      "id": 140184799734,
+      "name": "platform (macos-15, macos-arm64)",
+      "status": "completed",
+      "steps": [
+        {
+          "conclusion": "success",
+          "name": "Set up job",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Validate runtime installer boundaries",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Install checksum-pinned official Kujo runtime",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run platform gates",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Publish measured receipt",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Complete job",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "conclusion": "success",
+      "html_url": "https://github.com/kujolang/tribunal/actions/runs/45900496490/job/140184800047",
+      "id": 140184800047,
+      "name": "platform (ubuntu-24.04, linux-x86_64)",
+      "status": "completed",
+      "steps": [
+        {
+          "conclusion": "success",
+          "name": "Set up job",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Validate runtime installer boundaries",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Install checksum-pinned official Kujo runtime",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run platform gates",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Publish measured receipt",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Complete job",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "conclusion": "success",
+      "html_url": "https://github.com/kujolang/tribunal/actions/runs/45900496490/job/140184800070",
+      "id": 140184800070,
+      "name": "platform (macos-15-intel, macos-x86_64)",
+      "status": "completed",
+      "steps": [
+        {
+          "conclusion": "success",
+          "name": "Set up job",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Validate runtime installer boundaries",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Install checksum-pinned official Kujo runtime",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run platform gates",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Publish measured receipt",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "status": "completed"
+        },
+        {
+          "conclusion": "success",
+          "name": "Complete job",
+          "status": "completed"
+        }
+      ]
+    }
+  ],
+  "hostedArtifacts": [
+    {
+      "created_at": "2026-11-26T21:52:15Z",
+      "expired": false,
+      "id": 15156021701,
+      "name": "tribunal-compatibility-macos-x86_64",
+      "size_in_bytes": 821
+    },
+    {
+      "created_at": "2026-11-26T21:48:43Z",
+      "expired": false,
+      "id": 15155167945,
+      "name": "tribunal-compatibility-linux-x86_64",
+      "size_in_bytes": 830
+    },
+    {
+      "created_at": "2026-11-26T21:49:58Z",
+      "expired": false,
+      "id": 15155132595,
+      "name": "tribunal-compatibility-macos-arm64",
+      "size_in_bytes": 813
+    }
+  ],
+  "hostedPlatforms": [
+    {
+      "sha256": "6163ff4466207e446a3e642b10296c0542326284981ac9d3fbea283b0ea94b4d",
+      "claimBoundary": "This receipt covers only the named revision, pinned runtime commit and digest, measured environment, architecture, and completed gates.",
+      "environment": {
+        "kernel": "Linux 7.0.0-1020-azure",
+        "osRelease": "Ubuntu 24.04.5 LTS",
+        "runnerImage": "github-hosted:ubuntu-24.04"
+      },
+      "gates": [
+        "kujo-check-all",
+        "tribunal-tests",
+        "cli-integration",
+        "enterprise-tests",
+        "property-tests",
+        "hardening-tests",
+        "audit-regressions",
+        "schema",
+        "concord-drift",
+        "strict-spec",
+        "eval",
+        "performance",
+        "scale-performance",
+        "index-performance",
+        "load-chaos",
+        "adversarial",
+        "dashboard-accessibility",
+        "security-review-register",
+        "integration-matrix",
+        "kennel-package",
+        "gallery",
+        "reproducible-release-archive",
+        "doctor"
+      ],
+      "kujoRevision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+      "kujoSha256": "93d5b2e5591a20fe56ec9a5312c045d53c5dc3e4abe3b3a6765cc1ecd2b71381",
+      "kujoVersion": "1.5.0",
+      "measuredAt": "2026-11-26T21:48:42Z",
+      "platform": "linux-x86_64",
+      "result": "pass",
+      "schemaVersion": "1.1.0",
+      "sourceRevision": "3b3b5909fb16157cebe2c7ce4ca013366ed7a56e",
+      "tribunalVersion": "1.0.2"
+    },
+    {
+      "sha256": "680ca614cb89ad5488c5c99827e7bcf3857c26152718ceaf0c798f20b34e37ea",
+      "claimBoundary": "This receipt covers only the named revision, pinned runtime commit and digest, measured environment, architecture, and completed gates.",
+      "environment": {
+        "kernel": "Darwin 24.6.0",
+        "osRelease": "macOS 15.8.2",
+        "runnerImage": "github-hosted:macos-15"
+      },
+      "gates": [
+        "kujo-check-all",
+        "tribunal-tests",
+        "cli-integration",
+        "enterprise-tests",
+        "property-tests",
+        "hardening-tests",
+        "audit-regressions",
+        "schema",
+        "concord-drift",
+        "strict-spec",
+        "eval",
+        "performance",
+        "scale-performance",
+        "index-performance",
+        "load-chaos",
+        "adversarial",
+        "dashboard-accessibility",
+        "security-review-register",
+        "integration-matrix",
+        "kennel-package",
+        "gallery",
+        "reproducible-release-archive",
+        "doctor"
+      ],
+      "kujoRevision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+      "kujoSha256": "327b59a1f584581963a9ed3dcb853783ed431c8fe4c36953278520c3e432e98b",
+      "kujoVersion": "1.5.0",
+      "measuredAt": "2026-11-26T21:49:56Z",
+      "platform": "macos-arm64",
+      "result": "pass",
+      "schemaVersion": "1.1.0",
+      "sourceRevision": "3b3b5909fb16157cebe2c7ce4ca013366ed7a56e",
+      "tribunalVersion": "1.0.2"
+    },
+    {
+      "sha256": "1673ff95980d2c36b426654b33d52ba2e04cac41f9cab326791882420677b814",
+      "claimBoundary": "This receipt covers only the named revision, pinned runtime commit and digest, measured environment, architecture, and completed gates.",
+      "environment": {
+        "kernel": "Darwin 24.6.0",
+        "osRelease": "macOS 15.7.9",
+        "runnerImage": "github-hosted:macos-15-intel"
+      },
+      "gates": [
+        "kujo-check-all",
+        "tribunal-tests",
+        "cli-integration",
+        "enterprise-tests",
+        "property-tests",
+        "hardening-tests",
+        "audit-regressions",
+        "schema",
+        "concord-drift",
+        "strict-spec",
+        "eval",
+        "performance",
+        "scale-performance",
+        "index-performance",
+        "load-chaos",
+        "adversarial",
+        "dashboard-accessibility",
+        "security-review-register",
+        "integration-matrix",
+        "kennel-package",
+        "gallery",
+        "reproducible-release-archive",
+        "doctor"
+      ],
+      "kujoRevision": "cc2d7dbb59a8dc05f00d629e100932f56f4062f6",
+      "kujoSha256": "3e1e475ea165c8b4a714495596fe8661ad970b27119ad44f1db4d9779f7f05d4",
+      "kujoVersion": "1.5.0",
+      "measuredAt": "2026-11-26T21:52:13Z",
+      "platform": "macos-x86_64",
+      "result": "pass",
+      "schemaVersion": "1.1.0",
+      "sourceRevision": "3b3b5909fb16157cebe2c7ce4ca013366ed7a56e",
+      "tribunalVersion": "1.0.2"
+    }
+  ]
+}
