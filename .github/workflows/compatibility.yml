@@ -26,73 +26,74 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          persist-credentials: false
           path: tribunal
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          persist-credentials: false
           repository: kujolang/kujo
           ref: cc2d7dbb59a8dc05f00d629e100932f56f4062f6
           path: kujo
-          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          persist-credentials: false
           repository: kujolang/ai-sdk
           ref: d3c6def0f7844f8b42bd92d3b176e80283af8e79
           path: ai-sdk
-          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          persist-credentials: false
           repository: kujolang/packwrite
           ref: 0cb9487e4c02218bb4a18efe68b8a0c22998f715
           path: packwrite
-          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          persist-credentials: false
           repository: kujolang/runledger
           ref: 5cf186c9b56b540970f75e33a06f50d3dac833a8
           path: runledger
-          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          persist-credentials: false
           repository: kujolang/casefile
           ref: 6e8a6ded379a9882b2e48b0a8f0bad57e284c3bf
           path: casefile
-          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          persist-credentials: false
           repository: kujolang/concord
           ref: d388c951b7ff0e1e03da1cd252ad5b65e25765b9
           path: concord
-          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          persist-credentials: false
           repository: kujolang/spec
           ref: 11180d8f6af1ed3eea84abb3434dd736fa51293b
           path: spec
-          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          persist-credentials: false
           repository: kujolang/eval
           ref: dce9d030a3547803dab876b404c44c25b247dde1
           path: eval
-          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          persist-credentials: false
           repository: kujolang/kennel
           ref: 6df043c3ba0bde4445cc8f8f7d4c01c60c9c6d7e
           path: kennel
-          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          persist-credentials: false
           repository: kujolang/workcell
           ref: 91b9f066ad32b6fffb8f456d8613c0379ac48b04
           path: workcell
-          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          persist-credentials: false
           repository: kujolang/watchdog
           ref: 9e82e8f5b05edca948f6a432ae517031388296e6
           path: watchdog
-          token: ${{ secrets.KUJO_ECOSYSTEM_TOKEN || github.token }}
       - name: Validate runtime installer boundaries
         working-directory: tribunal
         run: python3 -m unittest discover -s tests -p test_ci_runtime.py
