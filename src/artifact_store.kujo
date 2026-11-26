@@ -8,13 +8,15 @@ from src.adversarial import inspect_remote_envelope
 
 func request_once(url, options) {
     response := {"ok": false, "status": 0, "body": "", "headers": {}, "error": "request failed"}
+    options["redirects"] := "none"
+    options["max_response_bytes"] := 4194304
     try {
         result := http_request(url, options)
         match result {
             case Ok(value): {
                 response["status"] := dict_get(value, "_status", dict_get(value, "status", 0))
                 response["body"] := dict_get(value, "_body", dict_get(value, "body", ""))
-                response["headers"] := dict_get(value, "headers", {})
+                response["headers"] := dict_get(value, "_headers", dict_get(value, "headers", {}))
                 response["ok"] := response["status"] >= 200 && response["status"] < 300
                 response["error"] := ""
             }
@@ -44,9 +46,9 @@ func http_store_context(store) {
     region := trim(dict_get(store, "region", ""))
     token_path := trim(dict_get(store, "bearer_token_file", ""))
     if safe_http_url(endpoint) == false || tenant == "" || region == "" || safe_run_id(tenant) == false || safe_run_id(region) == false { return {"ok": false, "error": "Authenticated HTTP store endpoint, tenant, and region are required."} }
-    if file_exists(token_path) == false || path_is_symlink(token_path) || file_size(token_path) > 1048576 { return {"ok": false, "error": "HTTP store bearer-token file is missing or unsafe."} }
-    token := trim(read_file(token_path))
-    if token == "" || contains(token, "\n") || contains(token, "\r") { return {"ok": false, "error": "HTTP store bearer token is invalid."} }
+    token := ""
+    try { token = trim(text_file_read(token_path, 1048576)) } except err { return {"ok": false, "error": "HTTP store bearer-token file is missing or unsafe."} }
+    if token == "" || regex_match(token, "[\\x00-\\x20\\x7f]") { return {"ok": false, "error": "HTTP store bearer token is invalid."} }
     return {"ok": true, "endpoint": endpoint, "headers": {"Authorization": "Bearer " + token, "X-Tribunal-Tenant": tenant, "X-Tribunal-Region": region}, "tenantId": tenant, "region": region}
 }
 
