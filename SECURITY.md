@@ -36,4 +36,6 @@ Distribute trust policies independently from evidence. Revoked, expired, out-of-
 
 Tribunal exposes no network API. The offline dashboard is escaped, script-free, and CSP-restricted but must still be hosted behind organizational authentication if published.
 
+Tribunal stages imported bundle contents outside the run ID namespace, verifies them against the supplied trust policy, and claims the destination before publishing a verified run. Integrity verification rejects malformed present signature envelopes, including when no trust key is supplied.
+
 Run storage is an evidence-only boundary. Tribunal refuses dashboard, telemetry, bundle, archive, key, RunLedger, and CaseFile outputs that would land inside it. Lock acquisition never removes a stale-looking owner automatically; only the explicit operator recovery workflow may do so.

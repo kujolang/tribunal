@@ -3,8 +3,9 @@ from src.common import claim_directory, ensure_dir, remove_tree, truthy, redact,
 from src.config import default_config
 from src.context import build_context
 from src.model import invoke
-from src.storage import save_json, list_runs_page, repair_run_index, rebuild_run_index, verify_run_index, run_index_path
+from src.storage import save_json, artifact_path, list_runs_page, repair_run_index, rebuild_run_index, verify_run_index, run_index_path
 from src.bundles import validate_bundle_metadata
+from src.integrity import verify
 
 mut passed := 0
 mut failed := 0
@@ -28,6 +29,35 @@ for header in ["Authorization: Bearer synthetic-credential-value", "authorizatio
 }
 check(path_within("/", root), "filesystem root contains descendants")
 check(external_path_outside("/", root) == false, "root storage cannot have external filesystem outputs")
+
+
+canonical_parent := join_path(root, "parent")
+ensure_dir(canonical_parent)
+parent_alias := join_path(root, "parent-alias")
+link := spawn_process(["/bin/ln", "-s", canonical_parent, parent_alias], {"inherit_env": false, "timeout_ms": 10000})
+check(link.success, "path projection fixture alias created")
+future_storage := join_path(canonical_parent, "future-runs")
+check(external_path_outside(future_storage, join_path(parent_alias, "future-runs/./reports/summary.json")) == false, "projected output stays outside the reserved storage path before creation")
+check(external_path_outside(future_storage, join_path(parent_alias, "reports/summary.json")), "projected sibling output remains available")
+
+verified_dir := join_path(root, "verify-runs")
+verified_run := join_path(verified_dir, "fixture")
+ensure_dir(verified_run)
+write_file(join_path(verified_run, "ordinary.txt"), "fixture")
+write_json(join_path(verified_run, "artifact-manifest.json"), {
+    "schemaVersion":"1.0.0", "runId":"fixture", "generatedAt":"2026-11-26T00:00:00Z",
+    "algorithm":"sha256", "exclusions":["artifact-manifest.json","signature.json"],
+    "artifacts":[{"path":"ordinary.txt","bytes":7,"sha256":sha256("fixture")}],
+})
+check(verify(verified_dir, "fixture", "")["ok"], "unsigned ordinary fixture verifies")
+signature_file := join_path(verified_run, "signature.json")
+write_json(signature_file, [])
+malformed := verify(verified_dir, "fixture", "")
+check(malformed["ok"] == false && malformed["signature"] == "invalid", "present invalid signature shape fails integrity verification")
+delete_file(signature_file)
+linked_dir := join_path(verified_run, "evidence-alias")
+link = spawn_process(["/bin/ln", "-s", canonical_parent, linked_dir], {"inherit_env": false, "timeout_ms": 10000})
+check(link.success && artifact_path(verified_dir, "fixture", "evidence-alias/report.json") == "", "artifact paths refuse a symbolic-link parent")
 
 # A fixture executable emits plausible success and then reports process failure.
 # It performs no model/provider request and never reads ambient credentials.

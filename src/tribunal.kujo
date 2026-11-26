@@ -74,11 +74,9 @@ func docket_title(content, source) {
 func open_docket(config, path) {
     checked_file := safe_existing_file(path, config["limits"]["max_docket_bytes"], "Docket file")
     if checked_file["ok"] != true { return {"ok": false, "error": "Missing, unsafe, or oversized docket file: " + path} }
-    size := file_size(path)
     max_bytes := config["limits"]["max_docket_bytes"]
-    if size > max_bytes { return {"ok": false, "error": "Docket exceeds the configured " + to_string(max_bytes) + " byte limit."} }
     content := ""
-    try { content = read_file(path) } except err { return {"ok": false, "error": "Missing or unreadable docket file: " + path} }
+    try { content = text_file_read(path, max_bytes) } except err { return {"ok": false, "error": "Missing or unreadable docket file: " + path} }
     if trim(content) == "" { return {"ok": false, "error": "Docket is empty."} }
     scan := secret_scan(content, config["security"]["organization_secret_patterns_path"])
     if scan["ok"] != true { return {"ok": false, "error": scan["error"]} }
@@ -495,9 +493,12 @@ export func resume(config, prior_run_id, private_key, public_key) {
     if integrity["ok"] != true { return {"ok": false, "error": "Prior hearing integrity failed; resume is forbidden.", "verification": integrity} }
     prior := null
     checkpoint := null
-    try { prior = parse_json(read_file(prior_record_path)) } except err { return {"ok": false, "error": "Prior run record is invalid JSON."} }
-    try { checkpoint = parse_json(read_file(checkpoint_path)) } except err { return {"ok": false, "error": "Prior run checkpoint is invalid JSON."} }
+    prior_text := ""
+    checkpoint_text := ""
+    try { prior_text = text_file_read(prior_record_path, 4194304); prior = parse_json(prior_text) } except err { return {"ok": false, "error": "Prior run record is invalid JSON."} }
+    try { checkpoint_text = text_file_read(checkpoint_path, 1048576); checkpoint = parse_json(checkpoint_text) } except err { return {"ok": false, "error": "Prior run checkpoint is invalid JSON."} }
+    if type(prior) != "dict" || type(checkpoint) != "dict" || dict_get(prior, "runId", "") != prior_run_id || dict_get(checkpoint, "runId", "") != prior_run_id { return {"ok": false, "error": "Prior record and checkpoint must match the resumed hearing."} }
     if prior["status"] != "stopped" { return {"ok": false, "error": "Only stopped hearings may be resumed."} }
-    lineage := {"schemaVersion": "1.0.0", "priorRunId": prior_run_id, "priorRecordSha256": sha256(read_file(prior_record_path)), "priorCheckpointSha256": sha256(read_file(checkpoint_path)), "resumeFromStage": checkpoint["lastCompletedStage"], "resumedAt": now_utc(), "replayPolicy": "full-stage-replay-with-stable-idempotency-keys"}
+    lineage := {"schemaVersion": "1.0.0", "priorRunId": prior_run_id, "priorRecordSha256": sha256(prior_text), "priorCheckpointSha256": sha256(checkpoint_text), "resumeFromStage": checkpoint["lastCompletedStage"], "resumedAt": now_utc(), "replayPolicy": "full-stage-replay-with-stable-idempotency-keys"}
     return review_internal(config, prior_docket, prior["panel"]["id"], private_key, public_key, lineage)
 }

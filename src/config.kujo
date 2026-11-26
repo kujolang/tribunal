@@ -106,7 +106,7 @@ export func load_config(path) {
         if path_is_symlink(path) { return {"ok": false, "error": "Config file must not be a symbolic link."} }
         if file_size(path) > 1048576 { return {"ok": false, "error": "Config file exceeds the 1 MiB safety limit."} }
         parsed := null
-        try { parsed = parse_json(read_file(path)) } except err {
+        try { parsed = json_file_read(path, 1048576) } except err {
             return {"ok": false, "error": "Config is not valid JSON: " + to_string(err)}
         }
         if type(parsed) != "dict" { return {"ok": false, "error": "Config root must be an object."} }

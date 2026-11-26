@@ -1,6 +1,6 @@
 # Tribunal :: Kujo-native SHA-256 artifact integrity and RSA signatures
 
-from src.common import dict_get, ensure_dir, path_within, write_json, write_text, read_json, remove_tree, safe_relative_path, safe_run_id, read_file_digest
+from src.common import dict_get, ensure_dir, path_within, write_json, write_text, read_json, remove_tree, safe_relative_path, safe_run_id, read_file_digest, safe_existing_file, symlink_entry, lower_hex
 from src.storage import artifacts, artifact_path, list_runs_page
 
 MANIFEST_NAME := "artifact-manifest.json"
@@ -114,13 +114,20 @@ export func generate_keys(private_path, public_path, bits) {
 func sign_existing_manifest(storage_dir, run_id, private_path, public_path) {
     manifest_path := artifact_path(storage_dir, run_id, MANIFEST_NAME)
     signature_path := artifact_path(storage_dir, run_id, SIGNATURE_NAME)
-    manifest := read_json(manifest_path)
-    manifest_text := read_file(manifest_path)
-    private_key := read_file(private_path)
-    public_key := read_file(public_path)
+    manifest_text := ""
+    private_key := ""
+    public_key := ""
+    manifest := null
+    try {
+        manifest_text = text_file_read(manifest_path, MAX_INTEGRITY_DOCUMENT_BYTES)
+        manifest = parse_json(manifest_text)
+        private_key = text_file_read(private_path, MAX_KEY_BYTES)
+        public_key = text_file_read(public_path, MAX_KEY_BYTES)
+    } except err { return {"ok": false, "error": "Manifest or signing key could not be read safely."} }
+    manifest_hash := sha256(manifest_text)
     key_id := substring(sha256(public_key), 0, 32)
     signed_at := now_utc()
-    payload := signature_payload(run_id, sha256(manifest_text), key_id, signed_at)
+    payload := signature_payload(run_id, manifest_hash, key_id, signed_at)
     payload_text := to_json(payload)
     signature_value := null
     try { signature_value = rsa_sign(payload_text, private_key) } except err { signature_value = null }
@@ -130,7 +137,7 @@ func sign_existing_manifest(storage_dir, run_id, private_path, public_path) {
     if signature_valid != true { return {"ok": false, "error": "Generated signature did not verify with the supplied public key."} }
     envelope := {
         "schemaVersion": "1.1.0", "runId": run_id, "algorithm": "RSA-PKCS1v15-SHA256",
-        "manifestSha256": sha256(manifest_text), "keyId": key_id, "signedAt": signed_at,
+        "manifestSha256": manifest_hash, "keyId": key_id, "signedAt": signed_at,
         "payloadSha256": sha256(payload_text), "signature": signature_value
     }
     transaction := begin_seal_transaction(storage_dir, run_id)
@@ -198,16 +205,20 @@ export func verify(storage_dir, run_id, public_path) {
         response["errors"] := ["Integrity manifest is missing."]
         return response
     }
-    if path_is_symlink(manifest_path) {
-        response["errors"] := ["Integrity manifest must not be a symbolic link."]
+    if path_is_symlink(manifest_path) || path_is_file(manifest_path) == false {
+        response["errors"] := ["Integrity manifest must be a regular file without symbolic links."]
         return response
     }
     if file_size(manifest_path) > MAX_INTEGRITY_DOCUMENT_BYTES {
         response["errors"] := ["Integrity manifest exceeds the safety limit."]
         return response
     }
-    manifest_text := read_file(manifest_path)
+    manifest_text := ""
     manifest := null
+    try { manifest_text = text_file_read(manifest_path, MAX_INTEGRITY_DOCUMENT_BYTES) } except err {
+        response["errors"] := ["Integrity manifest could not be read safely."]
+        return response
+    }
     try { manifest = parse_json(manifest_text) } except err {
         response["errors"] := ["Integrity manifest is invalid JSON."]
         return response
@@ -248,32 +259,43 @@ export func verify(storage_dir, run_id, public_path) {
     for name in artifacts(storage_dir, run_id) {
         if excluded(name) == false && has_key(expected, name) == 0 { response["unexpected"] := push(response["unexpected"], name) }
     }
-    response["manifestSha256"] := sha256(manifest_text)
+    manifest_hash := sha256(manifest_text)
+    response["manifestSha256"] := manifest_hash
     signature_path := artifact_path(storage_dir, run_id, SIGNATURE_NAME)
-    if file_exists(signature_path) {
+    if file_exists(signature_path) || symlink_entry(signature_path) {
         response["signature"] := "present-unverified"
         envelope := null
-        if path_is_symlink(signature_path) || file_size(signature_path) > MAX_INTEGRITY_DOCUMENT_BYTES {
+        if safe_existing_file(signature_path, MAX_INTEGRITY_DOCUMENT_BYTES, "Signature envelope")["ok"] != true {
             response["signature"] := "invalid"
             response["errors"] := push(response["errors"], "Signature envelope is unsafe or exceeds the safety limit.")
         } else {
-            try { envelope = read_json(signature_path) } except err {
+            try { envelope = json_file_read(signature_path, MAX_INTEGRITY_DOCUMENT_BYTES) } except err { envelope = null }
+            if type(envelope) != "dict" {
                 response["signature"] := "invalid"
-                response["errors"] := push(response["errors"], "Signature envelope is invalid JSON.")
+                response["errors"] := push(response["errors"], "Signature envelope must be a JSON object.")
             }
         }
         if type(envelope) == "dict" {
             response["keyId"] := dict_get(envelope, "keyId", "")
             schema_version := dict_get(envelope, "schemaVersion", "")
-            if (schema_version != "1.0.0" && schema_version != "1.1.0" && schema_version != "1.2.0") || dict_get(envelope, "runId", "") != run_id || dict_get(envelope, "algorithm", "") != "RSA-PKCS1v15-SHA256" || dict_get(envelope, "manifestSha256", "") != sha256(manifest_text) {
+            signature := dict_get(envelope, "signature", null)
+            signed_at := dict_get(envelope, "signedAt", null)
+            supported := schema_version == "1.0.0" || schema_version == "1.1.0" || schema_version == "1.2.0"
+            payload_digest_valid := schema_version == "1.0.0" || lower_hex(dict_get(envelope, "payloadSha256", null), 64)
+            if supported == false || payload_digest_valid == false ||
+                lower_hex(response["keyId"], 32) == false || type(signed_at) != "string" || len(signed_at) == 0 ||
+                type(signature) != "string" || len(signature) < 40 ||
+                dict_get(envelope, "runId", "") != run_id || dict_get(envelope, "algorithm", "") != "RSA-PKCS1v15-SHA256" ||
+                dict_get(envelope, "manifestSha256", "") != manifest_hash {
                 response["signature"] := "invalid"
                 response["errors"] := push(response["errors"], "Signature envelope does not match the manifest.")
             } else if public_path != "" {
-                if file_exists(public_path) == false || path_is_dir(public_path) || path_is_symlink(public_path) || file_size(public_path) > MAX_KEY_BYTES {
+                public_key := ""
+                try { public_key = text_file_read(public_path, MAX_KEY_BYTES) } except err { public_key = "" }
+                if public_key == "" {
                     response["signature"] := "invalid"
                     response["errors"] := push(response["errors"], "Trusted public key is missing.")
                 } else {
-                    public_key := read_file(public_path)
                     expected_key_id := substring(sha256(public_key), 0, 32)
                     signed_text := manifest_text
                     if schema_version == "1.1.0" || schema_version == "1.2.0" {
@@ -284,7 +306,7 @@ export func verify(storage_dir, run_id, public_path) {
                         }
                     }
                     signature_valid := false
-                    try { signature_valid = rsa_verify(signed_text, dict_get(envelope, "signature", ""), public_key) } except err { signature_valid = false }
+                    try { signature_valid = rsa_verify(signed_text, signature, public_key) } except err { signature_valid = false }
                     valid := len(response["errors"]) == 0 && expected_key_id == dict_get(envelope, "keyId", "") && signature_valid
                     if valid {
                         response["signature"] := "verified"

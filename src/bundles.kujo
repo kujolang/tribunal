@@ -1,6 +1,6 @@
 # Tribunal :: signed evidence bundle export and import
 
-from src.common import claim_directory, dict_get, ensure_dir, external_path_outside, read_json, relative_files, remove_tree, read_file_digest, safe_existing_file, safe_relative_path, safe_run_id, write_json
+from src.common import claim_directory, dict_get, ensure_dir, external_path_outside, inspect_path_boundary, read_json, relative_files, remove_tree, read_file_digest, safe_existing_file, safe_relative_path, safe_run_id, utf8_byte_length, write_json
 from src.integrity import signature_payload_for, verify
 from src.policy import trusted_key
 from src.storage import artifact_path, index_run_manifest, run_dir
@@ -77,7 +77,7 @@ func copy_relative(source_root, destination_root, names) {
         if has_key(seen, name) == 1 { return {"ok": false, "error": "Duplicate bundle artifact path: " + name} }
         seen[name] := true
         source := join_path(source_root, name)
-        if file_exists(source) == false || path_is_dir(source) || path_is_symlink(source) { return {"ok": false, "error": "Bundle artifact is missing or unsafe: " + name} }
+        if path_is_file(source) == false || inspect_path_boundary(source_root, source, false)["ok"] != true { return {"ok": false, "error": "Bundle artifact is missing or unsafe: " + name} }
         size := file_size(source)
         if size < 0 || size > MAX_BUNDLE_ARTIFACT_BYTES { return {"ok": false, "error": "Bundle artifact exceeds the per-file safety limit: " + name} }
         total_bytes = total_bytes + size
@@ -135,7 +135,7 @@ export func import_bundle(bundle_path, storage_dir, trust_policy, target) {
     artifacts_root := join_path(bundle_path, "artifacts")
     if file_exists(metadata_path) == false || path_is_symlink(metadata_path) || file_size(metadata_path) > MAX_BUNDLE_METADATA_BYTES || path_is_dir(artifacts_root) == false || path_is_symlink(artifacts_root) { return {"ok": false, "error": "Bundle structure is incomplete or unsafe."} }
     metadata := null
-    try { metadata = read_json(metadata_path) } except err { return {"ok": false, "error": "Bundle metadata is invalid."} }
+    try { metadata = json_file_read(metadata_path, MAX_BUNDLE_METADATA_BYTES) } except err { return {"ok": false, "error": "Bundle metadata is invalid."} }
     checked_metadata := validate_bundle_metadata(metadata)
     if checked_metadata["ok"] != true { return checked_metadata }
     run_id := dict_get(metadata, "runId", "")
@@ -144,15 +144,37 @@ export func import_bundle(bundle_path, storage_dir, trust_policy, target) {
     trusted := trusted_key(trust_policy, dict_get(metadata, "keyId", ""), target, current_timestamp())
     if trusted["ok"] != true { return trusted }
     ensure_dir(storage_dir)
-    if claim_directory(destination) == false { return {"ok": false, "error": "Bundle destination could not be exclusively created."} }
-    copied := copy_relative(artifacts_root, destination, dict_get(metadata, "artifacts", []))
-    if copied["ok"] != true { remove_tree(destination); return copied }
-    checked := verify(storage_dir, run_id, trusted["key"]["publicKeyPath"])
+    stage := join_path(storage_dir, ".bundle-stage-" + uuid_v4())
+    if claim_directory(stage) == false { return {"ok": false, "error": "Bundle staging directory could not be exclusively created."} }
+    staged_run := join_path(stage, run_id)
+    copied := null
+    checked := null
+    try {
+        copied = copy_relative(artifacts_root, staged_run, dict_get(metadata, "artifacts", []))
+        if copied["ok"] == true { checked = verify(stage, run_id, trusted["key"]["publicKeyPath"]) }
+    } except err {
+        remove_tree(stage)
+        return {"ok": false, "error": "Staged bundle could not be copied or verified."}
+    }
+    if copied["ok"] != true { remove_tree(stage); return copied }
     if checked["ok"] != true || checked["signature"] != "verified" || checked["manifestSha256"] != metadata["manifestSha256"] {
-        remove_tree(destination)
+        remove_tree(stage)
         return {"ok": false, "error": "Imported bundle failed trusted verification.", "verification": checked}
     }
-    indexed := index_run_manifest(storage_dir, run_id)
+    if claim_directory(destination) == false {
+        remove_tree(stage)
+        return {"ok": false, "error": "Bundle destination could not be exclusively created."}
+    }
+    try { rename_file(staged_run, destination) } except err {
+        # The destination is only an empty reservation. Do not remove contents
+        # if a noncooperating filesystem user modified it after the claim.
+        try { os_rmdir(destination) } except cleanup_error {}
+        remove_tree(stage)
+        return {"ok": false, "error": "Verified bundle could not be moved into run storage."}
+    }
+    remove_tree(stage)
+    indexed := null
+    try { indexed = index_run_manifest(storage_dir, run_id) } except err { indexed = {"ok": false} }
     if indexed["ok"] != true { remove_tree(destination); return {"ok": false, "error": "Imported bundle could not update the run index."} }
     return {"ok": true, "runId": run_id, "path": destination, "verification": checked}
 }
@@ -256,18 +278,18 @@ export func verify_encrypted_bundle_integrity(bundle_path, signing_public_path) 
     metadata_path := join_path(bundle_path, "bundle.json")
     manifest_path := join_path(join_path(bundle_path, "integrity"), "artifact-manifest.json")
     signature_path := join_path(join_path(bundle_path, "integrity"), "signature.json")
-    if path_is_symlink(bundle_path) || safe_existing_file(envelope_path, MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle envelope")["ok"] != true || safe_existing_file(metadata_path, MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle metadata")["ok"] != true || safe_existing_file(manifest_path, MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle manifest")["ok"] != true || safe_existing_file(signature_path, MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle signature")["ok"] != true || safe_existing_file(signing_public_path, 1048576, "Signing public key")["ok"] != true { return {"ok": false, "error": "Encrypted bundle integrity evidence is incomplete or unsafe."} }
+    if path_is_dir(bundle_path) == false || path_is_symlink(bundle_path) || inspect_path_boundary(bundle_path, manifest_path, false)["ok"] != true || inspect_path_boundary(bundle_path, signature_path, false)["ok"] != true || safe_existing_file(envelope_path, MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle envelope")["ok"] != true || safe_existing_file(metadata_path, MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle metadata")["ok"] != true || safe_existing_file(manifest_path, MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle manifest")["ok"] != true || safe_existing_file(signature_path, MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle signature")["ok"] != true || safe_existing_file(signing_public_path, 1048576, "Signing public key")["ok"] != true { return {"ok": false, "error": "Encrypted bundle integrity evidence is incomplete or unsafe."} }
     envelope := null
-    try { envelope = read_json(envelope_path) } except err { return {"ok": false, "error": "Encrypted bundle envelope is invalid JSON."} }
+    try { envelope = json_file_read(envelope_path, MAX_BUNDLE_METADATA_BYTES) } except err { return {"ok": false, "error": "Encrypted bundle envelope is invalid JSON."} }
     metadata := null
-    try { metadata = read_json(metadata_path) } except err { return {"ok": false, "error": "Encrypted bundle metadata is invalid JSON."} }
+    try { metadata = json_file_read(metadata_path, MAX_BUNDLE_METADATA_BYTES) } except err { return {"ok": false, "error": "Encrypted bundle metadata is invalid JSON."} }
     metadata_checked := validate_encrypted_metadata(envelope, metadata)
     if metadata_checked["ok"] != true { return metadata_checked }
-    manifest_text := read_file(manifest_path)
+    manifest_text := ""
     manifest := null
-    try { manifest = parse_json(manifest_text) } except err { return {"ok": false, "error": "Encrypted bundle signed manifest is invalid JSON."} }
+    try { manifest_text = text_file_read(manifest_path, MAX_BUNDLE_METADATA_BYTES); manifest = parse_json(manifest_text) } except err { return {"ok": false, "error": "Encrypted bundle signed manifest is invalid JSON."} }
     signature := null
-    try { signature = read_json(signature_path) } except err { return {"ok": false, "error": "Encrypted bundle signature is invalid JSON."} }
+    try { signature = json_file_read(signature_path, MAX_BUNDLE_METADATA_BYTES) } except err { return {"ok": false, "error": "Encrypted bundle signature is invalid JSON."} }
     if type(signature) != "dict" { return {"ok": false, "error": "Encrypted bundle signature failed structural validation."} }
     for field in ["schemaVersion", "runId", "algorithm", "manifestSha256", "keyId", "signedAt", "signature"] {
         if type(dict_get(signature, field, null)) != "string" || trim(signature[field]) == "" { return {"ok": false, "error": "Encrypted bundle signature failed structural validation."} }
@@ -275,7 +297,8 @@ export func verify_encrypted_bundle_integrity(bundle_path, signing_public_path) 
     signature_version := signature["schemaVersion"]
     if signature_version != "1.0.0" && signature_version != "1.1.0" && signature_version != "1.2.0" { return {"ok": false, "error": "Encrypted bundle signature version is unsupported."} }
     if signature_version != "1.0.0" && (type(dict_get(signature, "payloadSha256", null)) != "string" || len(signature["payloadSha256"]) != 64) { return {"ok": false, "error": "Encrypted bundle signature payload digest is missing."} }
-    public_key := read_file(signing_public_path)
+    public_key := ""
+    try { public_key = text_file_read(signing_public_path, 1048576) } except err { return {"ok": false, "error": "Encrypted bundle trusted signing key is unsafe."} }
     if sha256(manifest_text) != envelope["manifestSha256"] || dict_get(signature, "manifestSha256", "") != envelope["manifestSha256"] || dict_get(signature, "keyId", "") != envelope["signingKeyId"] || substring(sha256(public_key), 0, 32) != envelope["signingKeyId"] { return {"ok": false, "error": "Encrypted bundle signed manifest binding is invalid."} }
     signed_text := manifest_text
     if signature_version != "1.0.0" {
@@ -302,7 +325,7 @@ export func verify_encrypted_bundle_integrity(bundle_path, signing_public_path) 
         bound := expected[entry["path"]]
         if entry["bytes"] != bound["bytes"] || entry["plaintextSha256"] != bound["sha256"] { return {"ok": false, "error": "Encrypted artifact is not bound to the signed manifest: " + entry["path"]} }
         cipher_path := join_path(join_path(bundle_path, "artifacts"), entry["path"] + ".enc")
-        if safe_existing_file(cipher_path, MAX_BUNDLE_ARTIFACT_BYTES + STREAM_CHUNK_BYTES, "Encrypted artifact")["ok"] != true { return {"ok": false, "error": "Encrypted artifact is missing, unsafe, or oversized: " + entry["path"]} }
+        if inspect_path_boundary(bundle_path, cipher_path, false)["ok"] != true || safe_existing_file(cipher_path, MAX_BUNDLE_ARTIFACT_BYTES + STREAM_CHUNK_BYTES, "Encrypted artifact")["ok"] != true { return {"ok": false, "error": "Encrypted artifact is missing, unsafe, or oversized: " + entry["path"]} }
         digest := read_file_digest(cipher_path, MAX_BUNDLE_ARTIFACT_BYTES + STREAM_CHUNK_BYTES)
         if digest["ok"] != true || digest["sha256"] != entry["ciphertextSha256"] { return {"ok": false, "error": "Encrypted artifact integrity failed: " + entry["path"]} }
     }
@@ -326,9 +349,9 @@ export func import_encrypted_bundle(bundle_path, storage_dir, trust_policy, targ
     if trim(bundle_path) == "" || path_is_dir(bundle_path) == false || path_is_symlink(bundle_path) { return {"ok": false, "error": "Encrypted bundle path is missing or unsafe."} }
     if safe_existing_file(envelope_path, MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle envelope")["ok"] != true || safe_existing_file(join_path(bundle_path, "bundle.json"), MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle metadata")["ok"] != true { return {"ok": false, "error": "Encrypted bundle envelope is missing or unsafe."} }
     envelope := null
-    try { envelope = read_json(envelope_path) } except err { return {"ok": false, "error": "Encrypted bundle envelope is invalid JSON."} }
+    try { envelope = json_file_read(envelope_path, MAX_BUNDLE_METADATA_BYTES) } except err { return {"ok": false, "error": "Encrypted bundle envelope is invalid JSON."} }
     metadata := null
-    try { metadata = read_json(join_path(bundle_path, "bundle.json")) } except err { return {"ok": false, "error": "Encrypted bundle metadata is invalid JSON."} }
+    try { metadata = json_file_read(join_path(bundle_path, "bundle.json"), MAX_BUNDLE_METADATA_BYTES) } except err { return {"ok": false, "error": "Encrypted bundle metadata is invalid JSON."} }
     checked_metadata := validate_encrypted_metadata(envelope, metadata)
     if checked_metadata["ok"] != true { return checked_metadata }
     unwrapped := unwrap_data_key(envelope["wrappedKeys"], recipient_private_path)
@@ -339,7 +362,9 @@ export func import_encrypted_bundle(bundle_path, storage_dir, trust_policy, targ
     for entry in envelope["artifacts"] {
         if safe_relative_path(entry["path"]) == false { remove_tree(temp); return {"ok": false, "error": "Encrypted bundle contains an unsafe artifact path."} }
         cipher_path := join_path(join_path(bundle_path, "artifacts"), entry["path"] + ".enc")
-        if safe_existing_file(cipher_path, MAX_BUNDLE_ARTIFACT_BYTES + 1048576, "Encrypted artifact")["ok"] != true || sha256_file(cipher_path) != entry["ciphertextSha256"] { remove_tree(temp); return {"ok": false, "error": "Encrypted artifact integrity failed: " + entry["path"]} }
+        if inspect_path_boundary(bundle_path, cipher_path, false)["ok"] != true { remove_tree(temp); return {"ok": false, "error": "Encrypted artifact path is unsafe: " + entry["path"]} }
+        digest := read_file_digest(cipher_path, MAX_BUNDLE_ARTIFACT_BYTES + STREAM_CHUNK_BYTES)
+        if digest["ok"] != true || digest["sha256"] != entry["ciphertextSha256"] { remove_tree(temp); return {"ok": false, "error": "Encrypted artifact integrity failed: " + entry["path"]} }
         target_path := join_path(join_path(temp, "artifacts"), entry["path"])
         ensure_dir(dirname(target_path))
         if dict_get(envelope, "format", "whole-value") == "KUJOAEAD1" {
@@ -347,8 +372,8 @@ export func import_encrypted_bundle(bundle_path, storage_dir, trust_policy, targ
             if type(decrypted) != "dict" || decrypted["ok"] != true || decrypted["plaintext_sha256"] != entry["plaintextSha256"] || decrypted["bytes_out"] != entry["bytes"] { remove_tree(temp); return {"ok": false, "error": "Encrypted artifact authentication failed: " + entry["path"]} }
         } else {
             plaintext := null
-            try { plaintext = aes_decrypt(read_file(cipher_path), unwrapped["dataKey"]) } except err { plaintext = null }
-            if type(plaintext) != "string" || sha256(plaintext) != entry["plaintextSha256"] || len(decode_base64(encode_base64(plaintext))) != entry["bytes"] { remove_tree(temp); return {"ok": false, "error": "Encrypted artifact authentication failed: " + entry["path"]} }
+            try { plaintext = aes_decrypt(text_file_read(cipher_path, MAX_BUNDLE_ARTIFACT_BYTES + STREAM_CHUNK_BYTES), unwrapped["dataKey"]) } except err { plaintext = null }
+            if type(plaintext) != "string" || sha256(plaintext) != entry["plaintextSha256"] || utf8_byte_length(plaintext) != entry["bytes"] { remove_tree(temp); return {"ok": false, "error": "Encrypted artifact authentication failed: " + entry["path"]} }
             write_file(target_path, plaintext)
         }
     }
@@ -362,7 +387,7 @@ export func rotate_encrypted_bundle_key(bundle_path, current_private_path, new_p
     envelope_path := join_path(bundle_path, "envelope.json")
     if trim(bundle_path) == "" || path_is_dir(bundle_path) == false || path_is_symlink(bundle_path) || safe_existing_file(envelope_path, MAX_BUNDLE_METADATA_BYTES, "Encrypted bundle envelope")["ok"] != true { return {"ok": false, "error": "Encrypted bundle envelope is missing or unsafe."} }
     envelope := null
-    try { envelope = read_json(envelope_path) } except err { return {"ok": false, "error": "Encrypted bundle envelope is invalid JSON."} }
+    try { envelope = json_file_read(envelope_path, MAX_BUNDLE_METADATA_BYTES) } except err { return {"ok": false, "error": "Encrypted bundle envelope is invalid JSON."} }
     contract := json_schema_validate(envelope, ENCRYPTED_BUNDLE_SCHEMA)
     if contract["valid"] != true { return {"ok": false, "error": "Encrypted bundle envelope failed validation."} }
     unwrapped := unwrap_data_key(envelope["wrappedKeys"], current_private_path)

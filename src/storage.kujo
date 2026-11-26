@@ -1,6 +1,6 @@
 # Tribunal :: durable local run storage
 
-from src.common import claim_directory, dict_get, ensure_dir, remove_tree, safe_existing_file, safe_run_id, safe_relative_path, slug, write_json, write_text, read_json, relative_files
+from src.common import claim_directory, dict_get, ensure_dir, remove_tree, safe_existing_file, safe_run_id, safe_relative_path, slug, symlink_entry, write_json, write_text, relative_files
 
 RUN_INDEX_PAGE_SIZE := 100
 
@@ -34,20 +34,13 @@ func pages_root(storage_dir) { return join_path(index_root(storage_dir), "pages"
 export func run_index_path(storage_dir) { return join_path(index_root(storage_dir), "runs.json") }
 
 
-func index_symlink(path) {
-    try { return path_is_symlink(path) } except err {
-        if file_exists(path) { throw(err) }
-        return false
-    }
-}
-
 # All cooperating readers and writers hold the same non-reentrant lock. Never
 # reclaim it by age: a slow owner must not overlap a replacement owner.
 func index_dirty_path(storage_dir) { return join_path(storage_dir, ".index-dirty") }
 func mark_index_dirty(storage_dir) { write_text(index_dirty_path(storage_dir), "Interrupted index update; run index-repair.\n") }
 
 func with_index_lock(storage_dir, recovery, operation) {
-    if index_symlink(storage_dir) { throw("Run storage is unsafe.") }
+    if symlink_entry(storage_dir) { throw("Run storage is unsafe.") }
     try { ensure_dir(storage_dir) } except err { if path_is_dir(storage_dir) == false { throw(err) } }
     lock := join_path(storage_dir, ".index.lock")
     started := current_timestamp()
@@ -77,7 +70,7 @@ func with_index_lock(storage_dir, recovery, operation) {
     }
     result := null
     try {
-        if index_symlink(index_root(storage_dir)) || index_symlink(pages_root(storage_dir)) || index_symlink(index_dirty_path(storage_dir)) { throw("Run-index storage is unsafe.") }
+        if symlink_entry(index_root(storage_dir)) || symlink_entry(pages_root(storage_dir)) || symlink_entry(index_dirty_path(storage_dir)) { throw("Run-index storage is unsafe.") }
         if file_exists(index_dirty_path(storage_dir)) && recovery == false { throw("Run-index update was interrupted; run index-repair before continuing.") }
         result = operation()
         if dict_get(result, "ok", true) != false && file_exists(index_dirty_path(storage_dir)) { delete_file(index_dirty_path(storage_dir)) }
@@ -95,7 +88,7 @@ export func repair_run_index(storage_dir) { return with_index_lock(storage_dir, 
 export func index_run_manifest(storage_dir, run_id) { return with_index_lock(storage_dir, false, func() { return index_run_manifest_locked(storage_dir, run_id) }) }
 export func remove_run_from_index(storage_dir, run_id) { return with_index_lock(storage_dir, false, func() { return remove_run_from_index_locked(storage_dir, run_id) }) }
 export func list_runs_page(storage_dir, status, panel_id, limit, cursor) {
-    if path_is_dir(storage_dir) == false || index_symlink(storage_dir) { return {"items": [], "nextCursor": "", "hasMore": false, "cursorFound": cursor == ""} }
+    if path_is_dir(storage_dir) == false || symlink_entry(storage_dir) { return {"items": [], "nextCursor": "", "hasMore": false, "cursorFound": cursor == ""} }
     return with_index_lock(storage_dir, false, func() { return list_runs_page_locked(storage_dir, status, panel_id, limit, cursor) })
 }
 
@@ -117,7 +110,7 @@ func read_index(storage_dir) {
     path := run_index_path(storage_dir)
     if file_exists(path) == false || path_is_symlink(path) || file_size(path) > 1048576 { return null }
     index := null
-    try { index = read_json(path) } except err { index = null }
+    try { index = json_file_read(path, 1048576) } except err { index = null }
     if valid_index(index) == false { return null }
     return index
 }
@@ -126,7 +119,7 @@ func read_index_page(storage_dir, page) {
     path := index_page_path(storage_dir, page)
     if file_exists(path) == false || path_is_symlink(path) || file_size(path) > 8388608 { return null }
     value := null
-    try { value = read_json(path) } except err { value = null }
+    try { value = json_file_read(path, 8388608) } except err { value = null }
     if type(value) != "dict" { return null }
     checked := json_schema_validate(value, RUN_INDEX_PAGE_SCHEMA)
     if checked["valid"] != true || value["page"] != page { return null }
@@ -143,7 +136,7 @@ func manifest_entry(storage_dir, run_id) {
     if path == "" || file_exists(path) == false || path_is_symlink(path) || file_size(path) > 4194304 { return null }
     manifest := null
     text := ""
-    try { text = read_file(path); manifest = parse_json(text) } except err { manifest = null }
+    try { text = text_file_read(path, 4194304); manifest = parse_json(text) } except err { manifest = null }
     if type(manifest) != "dict" || dict_get(manifest, "runId", "") != run_id { return null }
     return {"runId": run_id, "manifestSha256": sha256(text), "manifest": manifest}
 }
@@ -317,14 +310,14 @@ func remove_run_from_index_locked(storage_dir, run_id) {
 
 export func run_dir(storage_dir, run_id) {
     if safe_run_id(run_id) == false { return "" }
-    if file_exists(storage_dir) && path_is_symlink(storage_dir) { return "" }
+    if symlink_entry(storage_dir) { return "" }
     path := join_path(storage_dir, run_id)
-    if file_exists(path) && path_is_symlink(path) { return "" }
+    if symlink_entry(path) { return "" }
     return path
 }
 
 export func generate_run_id(storage_dir, title) {
-    if file_exists(storage_dir) && path_is_symlink(storage_dir) { return "" }
+    if symlink_entry(storage_dir) { return "" }
     ensure_dir(storage_dir)
     prefix := format_date(now_unix(), "YYYY-MM-DD") + "-" + slug(title)
     mut i := 0
@@ -350,12 +343,22 @@ export func create_run(storage_dir, run_id) {
 export func artifact_path(storage_dir, run_id, name) {
     root := run_dir(storage_dir, run_id)
     if root == "" || safe_relative_path(name) == false { return "" }
-    return join_path(root, name)
+    parts := split(name, "/")
+    mut parent := root
+    for index in range(0, len(parts) - 1) {
+        parent = join_path(parent, parts[index])
+        if symlink_entry(parent) || (file_exists(parent) && path_is_dir(parent) == false) { return "" }
+    }
+    return join_path(parent, parts[len(parts) - 1])
+}
+
+func writable_artifact(path) {
+    return path != "" && symlink_entry(path) == false && (file_exists(path) == false || path_is_file(path))
 }
 
 export func save_json(storage_dir, run_id, name, value) {
     path := artifact_path(storage_dir, run_id, name)
-    if path == "" { return false }
+    if writable_artifact(path) == false { return false }
     if name == "manifest.json" {
         return with_index_lock(storage_dir, false, func() {
             mark_index_dirty(storage_dir)
@@ -371,14 +374,14 @@ export func save_json(storage_dir, run_id, name, value) {
 
 export func save_text(storage_dir, run_id, name, content) {
     path := artifact_path(storage_dir, run_id, name)
-    if path == "" { return false }
+    if writable_artifact(path) == false { return false }
     write_text(path, content)
     return true
 }
 
 export func append_event(storage_dir, run_id, event) {
     path := artifact_path(storage_dir, run_id, "events.jsonl")
-    if path == "" { return false }
+    if writable_artifact(path) == false { return false }
     append_file(path, to_json(event) + "\n")
     return true
 }
@@ -386,13 +389,13 @@ export func append_event(storage_dir, run_id, event) {
 export func load_record(storage_dir, run_id) {
     path := artifact_path(storage_dir, run_id, "record.json")
     if safe_existing_file(path, 4194304, "Run record")["ok"] != true { return null }
-    try { return read_json(path) } except err { return null }
+    try { return json_file_read(path, 4194304) } except err { return null }
 }
 
 export func load_manifest(storage_dir, run_id) {
     path := artifact_path(storage_dir, run_id, "manifest.json")
     if safe_existing_file(path, 4194304, "Run manifest")["ok"] != true { return null }
-    try { return read_json(path) } except err { return null }
+    try { return json_file_read(path, 4194304) } except err { return null }
 }
 
 export func load_events_checked(storage_dir, run_id) {
@@ -402,7 +405,7 @@ export func load_events_checked(storage_dir, run_id) {
     mut events := []
     mut line_number := 0
     text := ""
-    try { text = read_file(path) } except err { return {"ok": false, "error": "Run events could not be read."} }
+    try { text = text_file_read(path, 67108864) } except err { return {"ok": false, "error": "Run events could not be read."} }
     for line in split(text, "\n") {
         line_number = line_number + 1
         if trim(line) != "" {
