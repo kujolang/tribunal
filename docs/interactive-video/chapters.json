@@ -1,0 +1,32 @@
+[
+  {
+    "id": "proposal",
+    "title": "Start with a decision",
+    "headline": "Find the weak spot before you commit.",
+    "narration": ["When a proposal looks ready, Tribunal helps you find what could still go wrong.", "Here, the team wants every implementation task to leave a receipt with its test results."]
+  },
+  {
+    "id": "hearing",
+    "title": "Hear independent views",
+    "headline": "Let each reviewer form a view first.",
+    "narration": ["Run a mock hearing with the fast two model panel. It works offline, so you can try it without an API key.", "The reviewers record their first views before they see each other's testimony."]
+  },
+  {
+    "id": "challenge",
+    "title": "Challenge the evidence",
+    "headline": "Put the assumptions on the record.",
+    "narration": ["Now the reviewers question each other's findings. The Executioner looks for a reason to stop.", "Here, both reviewers flag the same risk. Weak evidence can make the team too confident."]
+  },
+  {
+    "id": "ruling",
+    "title": "Read the ruling",
+    "headline": "Leave with a decision you can act on.",
+    "narration": ["The mock ruling says to proceed with conditions. Build the smallest testable slice and record what passed.", "The decision packet asks for test output, a change summary, and proof that you can roll back."]
+  },
+  {
+    "id": "verify",
+    "title": "Check the record",
+    "headline": "Keep the evidence behind the decision.",
+    "narration": ["The exported dashboard lists the run. You can open the decision packet locally and verify the saved evidence against its manifest.", "When someone asks why you moved ahead, you have a record to show them."]
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "name": "tribunal-interactive-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "hyperframes check --no-browser-gpu",
+    "preview": "hyperframes preview",
+    "render": "hyperframes render --no-browser-gpu --experimental-fast-capture=false --output assets/tribunal.mp4"
+  },
+  "dependencies": {
+    "gsap": "3.15.1",
+    "hyperframes": "0.9.100",
+    "motion": "14.14.0"
+  }
+}

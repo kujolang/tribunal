@@ -1,0 +1,40 @@
+* { box-sizing: border-box }
+body { margin: 0; background: #0b0c10 }
+#film {
+  position: relative; width: 1920px; height: 1080px; overflow: hidden;
+  color: #f8f1e6; background: radial-gradient(ellipse at 72% 44%, #352623, #151317 54%, #101116 82%);
+  font-family: Georgia, serif;
+}
+.mast {
+  position: absolute; inset: 77px 108px auto; height: 81px;
+  border-bottom: 1px solid #6f5a4f; display: flex; align-items: start; justify-content: space-between;
+}
+.brand { font-size: 40px; letter-spacing: -.04em }
+.meta, .eyebrow, .chrome, .footer { font-family: Arial, sans-serif; text-transform: uppercase; letter-spacing: .16em; font-weight: 700 }
+.meta { font-size: 18px; color: #dbb29c; margin-top: 15px }
+.scene { position: absolute; inset: 0; }
+.copy { position: absolute; top: 292px; left: 108px; width: 525px }
+.eyebrow { font-size: 19px; color: #ffc19f; margin: 0 0 30px }
+.headline { font-size: 76px; font-weight: normal; letter-spacing: -.055em; line-height: 1.01; margin: 0 }
+.viewport { position: absolute; left: 695px; top: 218px; width: 1115px; height: 610px; border-radius: 24px; overflow: hidden; background: #19191f; box-shadow: 0 32px 76px #050409b3; border: 1px solid #785847; }
+.camera { position: absolute; inset: 0; transform-origin: 50% 47%; }
+.sheet { height: 100%; padding: 94px 70px 38px; background: linear-gradient(132deg, #fff4e4, #e9d6bf); color: #281e1a }
+.chrome { position: absolute; inset: 0 0 auto; padding: 23px 33px; background: #242128; color: #efcfb8; border-bottom: 1px solid #493933; font-size: 17px; z-index: 2 }
+.sheet h2 { font-weight: normal; font-size: 51px; line-height: 1.02; letter-spacing: -.035em; margin: 8px 0 22px; }
+.sheet h3 { font: 700 18px Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #844626; margin: 19px 0 8px }
+.sheet p, .sheet ul { font-size: 26px; line-height: 1.33; margin: 0 0 17px; }
+.sheet p { max-width: 880px }
+.target { position: relative; padding: 9px 16px; margin-left: -16px !important; border-left: 4px solid #a94f2b; background: #bd693520; }
+.terminal { background: #17181e; color: #f7e5d4; }
+.terminal h2 { color: #f7e5d4 }
+.terminal .command { font: 21px/1.7 Menlo, monospace; display: block; white-space: pre-wrap; padding: 13px 18px; color: #ffd6b8; background: #30242a; border-radius: 10px; }
+.terminal .seats { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 22px; }
+.terminal .seat { border: 1px solid #605053; padding: 15px 19px; border-radius: 10px; }
+.terminal .seat h3 { color: #ffd0ab; margin: 0 0 10px; }
+.terminal .seat p { font-size: 23px; margin: 0; }
+.dashboard { padding: 48px 0 0; background: #0b1020 }
+.dashboard img { display: block; width: 100%; position: absolute; top: 49px; }
+.verify { position: absolute; z-index: 1; bottom: 20px; left: 41px; right: 41px; padding: 13px 24px; background: #202932; border: 1px solid #84989e; border-radius: 11px; color: #f3f9e9; font: 20px/1.45 Menlo, monospace }
+.footer { position: absolute; inset: auto 108px 88px; border-top: 1px solid #6f5a4f; display: flex; justify-content: space-between; padding-top: 30px; color: #cba996; font-size: 17px }
+
+.copy, .viewport { opacity: 0 }

@@ -1,0 +1,127 @@
+[
+  {
+    "id": "proposal",
+    "title": "Start with a decision",
+    "headline": "Find the weak spot before you commit.",
+    "narration": [
+      "When a proposal looks ready, Tribunal helps you find what could still go wrong.",
+      "Here, the team wants every implementation task to leave a receipt with its test results."
+    ],
+    "start": 0,
+    "cues": [
+      {
+        "asset": "assets/proposal-1.mp3",
+        "start": 1.2,
+        "duration": 4.566666666666666,
+        "text": "When a proposal looks ready, Tribunal helps you find what could still go wrong."
+      },
+      {
+        "asset": "assets/proposal-2.mp3",
+        "start": 5.9867,
+        "duration": 5.366666666666666,
+        "text": "Here, the team wants every implementation task to leave a receipt with its test results."
+      }
+    ],
+    "end": 12.8
+  },
+  {
+    "id": "hearing",
+    "title": "Hear independent views",
+    "headline": "Let each reviewer form a view first.",
+    "narration": [
+      "Run a mock hearing with the fast two model panel. It works offline, so you can try it without an API key.",
+      "The reviewers record their first views before they see each other's testimony."
+    ],
+    "start": 12.8,
+    "cues": [
+      {
+        "asset": "assets/hearing-1.mp3",
+        "start": 14.0,
+        "duration": 6.4,
+        "text": "Run a mock hearing with the fast two model panel. It works offline, so you can try it without an API key."
+      },
+      {
+        "asset": "assets/hearing-2.mp3",
+        "start": 20.62,
+        "duration": 4.4,
+        "text": "The reviewers record their first views before they see each other's testimony."
+      }
+    ],
+    "end": 26.466666666666665
+  },
+  {
+    "id": "challenge",
+    "title": "Challenge the evidence",
+    "headline": "Put the assumptions on the record.",
+    "narration": [
+      "Now the reviewers question each other's findings. The Executioner looks for a reason to stop.",
+      "Here, both reviewers flag the same risk. Weak evidence can make the team too confident."
+    ],
+    "start": 26.466666666666665,
+    "cues": [
+      {
+        "asset": "assets/challenge-1.mp3",
+        "start": 27.6667,
+        "duration": 5.533333333333333,
+        "text": "Now the reviewers question each other's findings. The Executioner looks for a reason to stop."
+      },
+      {
+        "asset": "assets/challenge-2.mp3",
+        "start": 33.42,
+        "duration": 6.4,
+        "text": "Here, both reviewers flag the same risk. Weak evidence can make the team too confident."
+      }
+    ],
+    "end": 41.266666666666666
+  },
+  {
+    "id": "ruling",
+    "title": "Read the ruling",
+    "headline": "Leave with a decision you can act on.",
+    "narration": [
+      "The mock ruling says to proceed with conditions. Build the smallest testable slice and record what passed.",
+      "The decision packet asks for test output, a change summary, and proof that you can roll back."
+    ],
+    "start": 41.266666666666666,
+    "cues": [
+      {
+        "asset": "assets/ruling-1.mp3",
+        "start": 42.4667,
+        "duration": 6.8,
+        "text": "The mock ruling says to proceed with conditions. Build the smallest testable slice and record what passed."
+      },
+      {
+        "asset": "assets/ruling-2.mp3",
+        "start": 49.4867,
+        "duration": 5.866666666666666,
+        "text": "The decision packet asks for test output, a change summary, and proof that you can roll back."
+      }
+    ],
+    "end": 56.8
+  },
+  {
+    "id": "verify",
+    "title": "Check the record",
+    "headline": "Keep the evidence behind the decision.",
+    "narration": [
+      "The exported dashboard lists the run. You can open the decision packet locally and verify the saved evidence against its manifest.",
+      "When someone asks why you moved ahead, you have a record to show them."
+    ],
+    "start": 56.8,
+    "cues": [
+      {
+        "asset": "assets/verify-1.mp3",
+        "start": 58.0,
+        "duration": 7.766666666666667,
+        "text": "The exported dashboard lists the run. You can open the decision packet locally and verify the saved evidence against its manifest."
+      },
+      {
+        "asset": "assets/verify-2.mp3",
+        "start": 65.9867,
+        "duration": 4.166666666666667,
+        "text": "When someone asks why you moved ahead, you have a record to show them."
+      }
+    ],
+    "end": 71.6
+  }
+]

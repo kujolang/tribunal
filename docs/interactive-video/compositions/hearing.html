@@ -1,0 +1,21 @@
+<template>
+  <style>#root { position: absolute; inset: 0 }</style>
+  <section id="root" data-composition-id="scene-hearing" data-width="1920" data-height="1080"
+    data-focus="7.8200" data-length="13.6667"
+    data-scale="1.12" data-x="24" data-y="3">
+    <div class="copy"><p class="eyebrow">Hear independent views</p><h1 class="headline">Let each reviewer form a view first.</h1></div>
+    <div class="viewport" data-layout-allow-overflow>
+  <div class="chrome">Terminal · offline mock hearing</div>
+  <div class="camera sheet terminal">
+    <h2>Review the proposal</h2>
+    <code class="command">./bin/tribunal review examples/product-decision.md \
+  --panel fast-two-model --mock</code>
+    <div class="seats">
+      <div class="seat"><h3>Executioner · blind testimony</h3><p>No fatal flaw is proven, but unsupported assumptions must be bounded.</p></div>
+      <div class="seat"><h3>Judge · blind testimony</h3><p>The proposal is viable only if its evidence gates remain explicit.</p></div>
+    </div>
+  </div>
+</div>
+  </section>
+  <script>window.buildTribunalScene("scene-hearing");</script>
+</template>

@@ -1,0 +1,31 @@
+WEBVTT
+
+00:00:01.200 --> 00:00:05.767
+When a proposal looks ready, Tribunal helps you find what could still go wrong.
+
+00:00:05.987 --> 00:00:11.353
+Here, the team wants every implementation task to leave a receipt with its test results.
+
+00:00:14.000 --> 00:00:20.400
+Run a mock hearing with the fast two model panel. It works offline, so you can try it without an API key.
+
+00:00:20.620 --> 00:00:25.020
+The reviewers record their first views before they see each other's testimony.
+
+00:00:27.667 --> 00:00:33.200
+Now the reviewers question each other's findings. The Executioner looks for a reason to stop.
+
+00:00:33.420 --> 00:00:39.820
+Here, both reviewers flag the same risk. Weak evidence can make the team too confident.
+
+00:00:42.467 --> 00:00:49.267
+The mock ruling says to proceed with conditions. Build the smallest testable slice and record what passed.
+
+00:00:49.487 --> 00:00:55.353
+The decision packet asks for test output, a change summary, and proof that you can roll back.
+
+00:00:58.000 --> 00:01:05.767
+The exported dashboard lists the run. You can open the decision packet locally and verify the saved evidence against its manifest.
+
+00:01:05.987 --> 00:01:10.153
+When someone asks why you moved ahead, you have a record to show them.

@@ -1,0 +1,53 @@
+<template id="proposal">
+  <div class="chrome">Docket · examples/product-decision.md</div>
+  <div class="camera sheet">
+    <h2>Add deterministic release<br>evidence to the agent workflow</h2>
+    <h3>Scope</h3>
+    <p>Require each completed implementation task to attach the exact validation commands, exit status, and artifact paths used to establish completion.</p>
+    <h3>Decision requested</h3>
+    <p class="target">Should the team implement the bounded receipt contract now, redesign it, pause for evidence, or reject it?</p>
+  </div>
+</template>
+<template id="hearing">
+  <div class="chrome">Terminal · offline mock hearing</div>
+  <div class="camera sheet terminal">
+    <h2>Review the proposal</h2>
+    <code class="command">./bin/tribunal review examples/product-decision.md \
+  --panel fast-two-model --mock</code>
+    <div class="seats">
+      <div class="seat"><h3>Executioner · blind testimony</h3><p>No fatal flaw is proven, but unsupported assumptions must be bounded.</p></div>
+      <div class="seat"><h3>Judge · blind testimony</h3><p>The proposal is viable only if its evidence gates remain explicit.</p></div>
+    </div>
+  </div>
+</template>
+<template id="challenge">
+  <div class="chrome">Evidence · cross-examination.md</div>
+  <div class="camera sheet">
+    <h2>Cross-examination</h2>
+    <h3>Executioner</h3>
+    <p>No fatal flaw is proven, but unsupported assumptions must be bounded.</p>
+    <h3>Judge</h3>
+    <p>The proposal is viable only if its evidence gates remain explicit.</p>
+    <h3>Risk flagged by both</h3>
+    <p class="target">Insufficient evidence may produce false confidence.</p>
+  </div>
+</template>
+<template id="ruling">
+  <div class="chrome">Evidence · decision-packet.md</div>
+  <div class="camera sheet">
+    <h2>Tribunal Decision Packet</h2>
+    <h3>Decision</h3>
+    <p>Proceed conditionally with bounded implementation and explicit evidence gates.</p>
+    <h3>Required next actions</h3>
+    <p>Implement the smallest testable slice. Capture verification evidence.</p>
+    <h3>Evidence required before marking complete</h3>
+    <p class="target">Test output · Change summary · Rollback evidence</p>
+  </div>
+</template>
+<template id="verify">
+  <div class="chrome">Dashboard export · local evidence</div>
+  <div class="camera sheet dashboard">
+    <img src="assets/dashboard.png" alt="Actual dashboard export showing one completed fast-two-model run">
+    <div class="verify">$ tribunal verify &lt;run-id&gt;<br>Artifact manifest verified</div>
+  </div>
+</template>
